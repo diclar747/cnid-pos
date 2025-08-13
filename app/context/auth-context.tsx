@@ -69,20 +69,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem("user")
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser)
-        // Verify user still exists and is active
-        const currentUser = mockUsers.find((u) => u.id === parsedUser.id && u.isActive)
-        if (currentUser) {
-          setUser(currentUser)
-        } else {
+    // Check for saved user in localStorage only on client side
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("user")
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser)
+          // Verify user still exists and is active
+          const currentUser = mockUsers.find((u) => u.id === parsedUser.id && u.isActive)
+          if (currentUser) {
+            setUser(currentUser)
+          } else {
+            localStorage.removeItem("user")
+          }
+        } catch (error) {
           localStorage.removeItem("user")
         }
-      } catch (error) {
-        localStorage.removeItem("user")
       }
     }
     setLoading(false)
@@ -102,7 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (authenticatedUser && authenticatedUser.isActive) {
       setUser(authenticatedUser)
-      localStorage.setItem("user", JSON.stringify(authenticatedUser))
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(authenticatedUser))
+      }
       return true
     }
 
@@ -111,7 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("user")
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user")
+    }
   }
 
   const hasPermission = (permission: string): boolean => {

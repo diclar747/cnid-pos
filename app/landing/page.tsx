@@ -75,10 +75,14 @@ import {
   HelpCircle,
   Menu,
   X,
+  MessageCircle,
+  Moon,
+  Sun,
 } from "lucide-react"
 
 export default function LandingPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   const features = [
     {
@@ -325,51 +329,64 @@ export default function LandingPage() {
   const pricingPlans = [
     {
       name: "Básico",
-      price: "₲ 450.000",
+      price: "₲ 120.000",
       period: "/mes",
-      description: "Perfecto para pequeños negocios que inician",
+      description: "Todas las características para 1 local",
       features: [
-        "1 Punto de venta",
-        "Hasta 1.000 productos",
-        "Reportes básicos",
-        "Soporte por email",
-        "Respaldo diario",
-        "Facturación básica",
+        "1 Local / Sucursal",
+        "Punto de venta completo",
+        "Gestión de inventario",
+        "Reportes y analytics",
+        "Gestión de clientes",
+        "Facturación electrónica",
+        "Control de gastos",
+        "Soporte técnico 24/7",
+        "Respaldos automáticos",
+        "Todas las funcionalidades",
       ],
       popular: false,
     },
     {
       name: "Profesional",
-      price: "₲ 750.000",
+      price: "₲ 320.000",
       period: "/mes",
-      description: "Ideal para negocios en crecimiento",
+      description: "Todas las características para 3 sucursales",
       features: [
-        "3 Puntos de venta",
-        "Productos ilimitados",
-        "Reportes avanzados",
-        "Soporte telefónico",
-        "Respaldo en tiempo real",
-        "Facturación electrónica",
+        "3 Locales / Sucursales",
+        "Punto de venta completo",
+        "Gestión de inventario",
+        "Reportes y analytics",
         "Gestión de clientes",
-        "Control de inventario",
+        "Facturación electrónica",
+        "Control de gastos",
+        "Gestión de proveedores",
+        "Multi-sucursal",
+        "Soporte técnico 24/7",
+        "Respaldos automáticos",
+        "Todas las funcionalidades",
       ],
       popular: true,
     },
     {
-      name: "Empresarial",
-      price: "₲ 1.200.000",
+      name: "Comercial",
+      price: "₲ 520.000",
       period: "/mes",
-      description: "Para empresas con múltiples sucursales",
+      description: "Todas las características para 5 sucursales",
       features: [
-        "Puntos de venta ilimitados",
-        "Multi-sucursal",
-        "Analytics avanzado",
-        "Soporte 24/7",
-        "Respaldo redundante",
+        "5 Locales / Sucursales",
+        "Punto de venta completo",
+        "Gestión de inventario",
+        "Reportes y analytics",
+        "Gestión de clientes",
+        "Facturación electrónica",
+        "Control de gastos",
+        "Gestión de proveedores",
+        "Multi-sucursal avanzado",
         "API personalizada",
         "Integraciones",
         "Consultor dedicado",
-        "Capacitación incluida",
+        "Soporte técnico 24/7",
+        "Todas las funcionalidades",
       ],
       popular: false,
     },
@@ -409,9 +426,17 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      isDarkMode 
+        ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" 
+        : "bg-gradient-to-br from-blue-50 via-white to-purple-50"
+    }`}>
       {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+      <nav className={`backdrop-blur-md border-b sticky top-0 z-50 transition-colors duration-300 ${
+        isDarkMode 
+          ? "bg-gray-900/90 border-gray-700" 
+          : "bg-white/80 border-gray-200"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
@@ -424,24 +449,45 @@ export default function LandingPage() {
             </div>
 
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className="text-gray-700 hover:text-blue-600 transition-colors">
+              <a href="#features" className={`transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Funcionalidades
               </a>
-              <a href="#solutions" className="text-gray-700 hover:text-blue-600 transition-colors">
+              <a href="#solutions" className={`transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Soluciones
               </a>
-              <a href="#pricing" className="text-gray-700 hover:text-blue-600 transition-colors">
+              <a href="#pricing" className={`transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Precios
               </a>
-              <a href="#contact" className="text-gray-700 hover:text-blue-600 transition-colors">
+              <a href="#contact" className={`transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Contacto
               </a>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                Prueba Gratis
+              <Button
+                variant="outline"
+                size="sm"
+                className={`p-2 border-2 bg-transparent transition-colors ${
+                  isDarkMode 
+                    ? "border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white" 
+                    : "border-gray-300 hover:bg-blue-50"
+                }`}
+                onClick={() => setIsDarkMode(!isDarkMode)}
+              >
+                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
               <Button
                 variant="outline"
-                className="border-2 bg-transparent hover:bg-blue-50"
+                className={`border-2 bg-transparent transition-colors ${
+                  isDarkMode 
+                    ? "border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white" 
+                    : "border-gray-300 hover:bg-blue-50"
+                }`}
                 onClick={() => (window.location.href = "/login")}
               >
                 Acceder
@@ -456,28 +502,57 @@ export default function LandingPage() {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200">
+          <div className={`md:hidden border-t transition-colors duration-300 ${
+            isDarkMode 
+              ? "bg-gray-900 border-gray-700" 
+              : "bg-white border-gray-200"
+          }`}>
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="#features" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
+              <a href="#features" className={`block px-3 py-2 transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Funcionalidades
               </a>
-              <a href="#solutions" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
+              <a href="#solutions" className={`block px-3 py-2 transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Soluciones
               </a>
-              <a href="#pricing" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
+              <a href="#pricing" className={`block px-3 py-2 transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Precios
               </a>
-              <a href="#contact" className="block px-3 py-2 text-gray-700 hover:text-blue-600">
+              <a href="#contact" className={`block px-3 py-2 transition-colors ${
+                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
+              }`}>
                 Contacto
               </a>
-              <Button className="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600">Prueba Gratis</Button>
-              <Button
-                variant="outline"
-                className="w-full mt-2 border-2 bg-transparent"
-                onClick={() => (window.location.href = "/login")}
-              >
-                Acceder
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`p-2 border-2 bg-transparent transition-colors ${
+                    isDarkMode 
+                      ? "border-gray-600 text-gray-300 hover:bg-gray-800" 
+                      : "border-gray-300 hover:bg-blue-50"
+                  }`}
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                >
+                  {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  className={`flex-1 border-2 bg-transparent transition-colors ${
+                    isDarkMode 
+                      ? "border-gray-600 text-gray-300 hover:bg-gray-800" 
+                      : "border-gray-300 hover:bg-blue-50"
+                  }`}
+                  onClick={() => (window.location.href = "/login")}
+                >
+                  Acceder
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -491,13 +566,17 @@ export default function LandingPage() {
             🚀 Sistema #1 en Paraguay
           </Badge>
 
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+          <h1 className={`text-4xl md:text-6xl font-bold mb-6 transition-colors ${
+            isDarkMode ? "text-white" : "text-gray-900"
+          }`}>
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">POS CNID</span>
             <br />
             Sistema de Gestión Integral
           </h1>
 
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className={`text-xl mb-8 max-w-3xl mx-auto transition-colors ${
+            isDarkMode ? "text-gray-300" : "text-gray-600"
+          }`}>
             La solución completa para modernizar tu negocio. Más de 50 herramientas integradas para punto de venta,
             inventario, facturación, reportes y mucho más.
           </p>
@@ -506,8 +585,9 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-3"
+              onClick={() => window.open('https://wa.me/595994854167', '_blank')}
             >
-              Prueba Gratis 30 Días
+              Contactar por WhatsApp
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button
@@ -524,30 +604,46 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600">500+</div>
-              <div className="text-gray-600">Negocios Activos</div>
+              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                Negocios Activos
+              </div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600">50K+</div>
-              <div className="text-gray-600">Transacciones Diarias</div>
+              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                Transacciones Diarias
+              </div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">99.9%</div>
-              <div className="text-gray-600">Uptime Garantizado</div>
+              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                Uptime Garantizado
+              </div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-orange-600">24/7</div>
-              <div className="text-gray-600">Soporte Técnico</div>
+              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
+                Soporte Técnico
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Main Features */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-800" : "bg-white"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Funcionalidades Principales</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className={`text-3xl md:text-4xl font-bold mb-4 transition-colors ${
+              isDarkMode ? "text-white" : "text-gray-900"
+            }`}>
+              Funcionalidades Principales
+            </h2>
+            <p className={`text-xl max-w-3xl mx-auto transition-colors ${
+              isDarkMode ? "text-gray-300" : "text-gray-600"
+            }`}>
               Todo lo que necesitas para gestionar tu negocio de manera profesional y eficiente
             </p>
           </div>
@@ -582,7 +678,9 @@ export default function LandingPage() {
       </section>
 
       {/* Additional Features Grid */}
-      <section className="py-20 bg-gray-50">
+      <section className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-900" : "bg-gray-50"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Más de 50 Herramientas Integradas</h2>
@@ -606,7 +704,9 @@ export default function LandingPage() {
       </section>
 
       {/* Business Solutions */}
-      <section id="solutions" className="py-20 bg-white">
+      <section id="solutions" className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-800" : "bg-white"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Soluciones por Tipo de Negocio</h2>
@@ -670,7 +770,9 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-gray-50">
+      <section className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-900" : "bg-gray-50"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Lo que Dicen Nuestros Clientes</h2>
@@ -707,7 +809,9 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 bg-white">
+      <section id="pricing" className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-800" : "bg-white"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planes y Precios</h2>
@@ -758,7 +862,12 @@ export default function LandingPage() {
 
           <div className="text-center mt-12">
             <p className="text-gray-600 mb-4">¿Necesitas un plan personalizado?</p>
-            <Button variant="outline" size="lg" className="border-2 bg-transparent">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="border-2 bg-transparent"
+              onClick={() => window.open('https://wa.me/595994854167', '_blank')}
+            >
               Contactar Ventas
             </Button>
           </div>
@@ -766,7 +875,9 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 bg-gray-50">
+      <section className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-900" : "bg-gray-50"
+      }`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Preguntas Frecuentes</h2>
@@ -792,7 +903,9 @@ export default function LandingPage() {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="py-20 bg-white">
+      <section id="contact" className={`py-20 transition-colors duration-300 ${
+        isDarkMode ? "bg-gray-800" : "bg-white"
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Contáctanos</h2>
@@ -810,8 +923,9 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Teléfono</h3>
-                  <p className="text-gray-600">+595 21 123-4567</p>
-                  <p className="text-gray-600">+595 981 123-456</p>
+                  <a href="tel:+595994854167" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    +595 994 854 167
+                  </a>
                 </div>
               </div>
 
@@ -821,8 +935,9 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                  <p className="text-gray-600">info@poscnid.com</p>
-                  <p className="text-gray-600">soporte@poscnid.com</p>
+                  <a href="mailto:info@cnid.com.py" className="text-gray-600 hover:text-blue-600 transition-colors">
+                    info@cnid.com.py
+                  </a>
                 </div>
               </div>
 
@@ -832,8 +947,8 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Oficina</h3>
-                  <p className="text-gray-600">Av. Mariscal López 1234</p>
-                  <p className="text-gray-600">Asunción, Paraguay</p>
+                  <p className="text-gray-600">Avenida Fundadores</p>
+                  <p className="text-gray-600">Ciudad Bella Vista</p>
                 </div>
               </div>
 
@@ -1044,6 +1159,17 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* WhatsApp Floating Button */}
+      <a
+        href="https://wa.me/595994854167"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50 animate-pulse"
+        aria-label="Contactar por WhatsApp"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </a>
     </div>
   )
 }

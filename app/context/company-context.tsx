@@ -77,26 +77,29 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("companyConfig")
-      if (saved) {
-        const parsedConfig = JSON.parse(saved)
-        setCompanyConfig({ ...defaultCompanyConfig, ...parsedConfig })
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("companyConfig")
+        if (saved) {
+          const parsedConfig = JSON.parse(saved)
+          setCompanyConfig({ ...defaultCompanyConfig, ...parsedConfig })
+        }
+      } catch (error) {
+        console.error("Error loading company config:", error)
       }
-    } catch (error) {
-      console.error("Error loading company config:", error)
-    } finally {
-      setIsLoading(false)
     }
+    setIsLoading(false)
   }, [])
 
   const updateCompanyConfig = (updates: Partial<CompanyConfig>) => {
     const newConfig = { ...companyConfig, ...updates }
     setCompanyConfig(newConfig)
-    try {
-      localStorage.setItem("companyConfig", JSON.stringify(newConfig))
-    } catch (error) {
-      console.error("Error saving company config:", error)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("companyConfig", JSON.stringify(newConfig))
+      } catch (error) {
+        console.error("Error saving company config:", error)
+      }
     }
   }
 

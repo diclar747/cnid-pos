@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CreditCard, DollarSign, Smartphone, Receipt } from "lucide-react"
+import { ArrowLeft, CreditCard, DollarSign, Smartphone, Receipt, Search, CheckCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { useCart } from "../context/cart-context"
 import { useCompany } from "../context/company-context"
 import { useSales } from "../context/sales-context"
+import { consultarRuc, formatRuc, type RucResponse } from "@/lib/ruc-service"
 import toast from "react-hot-toast"
 
 export default function CheckoutPage() {
@@ -24,6 +25,9 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState("")
   const [customerRuc, setCustomerRuc] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isConsultingRuc, setIsConsultingRuc] = useState(false)
+  const [rucData, setRucData] = useState<RucResponse | null>(null)
+  const [rucValidated, setRucValidated] = useState(false)
 
   const total = getCartTotal()
   const cashAmount = Number.parseFloat(cashReceived) || 0
@@ -34,6 +38,56 @@ export default function CheckoutPage() {
       router.push("/pos")
     }
   }, [cart, router])
+
+  const handleRucConsultation = async () => {
+    if (!customerRuc.trim()) {
+      toast.error("Ingrese un RUC válido")
+      return
+    }
+
+    setIsConsultingRuc(true)
+    setRucValidated(false)
+    setRucData(null)
+
+    try {
+      const result = await consultarRuc(customerRuc)
+      
+      if (result.isValid && result.data) {
+        setRucData(result.data)
+        setCustomerName(result.data.name)
+        setRucValidated(true)
+        setCustomerRuc(formatRuc(customerRuc)) // Formatear el RUC
+        
+        toast.success(`RUC válido: ${result.data.name}`)
+        
+        if (result.data.status !== "ACTIVO") {
+          toast.warning(`Atención: El RUC está ${result.data.status}`)
+        }
+      } else {
+        toast.error(result.error || "RUC no encontrado")
+        setRucValidated(false)
+      }
+    } catch (error) {
+      toast.error("Error al consultar el RUC")
+      setRucValidated(false)
+    } finally {
+      setIsConsultingRuc(false)
+    }
+  }
+
+  const handleRucChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCustomerRuc(value)
+    
+    // Reset validation cuando se cambia el RUC
+    if (rucValidated) {
+      setRucValidated(false)
+      setRucData(null)
+      if (!value.trim()) {
+        setCustomerName("")
+      }
+    }
+  }
 
   const handlePayment = async () => {
     if (paymentMethod === "cash" && cashAmount < total) {
@@ -59,6 +113,9 @@ export default function CheckoutPage() {
 
       addSale(saleData)
 
+      // Save sale data for success page
+      localStorage.setItem("lastSale", JSON.stringify(saleData))
+
       // Generate and print receipt
       await generateReceipt(saleData)
 
@@ -75,7 +132,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const generateReceipt = async (saleData: any) => {
+  const generateReceipt = async (saleData: any, autoClose = false) => {
     const receiptContent = `
       <div style="width: 300px; font-family: monospace; font-size: 12px; line-height: 1.4;">
         <!-- Header -->
@@ -175,27 +232,78 @@ export default function CheckoutPage() {
     `
 
     // Create a new window for printing
-    const printWindow = window.open("", "_blank", "width=400,height=600")
+    const printWindow = window.open("", "_blank", "width=450,height=700")
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
             <title>Factura #${saleData.id}</title>
             <style>
-              body { margin: 0; padding: 20px; }
+              body { 
+                margin: 0; 
+                padding: 20px;
+                font-family: monospace;
+              }
+              .no-print {
+                display: block;
+                text-align: center;
+                margin: 20px 0;
+                padding: 10px;
+                background: #f0f0f0;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+              }
+              .print-button {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                margin: 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+              }
+              .print-button:hover {
+                background: #0056b3;
+              }
+              .close-button {
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                margin: 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+              }
+              .close-button:hover {
+                background: #545b62;
+              }
               @media print {
                 body { margin: 0; padding: 0; }
+                .no-print { display: none; }
               }
             </style>
           </head>
           <body>
+            <div class="no-print">
+              <h3>Vista Previa del Ticket</h3>
+              <button class="print-button" onclick="window.print()">🖨️ Imprimir Ticket</button>
+              <button class="close-button" onclick="window.close()">❌ Cerrar</button>
+              <p style="font-size: 12px; color: #666;">
+                El ticket se imprimirá cuando hagas clic en "Imprimir Ticket"
+              </p>
+            </div>
             ${receiptContent}
+            ${autoClose ? `
             <script>
               window.onload = function() {
-                window.print();
-                window.close();
+                setTimeout(function() {
+                  window.print();
+                }, 500);
               }
             </script>
+            ` : ''}
           </body>
         </html>
       `)
@@ -254,22 +362,61 @@ export default function CheckoutPage() {
               {/* Customer Info */}
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="customerName">Nombre del Cliente (Opcional)</Label>
+                  <Label htmlFor="customerRuc">RUC del Cliente (Opcional)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="customerRuc"
+                      value={customerRuc}
+                      onChange={handleRucChange}
+                      placeholder="80000000-0"
+                      className={rucValidated ? "border-green-500" : ""}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRucConsultation}
+                      disabled={isConsultingRuc || !customerRuc.trim()}
+                      className="px-3"
+                    >
+                      {isConsultingRuc ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  {rucValidated && rucData && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span>RUC verificado - Estado: {rucData.status}</span>
+                    </div>
+                  )}
+                  {customerRuc && !rucValidated && !isConsultingRuc && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-amber-600">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Haz clic en buscar para verificar el RUC</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="customerName">Nombre del Cliente</Label>
                   <Input
                     id="customerName"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Cliente General"
+                    placeholder={rucValidated ? "Nombre obtenido del RUC" : "Cliente General"}
+                    disabled={rucValidated}
+                    className={rucValidated ? "bg-muted" : ""}
                   />
-                </div>
-                <div>
-                  <Label htmlFor="customerRuc">RUC del Cliente (Opcional)</Label>
-                  <Input
-                    id="customerRuc"
-                    value={customerRuc}
-                    onChange={(e) => setCustomerRuc(e.target.value)}
-                    placeholder="80000000-0"
-                  />
+                  {rucValidated && rucData && (
+                    <div className="flex items-center gap-2 mt-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span className="text-green-600">
+                        Nombre obtenido automáticamente del RUC
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

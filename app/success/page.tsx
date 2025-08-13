@@ -6,38 +6,37 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { CheckCircle, ArrowLeft, Receipt, Share2 } from "lucide-react"
+import { CheckCircle, ArrowLeft, Receipt, Share2, Printer } from "lucide-react"
+import { useCompany } from "../context/company-context"
 import toast from "react-hot-toast"
 
-interface OrderData {
+interface SaleData {
+  id: string
+  date: string
   items: Array<{
     id: string
     name: string
     price: number
     quantity: number
-    image: string
+    image?: string
   }>
-  customer: {
-    name: string
-    phone?: string
-    notes?: string
-  }
-  totals: {
-    subtotal: number
-    tax: number
-    total: number
-  }
-  timestamp: string
+  total: number
+  paymentMethod: string
+  customerName: string
+  customerRuc: string
+  cashReceived: number
+  change: number
 }
 
 export default function SuccessPage() {
-  const [orderData, setOrderData] = useState<OrderData | null>(null)
+  const [saleData, setSaleData] = useState<SaleData | null>(null)
   const router = useRouter()
+  const { companyConfig } = useCompany()
 
   useEffect(() => {
-    const savedOrder = localStorage.getItem("lastOrder")
-    if (savedOrder) {
-      setOrderData(JSON.parse(savedOrder))
+    const savedSale = localStorage.getItem("lastSale")
+    if (savedSale) {
+      setSaleData(JSON.parse(savedSale))
     } else {
       router.push("/pos")
     }
@@ -61,12 +60,189 @@ export default function SuccessPage() {
     })
   }
 
+  const reprintTicket = () => {
+    if (!saleData) return
+
+    // Función igual a la del checkout
+    const receiptContent = `
+      <div style="width: 300px; font-family: monospace; font-size: 12px; line-height: 1.4;">
+        <!-- Header -->
+        <div style="text-center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <img src="${companyConfig.logo || "/placeholder.svg?height=60&width=150&text=LOGO"}" 
+               alt="Logo" style="max-height: 60px; max-width: 150px; margin-bottom: 5px;" />
+          <div style="font-weight: bold; font-size: 14px;">${companyConfig.name}</div>
+          <div style="font-size: 10px; color: #666;">${companyConfig.slogan}</div>
+          <div style="font-size: 10px; margin-top: 5px;">
+            <div>RUC: ${companyConfig.ruc}</div>
+            <div>${companyConfig.address}</div>
+            <div>Tel: ${companyConfig.phone}</div>
+            ${companyConfig.email ? `<div>Email: ${companyConfig.email}</div>` : ""}
+            ${companyConfig.website ? `<div>Web: ${companyConfig.website}</div>` : ""}
+          </div>
+        </div>
+
+        <!-- Sale Info -->
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>FACTURA #${saleData.id}</span>
+            <span>${new Date(saleData.date).toLocaleDateString("es-PY")}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Hora:</span>
+            <span>${new Date(saleData.date).toLocaleTimeString("es-PY")}</span>
+          </div>
+          ${
+            saleData.customerName !== "Cliente General"
+              ? `
+            <div style="margin-top: 5px;">
+              <div>Cliente: ${saleData.customerName}</div>
+              ${saleData.customerRuc ? `<div>RUC: ${saleData.customerRuc}</div>` : ""}
+            </div>
+          `
+              : ""
+          }
+        </div>
+
+        <!-- Items -->
+        <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0;">
+          ${saleData.items
+            .map(
+              (item) => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+              <div style="flex: 1;">
+                <div style="font-weight: bold;">${item.name}</div>
+                <div style="font-size: 10px; color: #666;">
+                  ${item.quantity} x Gs ${item.price.toLocaleString("es-PY")}
+                </div>
+              </div>
+              <div style="text-align: right; font-weight: bold;">
+                Gs ${(item.price * item.quantity).toLocaleString("es-PY")}
+              </div>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
+
+        <!-- Totals -->
+        <div style="margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+            <span>TOTAL:</span>
+            <span>Gs ${saleData.total.toLocaleString("es-PY")}</span>
+          </div>
+          ${
+            saleData.paymentMethod === "cash"
+              ? `
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span>Efectivo:</span>
+              <span>Gs ${saleData.cashReceived.toLocaleString("es-PY")}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Cambio:</span>
+              <span>Gs ${saleData.change.toLocaleString("es-PY")}</span>
+            </div>
+          `
+              : `
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span>Método:</span>
+              <span>${saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</span>
+            </div>
+          `
+          }
+        </div>
+
+        <!-- Footer -->
+        <div style="text-center; font-size: 10px; color: #666; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
+          <div>¡Gracias por su compra!</div>
+          <div>Conserve este comprobante</div>
+          <div style="margin-top: 5px;">
+            <strong>*** REIMPRESIÓN ***</strong>
+          </div>
+          <div style="margin-top: 5px;">
+            Sistema HeroUI POS
+          </div>
+        </div>
+      </div>
+    `
+
+    // Create a new window for printing
+    const printWindow = window.open("", "_blank", "width=450,height=700")
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Reimpresión Factura #${saleData.id}</title>
+            <style>
+              body { 
+                margin: 0; 
+                padding: 20px;
+                font-family: monospace;
+              }
+              .no-print {
+                display: block;
+                text-align: center;
+                margin: 20px 0;
+                padding: 10px;
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 5px;
+              }
+              .print-button {
+                background: #007bff;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                margin: 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+              }
+              .print-button:hover {
+                background: #0056b3;
+              }
+              .close-button {
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                margin: 5px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+              }
+              .close-button:hover {
+                background: #545b62;
+              }
+              @media print {
+                body { margin: 0; padding: 0; }
+                .no-print { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="no-print">
+              <h3>🔄 Reimpresión de Ticket</h3>
+              <p style="font-size: 14px; color: #856404; margin: 10px 0;">
+                Esta es una reimpresión del ticket original
+              </p>
+              <button class="print-button" onclick="window.print()">🖨️ Reimprimir Ticket</button>
+              <button class="close-button" onclick="window.close()">❌ Cerrar</button>
+            </div>
+            ${receiptContent}
+          </body>
+        </html>
+      `)
+      printWindow.document.close()
+      toast.success("Ticket abierto para reimpresión")
+    }
+  }
+
   const handleShare = async () => {
-    if (navigator.share && orderData) {
+    if (navigator.share && saleData) {
       try {
         await navigator.share({
-          title: "Recibo de Venta - HeroUI POS",
-          text: `Venta completada por ${formatPrice(orderData.totals.total)}`,
+          title: "Recibo de Venta - CNID POS",
+          text: `Venta #${saleData.id} completada por Gs ${saleData.total.toLocaleString("es-PY")}`,
           url: window.location.href,
         })
       } catch (error) {
@@ -78,7 +254,7 @@ export default function SuccessPage() {
     }
   }
 
-  if (!orderData) {
+  if (!saleData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -100,7 +276,7 @@ export default function SuccessPage() {
           </div>
         </div>
 
-        {/* Order Details */}
+        {/* Sale Details */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -108,15 +284,17 @@ export default function SuccessPage() {
               Detalles de la Venta
             </CardTitle>
             <div className="text-sm text-muted-foreground">
-              <p>Fecha: {formatDate(orderData.timestamp)}</p>
-              <p>Cliente: {orderData.customer.name}</p>
-              {orderData.customer.phone && <p>Teléfono: {orderData.customer.phone}</p>}
+              <p>Factura: #{saleData.id}</p>
+              <p>Fecha: {formatDate(saleData.date)}</p>
+              <p>Cliente: {saleData.customerName}</p>
+              {saleData.customerRuc && <p>RUC: {saleData.customerRuc}</p>}
+              <p>Método de Pago: {saleData.paymentMethod === "cash" ? "Efectivo" : saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</p>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Items */}
             <div className="space-y-3">
-              {orderData.items.map((item) => (
+              {saleData.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <img
                     src={item.image || "/placeholder.svg"}
@@ -130,12 +308,12 @@ export default function SuccessPage() {
                   <div className="flex-1">
                     <h4 className="font-medium text-sm">{item.name}</h4>
                     <p className="text-xs text-muted-foreground">
-                      {formatPrice(item.price)} × {item.quantity}
+                      Gs {item.price.toLocaleString("es-PY")} × {item.quantity}
                     </p>
                   </div>
                   <div className="text-right">
                     <Badge variant="secondary">{item.quantity}</Badge>
-                    <p className="font-medium text-sm mt-1">{formatPrice(item.price * item.quantity)}</p>
+                    <p className="font-medium text-sm mt-1">Gs {(item.price * item.quantity).toLocaleString("es-PY")}</p>
                   </div>
                 </div>
               ))}
@@ -143,52 +321,52 @@ export default function SuccessPage() {
 
             <Separator />
 
-            {/* Totals */}
+            {/* Payment Details */}
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatPrice(orderData.totals.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>IVA (10%):</span>
-                <span>{formatPrice(orderData.totals.tax)}</span>
-              </div>
-              <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total:</span>
-                <span className="text-green-600">{formatPrice(orderData.totals.total)}</span>
+                <span className="text-green-600">Gs {saleData.total.toLocaleString("es-PY")}</span>
               </div>
+              
+              {saleData.paymentMethod === "cash" && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span>Efectivo Recibido:</span>
+                    <span>Gs {saleData.cashReceived.toLocaleString("es-PY")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Cambio:</span>
+                    <span>Gs {saleData.change.toLocaleString("es-PY")}</span>
+                  </div>
+                </>
+              )}
             </div>
-
-            {/* Customer Notes */}
-            {orderData.customer.notes && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                <h4 className="font-medium text-sm mb-1">Notas:</h4>
-                <p className="text-sm text-muted-foreground">{orderData.customer.notes}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <Button onClick={() => router.push("/pos")} className="flex-1">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Nueva Venta
           </Button>
-          <Button onClick={handleShare} variant="outline" className="flex-1 bg-transparent">
+          <Button onClick={reprintTicket} variant="outline" className="flex-1">
+            <Printer className="h-4 w-4 mr-2" />
+            Reimprimir Ticket
+          </Button>
+          <Button onClick={handleShare} variant="outline" className="flex-1">
             <Share2 className="h-4 w-4 mr-2" />
             Compartir
           </Button>
           <Button onClick={() => window.print()} variant="outline" className="flex-1">
             <Receipt className="h-4 w-4 mr-2" />
-            Imprimir
+            Imprimir Página
           </Button>
         </div>
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>Gracias por usar HeroUI POS</p>
+          <p>Gracias por usar CNID POS</p>
           <p>¡Esperamos verte pronto!</p>
         </div>
       </div>
