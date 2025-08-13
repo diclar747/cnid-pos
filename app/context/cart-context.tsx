@@ -18,9 +18,23 @@ interface CartItem extends Product {
   quantity: number
 }
 
+export interface Purchase {
+  id: number
+  productId: number
+  productName: string
+  quantity: number
+  unitPrice: number
+  total: number
+  date: string
+  supplier?: string
+  notes?: string
+  createdBy: string
+}
+
 interface CartContextType {
   cart: CartItem[]
   products: Product[]
+  purchases: Purchase[]
   addToCart: (product: Product) => void
   addToCartByBarcode: (barcode: string) => boolean
   removeFromCart: (productId: number) => void
@@ -34,6 +48,9 @@ interface CartContextType {
   updateStock: (productId: number, newStock: number) => void
   loadExampleProducts: () => void
   syncWithDatabase: () => Promise<void>
+  addPurchase: (purchase: Omit<Purchase, "id">) => void
+  getPurchasesByDate: (startDate: string, endDate: string) => Purchase[]
+  getTotalPurchases: (startDate?: string, endDate?: string) => number
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -41,6 +58,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [purchases, setPurchases] = useState<Purchase[]>([])
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
@@ -52,11 +70,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setProducts(parsedProducts)
       } catch (error) {
         console.error("Error al cargar productos:", error)
-        // Cargar productos por defecto
         setProducts(defaultProducts)
       }
     } else {
-      // Cargar productos por defecto
       setProducts(defaultProducts)
     }
 
@@ -70,25 +86,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Cargar compras desde localStorage
+    const savedPurchases = localStorage.getItem("purchases")
+    if (savedPurchases) {
+      try {
+        setPurchases(JSON.parse(savedPurchases))
+      } catch (error) {
+        console.error("Error al cargar compras:", error)
+      }
+    }
+
     setIsInitialized(true)
   }, [])
 
   useEffect(() => {
-    // Guardar productos en localStorage solo después de la inicialización
     if (isInitialized && products.length > 0) {
       localStorage.setItem("products", JSON.stringify(products))
     }
   }, [products, isInitialized])
 
   useEffect(() => {
-    // Guardar carrito en localStorage
     if (isInitialized) {
       localStorage.setItem("cart", JSON.stringify(cart))
     }
   }, [cart, isInitialized])
 
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem("purchases", JSON.stringify(purchases))
+    }
+  }, [purchases, isInitialized])
+
   const addToCart = (product: Product) => {
-    // Verificar stock disponible
     const availableStock = product.stock
     const currentInCart = cart.find((item) => item.id === product.id)?.quantity || 0
 
@@ -128,7 +157,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Verificar stock
     const product = products.find((p) => p.id === productId)
     if (product && quantity > product.stock) {
       alert("No hay suficiente stock disponible")
@@ -156,7 +184,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const deleteProduct = (productId: number) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId))
-    // También remover del carrito si existe
     removeFromCart(productId)
   }
 
@@ -165,7 +192,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const loadExampleProducts = () => {
-    // Cargar productos ejemplo sin duplicar
     const exampleProducts = defaultProducts.filter(
       (example) => !products.some((existing) => existing.barcode === example.barcode),
     )
@@ -177,22 +203,38 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const syncWithDatabase = async () => {
     try {
-      // Aquí se implementaría la sincronización con Supabase
       console.log("Sincronizando con base de datos...")
-
-      // Simular sincronización
       await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // En una implementación real, aquí harías:
-      // 1. Enviar productos locales a Supabase
-      // 2. Obtener productos actualizados de Supabase
-      // 3. Actualizar el estado local
-
       console.log("Sincronización completada")
     } catch (error) {
       console.error("Error en sincronización:", error)
       throw error
     }
+  }
+
+  const addPurchase = (purchase: Omit<Purchase, "id">) => {
+    const newPurchase: Purchase = {
+      ...purchase,
+      id: Date.now(),
+    }
+    setPurchases((prev) => [...prev, newPurchase])
+  }
+
+  const getPurchasesByDate = (startDate: string, endDate: string): Purchase[] => {
+    return purchases.filter((purchase) => {
+      const purchaseDate = new Date(purchase.date).toISOString().split("T")[0]
+      return purchaseDate >= startDate && purchaseDate <= endDate
+    })
+  }
+
+  const getTotalPurchases = (startDate?: string, endDate?: string): number => {
+    let filteredPurchases = purchases
+
+    if (startDate && endDate) {
+      filteredPurchases = getPurchasesByDate(startDate, endDate)
+    }
+
+    return filteredPurchases.reduce((total, purchase) => total + purchase.total, 0)
   }
 
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0)
@@ -203,6 +245,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{
         cart,
         products,
+        purchases,
         addToCart,
         addToCartByBarcode,
         removeFromCart,
@@ -216,6 +259,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateStock,
         loadExampleProducts,
         syncWithDatabase,
+        addPurchase,
+        getPurchasesByDate,
+        getTotalPurchases,
       }}
     >
       {children}

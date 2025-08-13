@@ -3,7 +3,23 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Plus, Edit, Trash2, Package, Upload, RefreshCw, Database } from "lucide-react"
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Package,
+  Upload,
+  RefreshCw,
+  Database,
+  Search,
+  Grid3X3,
+  List,
+  Download,
+  FileText,
+  Printer,
+  ShoppingCart,
+  QrCode,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,19 +34,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useCart, type Product } from "../../context/cart-context"
+import { useAuth } from "../../context/auth-context"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { QRGenerator } from "../../components/qr-generator"
+import { BulkQRGenerator } from "../../components/bulk-qr-generator"
 
 export default function ProductsPage() {
-  const { products, addProduct, updateProduct, deleteProduct } = useCart()
+  const { products, addProduct, updateProduct, deleteProduct, addPurchase } = useCart()
+  const { user } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isStockDialogOpen, setIsStockDialogOpen] = useState(false)
+  const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false)
+  const [isQRDialogOpen, setIsQRDialogOpen] = useState(false)
+  const [isBulkQRDialogOpen, setIsBulkQRDialogOpen] = useState(false)
   const [isLoadingExample, setIsLoadingExample] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [editingStock, setEditingStock] = useState<Product | null>(null)
+  const [selectedProductForQR, setSelectedProductForQR] = useState<Product | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [newStock, setNewStock] = useState("")
+  const [purchaseQuantity, setPurchaseQuantity] = useState("")
+  const [purchasePrice, setPurchasePrice] = useState("")
+  const [supplier, setSupplier] = useState("")
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,7 +86,6 @@ export default function ProductsPage() {
     { value: "postres", label: "Postres" },
   ]
 
-  // Productos ejemplo para cargar
   const exampleProducts = [
     {
       name: "Hamburguesa con Queso",
@@ -86,6 +115,24 @@ export default function ProductsPage() {
       image: "/vibrant-mixed-salad.png",
     },
     {
+      name: "Alitas de Pollo",
+      price: 22000,
+      category: "comida",
+      barcode: "7501234567893",
+      description: "Alitas de pollo crujientes con salsa BBQ",
+      stock: 40,
+      image: "/crispy-chicken-wings.png",
+    },
+    {
+      name: "Papas Fritas",
+      price: 12000,
+      category: "comida",
+      barcode: "7501234567894",
+      description: "Papas fritas doradas y crujientes",
+      stock: 60,
+      image: "/crispy-french-fries.png",
+    },
+    {
       name: "Coca Cola",
       price: 8000,
       category: "bebidas",
@@ -95,6 +142,42 @@ export default function ProductsPage() {
       image: "/refreshing-cola.png",
     },
     {
+      name: "Té Helado",
+      price: 9000,
+      category: "bebidas",
+      barcode: "7501234567896",
+      description: "Té helado con limón 500ml",
+      stock: 80,
+      image: "/iced-tea.png",
+    },
+    {
+      name: "Jugo de Naranja",
+      price: 10000,
+      category: "bebidas",
+      barcode: "7501234567897",
+      description: "Jugo natural de naranja 300ml",
+      stock: 70,
+      image: "/glass-of-orange-juice.png",
+    },
+    {
+      name: "Café Latte",
+      price: 15000,
+      category: "bebidas",
+      barcode: "7501234567898",
+      description: "Café latte con leche espumosa",
+      stock: 45,
+      image: "/latte-coffee.png",
+    },
+    {
+      name: "Agua Embotellada",
+      price: 5000,
+      category: "bebidas",
+      barcode: "7501234567899",
+      description: "Agua mineral 500ml",
+      stock: 120,
+      image: "/bottled-water.png",
+    },
+    {
       name: "Pastel de Chocolate",
       price: 20000,
       category: "postres",
@@ -102,6 +185,42 @@ export default function ProductsPage() {
       description: "Porción de pastel de chocolate con crema",
       stock: 20,
       image: "/chocolate-cake-slice.png",
+    },
+    {
+      name: "Cheesecake",
+      price: 22000,
+      category: "postres",
+      barcode: "7501234567801",
+      description: "Cheesecake de frutilla con base de galleta",
+      stock: 15,
+      image: "/cheesecake-slice.png",
+    },
+    {
+      name: "Helado",
+      price: 16000,
+      category: "postres",
+      barcode: "7501234567802",
+      description: "Copa de helado con frutas y crema",
+      stock: 35,
+      image: "/ice-cream-sundae.png",
+    },
+    {
+      name: "Pay de Manzana",
+      price: 18000,
+      category: "postres",
+      barcode: "7501234567803",
+      description: "Pay casero de manzana con canela",
+      stock: 25,
+      image: "/apple-pie-slice.png",
+    },
+    {
+      name: "Brownie",
+      price: 14000,
+      category: "postres",
+      barcode: "7501234567804",
+      description: "Brownie de chocolate con nueces",
+      stock: 30,
+      image: "/chocolate-brownie.png",
     },
   ]
 
@@ -170,6 +289,48 @@ export default function ProductsPage() {
     }
   }
 
+  const handlePurchase = (product: Product) => {
+    setEditingStock(product)
+    setPurchaseQuantity("")
+    setPurchasePrice(product.price.toString())
+    setSupplier("")
+    setIsPurchaseDialogOpen(true)
+  }
+
+  const handlePurchaseSubmit = () => {
+    if (editingStock && purchaseQuantity) {
+      const quantity = Number.parseInt(purchaseQuantity)
+      const unitPrice = Number.parseInt(purchasePrice) || editingStock.price
+      const total = unitPrice * quantity
+      const newStock = editingStock.stock + quantity
+
+      updateProduct({ ...editingStock, stock: newStock })
+
+      addPurchase({
+        productId: editingStock.id,
+        productName: editingStock.name,
+        quantity: quantity,
+        unitPrice: unitPrice,
+        total: total,
+        date: new Date().toISOString(),
+        supplier: supplier || undefined,
+        createdBy: user?.name || "Usuario",
+      })
+
+      setIsPurchaseDialogOpen(false)
+      setEditingStock(null)
+      setPurchaseQuantity("")
+      setPurchasePrice("")
+      setSupplier("")
+      alert(`Compra registrada: ${quantity} unidades agregadas al stock`)
+    }
+  }
+
+  const handleGenerateQR = (product: Product) => {
+    setSelectedProductForQR(product)
+    setIsQRDialogOpen(true)
+  }
+
   const handleDelete = (productId: number) => {
     if (confirm("¿Estás seguro de que quieres eliminar este producto?")) {
       deleteProduct(productId)
@@ -179,9 +340,7 @@ export default function ProductsPage() {
   const loadExampleProducts = async () => {
     setIsLoadingExample(true)
     try {
-      // Simular carga de productos
       for (const product of exampleProducts) {
-        // Verificar si el producto ya existe
         const existingProduct = products.find((p) => p.barcode === product.barcode)
         if (!existingProduct) {
           addProduct(product)
@@ -195,12 +354,100 @@ export default function ProductsPage() {
     }
   }
 
-  const filteredProducts = products.filter(
-    (product) =>
+  const exportToExcel = () => {
+    const csvContent = [
+      ["Nombre", "Categoría", "Precio", "Stock", "Código", "Descripción"].join(","),
+      ...filteredProducts.map((product) =>
+        [
+          `"${product.name}"`,
+          `"${product.category}"`,
+          product.price,
+          product.stock,
+          `"${product.barcode}"`,
+          `"${product.description}"`,
+        ].join(","),
+      ),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `productos_${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const exportToPDF = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Lista de Productos</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            h1 { color: #333; text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .low-stock { color: red; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de Productos</h1>
+          <p>Fecha: ${new Date().toLocaleDateString("es-PY")}</p>
+          <p>Total de productos: ${filteredProducts.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Código</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredProducts
+                .map(
+                  (product) => `
+                <tr>
+                  <td>${product.name}</td>
+                  <td>${product.category}</td>
+                  <td>${formatCurrency(product.price)}</td>
+                  <td class="${product.stock < 10 ? "low-stock" : ""}">${product.stock}</td>
+                  <td>${product.barcode}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open("", "_blank")
+    if (printWindow) {
+      printWindow.document.write(printContent)
+      printWindow.document.close()
+      printWindow.print()
+    }
+  }
+
+  const printList = () => {
+    exportToPDF()
+  }
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.barcode.includes(searchQuery) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+      product.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
+    return matchesSearch && matchesCategory
+  })
 
   return (
     <div className="p-6 space-y-6">
@@ -334,7 +581,6 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Alerta informativa */}
       <Alert>
         <Database className="h-4 w-4" />
         <AlertDescription>
@@ -343,76 +589,226 @@ export default function ProductsPage() {
         </AlertDescription>
       </Alert>
 
-      <div className="flex items-center space-x-2">
-        <Input
-          placeholder="Buscar productos por nombre, código o categoría..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="flex gap-4 items-center">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar productos..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 w-80"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <div className="flex border rounded-lg">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <Button variant="outline" onClick={() => setIsBulkQRDialogOpen(true)} className="bg-transparent">
+            <QrCode className="mr-2 h-4 w-4" />
+            QR Lote
+          </Button>
+          <Button variant="outline" onClick={exportToExcel} className="bg-transparent">
+            <Download className="mr-2 h-4 w-4" />
+            Excel
+          </Button>
+          <Button variant="outline" onClick={exportToPDF} className="bg-transparent">
+            <FileText className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
+          <Button variant="outline" onClick={printList} className="bg-transparent">
+            <Printer className="mr-2 h-4 w-4" />
+            Imprimir
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map((product) => (
-          <Card key={product.id} className="card-dark">
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{product.name}</CardTitle>
-                  <CardDescription className="capitalize">{product.category}</CardDescription>
-                </div>
-                <div className="flex space-x-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditStock(product)} title="Editar Stock">
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(product)} title="Editar Producto">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(product.id)}
-                    title="Eliminar Producto"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Precio:</span>
-                  <span className="font-bold">{formatCurrency(product.price)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Stock:</span>
-                  <div className="flex items-center gap-2">
-                    <span className={product.stock < 10 ? "text-red-600 font-bold" : ""}>{product.stock} unidades</span>
-                    {product.stock < 10 && <Badge variant="destructive">Stock Bajo</Badge>}
+      {viewMode === "grid" ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="card-dark">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardDescription className="capitalize">{product.category}</CardDescription>
+                  </div>
+                  <div className="flex space-x-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleGenerateQR(product)} title="Generar QR">
+                      <QrCode className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handlePurchase(product)}
+                      title="Registrar Compra"
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditStock(product)} title="Editar Stock">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(product)} title="Editar Producto">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(product.id)}
+                      title="Eliminar Producto"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Código:</span>
-                  <span className="text-sm font-mono">{product.barcode}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Precio:</span>
+                    <span className="font-bold">{formatCurrency(product.price)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Stock:</span>
+                    <div className="flex items-center gap-2">
+                      <span className={product.stock < 10 ? "text-red-600 font-bold" : ""}>
+                        {product.stock} unidades
+                      </span>
+                      {product.stock < 10 && <Badge variant="destructive">Stock Bajo</Badge>}
+                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Código:</span>
+                    <span className="text-sm font-mono">{product.barcode}</span>
+                  </div>
+                  {product.description && <p className="text-sm text-muted-foreground mt-2">{product.description}</p>}
                 </div>
-                {product.description && <p className="text-sm text-muted-foreground mt-2">{product.description}</p>}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="card-dark">
+          <CardHeader>
+            <CardTitle>Lista de Productos ({filteredProducts.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell className="capitalize">{product.category}</TableCell>
+                    <TableCell>{formatCurrency(product.price)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className={product.stock < 10 ? "text-red-600 font-bold" : ""}>{product.stock}</span>
+                        {product.stock < 10 && (
+                          <Badge variant="destructive" className="text-xs">
+                            Bajo
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleGenerateQR(product)}
+                          title="Generar QR"
+                        >
+                          <QrCode className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePurchase(product)}
+                          title="Registrar Compra"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditStock(product)}
+                          title="Editar Stock"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(product)} title="Editar Producto">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(product.id)}
+                          title="Eliminar Producto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {filteredProducts.length === 0 && (
         <div className="text-center py-12">
           <Package className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-sm font-semibold">No hay productos</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {searchQuery
-              ? "No se encontraron productos con ese criterio"
+            {searchQuery || categoryFilter !== "all"
+              ? "No se encontraron productos con los filtros aplicados"
               : "Comienza cargando productos ejemplo o agregando un nuevo producto"}
           </p>
-          {!searchQuery && (
+          {!searchQuery && categoryFilter === "all" && (
             <Button className="mt-4" onClick={loadExampleProducts} disabled={isLoadingExample}>
               {isLoadingExample ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -425,7 +821,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Dialog para editar stock */}
+      {/* Diálogos existentes */}
       <Dialog open={isStockDialogOpen} onOpenChange={setIsStockDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -455,6 +851,96 @@ export default function ProductsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isPurchaseDialogOpen} onOpenChange={setIsPurchaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Compra</DialogTitle>
+            <DialogDescription>
+              Registra una compra para: <strong>{editingStock?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="purchaseQuantity">Cantidad Comprada</Label>
+              <Input
+                id="purchaseQuantity"
+                type="number"
+                value={purchaseQuantity}
+                onChange={(e) => setPurchaseQuantity(e.target.value)}
+                placeholder="Cantidad de productos comprados"
+                min="1"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="purchasePrice">Precio de Compra por Unidad</Label>
+              <Input
+                id="purchasePrice"
+                type="number"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                placeholder="Precio por unidad"
+                min="0"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="supplier">Proveedor (Opcional)</Label>
+              <Input
+                id="supplier"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="Nombre del proveedor"
+              />
+            </div>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm">
+                <strong>Stock actual:</strong> {editingStock?.stock} unidades
+              </p>
+              <p className="text-sm">
+                <strong>Stock después de compra:</strong>{" "}
+                {editingStock && purchaseQuantity
+                  ? editingStock.stock + Number.parseInt(purchaseQuantity)
+                  : editingStock?.stock}{" "}
+                unidades
+              </p>
+              <p className="text-sm">
+                <strong>Total de compra:</strong>{" "}
+                {purchaseQuantity && purchasePrice
+                  ? formatCurrency(Number.parseInt(purchaseQuantity) * Number.parseInt(purchasePrice))
+                  : "Gs 0"}
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsPurchaseDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handlePurchaseSubmit} disabled={!purchaseQuantity || !purchasePrice}>
+                Registrar Compra
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Componentes de QR */}
+      {selectedProductForQR && (
+        <QRGenerator
+          product={selectedProductForQR}
+          isOpen={isQRDialogOpen}
+          onClose={() => {
+            setIsQRDialogOpen(false)
+            setSelectedProductForQR(null)
+          }}
+        />
+      )}
+
+      <BulkQRGenerator
+        products={filteredProducts}
+        isOpen={isBulkQRDialogOpen}
+        onClose={() => setIsBulkQRDialogOpen(false)}
+      />
     </div>
   )
 }

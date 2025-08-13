@@ -1,186 +1,190 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
-import { ThemeToggle } from "../components/theme-toggle"
-
-import { useState, useRef, useEffect } from "react"
-import { Search, Scan, LogOut, Settings } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { useState } from "react"
+import { Search, Menu, X, ShoppingCart, Scan } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import CategorySidebar from "../components/category-sidebar"
 import ProductGrid from "../components/product-grid"
 import CartSidebar from "../components/cart-sidebar"
-import CategorySidebar from "../components/category-sidebar"
 import BarcodeScanner from "../components/barcode-scanner"
-import ProtectedRoute from "../components/protected-route"
-import { useAuth } from "../context/auth-context"
+import { ThemeToggle } from "../components/theme-toggle"
 import { useCart } from "../context/cart-context"
-import { useRouter } from "next/navigation"
 
-function POSContent() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
-  const [lastScannedProduct, setLastScannedProduct] = useState("")
-  const searchInputRef = useRef<HTMLInputElement>(null)
-
-  const { user, logout, isAdmin } = useAuth()
-  const { addToCartByBarcode, products } = useCart()
-  const router = useRouter()
-
-  // Mantener el foco en el campo de búsqueda
-  useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus()
-    }
-  }, [lastScannedProduct])
-
-  const handleProductScanned = (productName: string) => {
-    setLastScannedProduct(productName)
-    setTimeout(() => {
-      setLastScannedProduct("")
-    }, 3000)
-  }
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchQuery(value)
-
-    // Detectar si es un código de barras (13 dígitos)
-    if (value.length === 13 && /^\d+$/.test(value)) {
-      const success = addToCartByBarcode(value)
-      if (success) {
-        const product = products.find((p) => p.barcode === value)
-        if (product) {
-          handleProductScanned(product.name)
-          // Limpiar el campo de búsqueda y mantener el foco
-          setSearchQuery("")
-          if (searchInputRef.current) {
-            searchInputRef.current.focus()
-          }
-        }
-      } else {
-        // Si no encuentra el producto, mostrar mensaje
-        setLastScannedProduct("Producto no encontrado")
-        setTimeout(() => {
-          setLastScannedProduct("")
-          setSearchQuery("")
-        }, 2000)
-      }
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Si presiona Enter y hay texto, buscar por nombre
-    if (e.key === "Enter" && searchQuery.trim()) {
-      const product = products.find(
-        (p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcode === searchQuery,
-      )
-
-      if (product) {
-        addToCartByBarcode(product.barcode)
-        handleProductScanned(product.name)
-        setSearchQuery("")
-        if (searchInputRef.current) {
-          searchInputRef.current.focus()
-        }
-      }
-    }
-  }
-
-  const handleLogout = () => {
-    logout()
-    router.push("/landing")
-  }
-
-  const goToAdmin = () => {
-    router.push("/admin")
-  }
+export default function POSPage() {
+  const [selectedCategory, setSelectedCategory] = useState("todos")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showCategorySidebar, setShowCategorySidebar] = useState(false)
+  const [showCartSidebar, setShowCartSidebar] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const { itemCount } = useCart()
 
   return (
-    <div className="flex h-screen bg-background">
-      <CategorySidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="sticky top-0 z-10 bg-background p-4 border-b">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-2xl font-bold">Punto de Venta</h1>
-              <p className="text-sm text-muted-foreground">
-                Usuario: {user?.name} ({user?.role === "admin" ? "Administrador" : "Cajero"})
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link href="/landing">
-                <Button variant="outline" size="sm" className="bg-transparent">
-                  Ver Landing
-                </Button>
-              </Link>
-              <div className="relative w-80">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Buscar por nombre o escanear código de barras..."
-                  className="pl-8 text-lg input-adaptive"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onKeyPress={handleKeyPress}
-                  autoFocus
-                />
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 hidden md:flex">
+            <div className="mr-6 flex items-center space-x-2">
+              <div className="w-8 h-8 btn-gradient rounded-lg flex items-center justify-center">
+                <ShoppingCart className="h-5 w-5 text-white" />
               </div>
-              <Button onClick={() => setIsScannerOpen(true)} className="flex items-center gap-2">
-                <Scan className="h-4 w-4" />
-                Cámara
-              </Button>
-              <ThemeToggle />
-              {isAdmin && (
-                <Button variant="outline" onClick={goToAdmin} className="flex items-center gap-2 bg-transparent">
-                  <Settings className="h-4 w-4" />
-                  Admin
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2 bg-transparent">
-                <LogOut className="h-4 w-4" />
-                Salir
-              </Button>
+              <span className="hidden font-bold sm:inline-block gradient-text">POS CNID</span>
             </div>
           </div>
 
-          {lastScannedProduct && (
-            <div
-              className={`px-4 py-2 rounded ${
-                lastScannedProduct === "Producto no encontrado"
-                  ? "bg-red-100 border border-red-400 text-red-700"
-                  : "bg-green-100 border border-green-400 text-green-700"
-              }`}
-            >
-              {lastScannedProduct === "Producto no encontrado"
-                ? "❌ Producto no encontrado"
-                : `✅ Producto agregado: ${lastScannedProduct}`}
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+            onClick={() => setShowCategorySidebar(true)}
+          >
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+
+          {/* Search */}
+          <div className="flex flex-1 items-center space-x-2">
+            <div className="w-full flex-1 md:w-auto md:flex-none">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar productos..."
+                  className="pl-8 md:w-[300px] lg:w-[400px]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center space-x-2">
+            {/* Scanner Button */}
+            <Dialog open={showScanner} onOpenChange={setShowScanner}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="hidden sm:flex bg-transparent">
+                  <Scan className="h-4 w-4 mr-2" />
+                  Escanear
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Escáner de Códigos de Barras</DialogTitle>
+                </DialogHeader>
+                <BarcodeScanner onClose={() => setShowScanner(false)} />
+              </DialogContent>
+            </Dialog>
+
+            {/* Theme Toggle - Desktop only */}
+            <div className="hidden md:block">
+              <ThemeToggle />
+            </div>
+
+            {/* Cart Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="relative bg-transparent"
+              onClick={() => setShowCartSidebar(true)}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {itemCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                >
+                  {itemCount}
+                </Badge>
+              )}
+              <span className="sr-only">Carrito</span>
+            </Button>
+          </div>
         </div>
+      </header>
 
-        <div className="flex-1 overflow-auto p-4">
-          <ProductGrid category={selectedCategory} searchQuery={searchQuery} />
+      <div className="container-fluid">
+        <div className="flex">
+          {/* Category Sidebar - Desktop */}
+          <aside className="hidden w-64 shrink-0 md:block">
+            <div className="sticky top-14 h-[calc(100vh-3.5rem)]">
+              <CategorySidebar selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-hidden">
+            <div className="h-[calc(100vh-3.5rem)] overflow-auto">
+              <ProductGrid selectedCategory={selectedCategory} searchTerm={searchTerm} />
+            </div>
+          </main>
+
+          {/* Cart Sidebar - Desktop */}
+          <aside className="hidden w-80 shrink-0 lg:block">
+            <div className="sticky top-14 h-[calc(100vh-3.5rem)]">
+              <CartSidebar />
+            </div>
+          </aside>
         </div>
-      </main>
+      </div>
 
-      <CartSidebar />
+      {/* Mobile Category Sidebar Overlay */}
+      {showCategorySidebar && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowCategorySidebar(false)} />
+          <div className="fixed left-0 top-0 h-full w-64 bg-background shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Categorías</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowCategorySidebar(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CategorySidebar
+              selectedCategory={selectedCategory}
+              onCategoryChange={(category) => {
+                setSelectedCategory(category)
+                setShowCategorySidebar(false)
+              }}
+            />
+          </div>
+        </div>
+      )}
 
-      <BarcodeScanner
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onProductScanned={handleProductScanned}
-      />
+      {/* Mobile Cart Sidebar Overlay */}
+      {showCartSidebar && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setShowCartSidebar(false)} />
+          <div className="fixed right-0 top-0 h-full w-80 bg-background shadow-lg">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Carrito</h2>
+              <Button variant="ghost" size="sm" onClick={() => setShowCartSidebar(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <CartSidebar onClose={() => setShowCartSidebar(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Scanner Button */}
+      <div className="fixed bottom-4 right-4 sm:hidden">
+        <Dialog open={showScanner} onOpenChange={setShowScanner}>
+          <DialogTrigger asChild>
+            <Button size="lg" className="rounded-full shadow-lg">
+              <Scan className="h-5 w-5" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Escáner de Códigos de Barras</DialogTitle>
+            </DialogHeader>
+            <BarcodeScanner onClose={() => setShowScanner(false)} />
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
-  )
-}
-
-export default function POSPage() {
-  return (
-    <ProtectedRoute>
-      <POSContent />
-    </ProtectedRoute>
   )
 }

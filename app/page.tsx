@@ -1,194 +1,242 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
-import { ThemeToggle } from "./components/theme-toggle"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-
-import { useState, useRef } from "react"
-import { Search, Scan, LogOut, Settings } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import ProductGrid from "./components/product-grid"
-import CartSidebar from "./components/cart-sidebar"
-import CategorySidebar from "./components/category-sidebar"
-import BarcodeScanner from "./components/barcode-scanner"
-import ProtectedRoute from "./components/protected-route"
+import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ShoppingCart, BarChart3, Package, Users, Settings, TrendingUp, User, Mail, Shield } from "lucide-react"
 import { useAuth } from "./context/auth-context"
 import { useCart } from "./context/cart-context"
+import { useNotifications } from "./context/notifications-context"
+import { ThemeToggle } from "./components/theme-toggle"
 
-function POSContent() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [isScannerOpen, setIsScannerOpen] = useState(false)
-  const [lastScannedProduct, setLastScannedProduct] = useState("")
-  const searchInputRef = useRef<HTMLInputElement>(null)
+const quickActions = [
+  {
+    title: "Punto de Venta",
+    description: "Iniciar nueva venta",
+    href: "/pos",
+    icon: ShoppingCart,
+    color: "bg-blue-500",
+    badge: null,
+  },
+  {
+    title: "Administración",
+    description: "Panel de control",
+    href: "/admin",
+    icon: Settings,
+    color: "bg-purple-500",
+    badge: "notifications",
+  },
+  {
+    title: "Productos",
+    description: "Gestionar inventario",
+    href: "/admin/products",
+    icon: Package,
+    color: "bg-green-500",
+    badge: "products",
+  },
+  {
+    title: "Reportes",
+    description: "Ver estadísticas",
+    href: "/admin/sales-reports",
+    icon: BarChart3,
+    color: "bg-orange-500",
+    badge: null,
+  },
+  {
+    title: "Usuarios",
+    description: "Administrar usuarios",
+    href: "/admin/users",
+    icon: Users,
+    color: "bg-indigo-500",
+    badge: null,
+  },
+  {
+    title: "Análisis",
+    description: "Métricas avanzadas",
+    href: "/admin/supplier-transactions",
+    icon: TrendingUp,
+    color: "bg-pink-500",
+    badge: null,
+  },
+]
 
-  const { user, logout, isAdmin } = useAuth()
-  const { addToCartByBarcode, products } = useCart()
+export default function HomePage() {
   const router = useRouter()
+  const { user, isLoading } = useAuth()
+  const { itemCount } = useCart()
+  const { notifications } = useNotifications()
 
-  // Mantener el foco en el campo de búsqueda
+  const unreadNotifications = notifications.filter((n) => !n.read).length
+
   useEffect(() => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus()
+    if (!isLoading && !user) {
+      router.push("/login")
     }
-  }, [lastScannedProduct])
+  }, [user, isLoading, router])
 
-  const handleProductScanned = (productName: string) => {
-    setLastScannedProduct(productName)
-    setTimeout(() => {
-      setLastScannedProduct("")
-    }, 3000)
-  }
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setSearchQuery(value)
-
-    // Detectar si es un código de barras (13 dígitos)
-    if (value.length === 13 && /^\d+$/.test(value)) {
-      const success = addToCartByBarcode(value)
-      if (success) {
-        const product = products.find((p) => p.barcode === value)
-        if (product) {
-          handleProductScanned(product.name)
-          // Limpiar el campo de búsqueda y mantener el foco
-          setSearchQuery("")
-          if (searchInputRef.current) {
-            searchInputRef.current.focus()
-          }
-        }
-      } else {
-        // Si no encuentra el producto, mostrar mensaje
-        setLastScannedProduct("Producto no encontrado")
-        setTimeout(() => {
-          setLastScannedProduct("")
-          setSearchQuery("")
-        }, 2000)
-      }
-    }
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Si presiona Enter y hay texto, buscar por nombre
-    if (e.key === "Enter" && searchQuery.trim()) {
-      const product = products.find(
-        (p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcode === searchQuery,
-      )
-
-      if (product) {
-        addToCartByBarcode(product.barcode)
-        handleProductScanned(product.name)
-        setSearchQuery("")
-        if (searchInputRef.current) {
-          searchInputRef.current.focus()
-        }
-      }
-    }
-  }
-
-  const handleLogout = () => {
-    logout()
-    router.push("/login")
-  }
-
-  const goToAdmin = () => {
-    router.push("/admin")
-  }
-
-  return (
-    <div className="flex h-screen bg-background">
-      <CategorySidebar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="sticky top-0 z-10 bg-background p-4 border-b">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-2xl font-bold">Punto de Venta</h1>
-              <p className="text-sm text-muted-foreground">
-                Usuario: {user?.name} ({user?.role === "admin" ? "Administrador" : "Cajero"})
-              </p>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header skeleton */}
+          <div className="flex justify-between items-center mb-8">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-64" />
+              <Skeleton className="h-4 w-96" />
             </div>
-            <div className="flex items-center gap-2">
-              <Link href="/landing">
-                <Button variant="outline" size="sm" className="bg-transparent">
-                  Ver Landing
-                </Button>
-              </Link>
-              <div className="relative w-80">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Buscar por nombre o escanear código de barras..."
-                  className="pl-8 text-lg input-adaptive"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  onKeyPress={handleKeyPress}
-                  autoFocus
-                />
-              </div>
-              <Button onClick={() => setIsScannerOpen(true)} className="flex items-center gap-2">
-                <Scan className="h-4 w-4" />
-                Cámara
-              </Button>
-              <ThemeToggle />
-              {isAdmin && (
-                <Button variant="outline" onClick={goToAdmin} className="flex items-center gap-2 bg-transparent">
-                  <Settings className="h-4 w-4" />
-                  Admin
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleLogout} className="flex items-center gap-2 bg-transparent">
-                <LogOut className="h-4 w-4" />
-                Salir
-              </Button>
-            </div>
+            <Skeleton className="h-10 w-10 rounded-full" />
           </div>
 
-          {lastScannedProduct && (
-            <div
-              className={`px-4 py-2 rounded ${
-                lastScannedProduct === "Producto no encontrado"
-                  ? "bg-red-100 border border-red-400 text-red-700"
-                  : "bg-green-100 border border-green-400 text-green-700"
-              }`}
-            >
-              {lastScannedProduct === "Producto no encontrado"
-                ? "❌ Producto no encontrado"
-                : `✅ Producto agregado: ${lastScannedProduct}`}
-            </div>
-          )}
+          {/* User info skeleton */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-64" />
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          {/* Actions grid skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <div className="flex items-center space-x-3">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-40" />
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
         </div>
+      </div>
+    )
+  }
 
-        <div className="flex-1 overflow-auto p-4">
-          <ProductGrid category={selectedCategory} searchQuery={searchQuery} />
-        </div>
-      </main>
+  if (!user) {
+    return null
+  }
 
-      <CartSidebar />
-
-      <BarcodeScanner
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onProductScanned={handleProductScanned}
-      />
-    </div>
-  )
-}
-
-export default function POSPage() {
-  const router = useRouter()
-
-  useEffect(() => {
-    // Redirigir automáticamente al landing
-    router.push("/landing")
-  }, [router])
+  const getBadgeCount = (badgeType: string | null) => {
+    switch (badgeType) {
+      case "notifications":
+        return unreadNotifications
+      case "products":
+        return itemCount
+      default:
+        return 0
+    }
+  }
 
   return (
-    <ProtectedRoute>
-      <POSContent />
-    </ProtectedRoute>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Bienvenido a HeroUI POS</h1>
+            <p className="text-muted-foreground">Sistema completo de punto de venta y gestión empresarial</p>
+          </div>
+          <ThemeToggle />
+        </div>
+
+        {/* User Info Card */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center">
+                <User className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  {user.name || "Usuario"}
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    {user.role || "user"}
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  {user.email}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  Items en carrito: <strong>{itemCount}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="h-4 w-4 p-0" />
+                <span>
+                  Notificaciones: <strong>{unreadNotifications}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                <span>
+                  Estado: <strong className="text-green-600">Activo</strong>
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {quickActions.map((action) => {
+            const badgeCount = getBadgeCount(action.badge)
+
+            return (
+              <Card key={action.title} className="hover:shadow-lg transition-shadow cursor-pointer group">
+                <Link href={action.href}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`p-2 rounded-lg ${action.color} text-white group-hover:scale-110 transition-transform`}
+                        >
+                          <action.icon className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{action.title}</CardTitle>
+                          <CardDescription>{action.description}</CardDescription>
+                        </div>
+                      </div>
+                      {badgeCount > 0 && (
+                        <Badge variant="destructive" className="h-6 w-6 p-0 flex items-center justify-center text-xs">
+                          {badgeCount}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                </Link>
+              </Card>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 text-center text-sm text-muted-foreground">
+          <p>HeroUI POS - Sistema de Punto de Venta © 2024</p>
+          <p>Versión 1.0.0 - Desarrollado con Next.js y shadcn/ui</p>
+        </div>
+      </div>
+    </div>
   )
 }

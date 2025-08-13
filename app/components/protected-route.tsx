@@ -2,51 +2,50 @@
 
 import type React from "react"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "../context/auth-context"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  adminOnly?: boolean
+  requireAdmin?: boolean
 }
 
-export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
-  const { user, isAdmin } = useAuth()
+export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth()
   const router = useRouter()
+  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    if (!user) {
-      router.push("/login")
-      return
-    }
+    if (!isLoading) {
+      if (!user) {
+        router.push("/login")
+        return
+      }
 
-    if (adminOnly && !isAdmin) {
-      router.push("/")
-      return
-    }
-  }, [user, isAdmin, adminOnly, router])
+      if (requireAdmin && user.role !== "admin") {
+        router.push("/pos")
+        return
+      }
 
-  if (!user) {
+      setIsChecking(false)
+    }
+  }, [user, isLoading, requireAdmin, router])
+
+  if (isLoading || isChecking) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4">Verificando autenticación...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     )
   }
 
-  if (adminOnly && !isAdmin) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">Acceso Denegado</h1>
-          <p className="mt-2">No tienes permisos para acceder a esta página</p>
-        </div>
-      </div>
-    )
+  if (!user) {
+    return null
+  }
+
+  if (requireAdmin && user.role !== "admin") {
+    return null
   }
 
   return <>{children}</>

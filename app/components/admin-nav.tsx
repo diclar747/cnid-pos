@@ -1,213 +1,169 @@
 "use client"
 
-import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useNotifications } from "../context/notifications-context"
 import {
   LayoutDashboard,
   Package,
   Users,
   BarChart3,
-  LogOut,
-  ShoppingCart,
   DollarSign,
-  Building,
-  Zap,
-  ChevronLeft,
-  ChevronRight,
-  Database,
-  RefreshCw,
+  ShoppingCart,
+  Building2,
+  FileText,
+  Truck,
+  TrendingUp,
+  Bell,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "../context/auth-context"
-import { useCart } from "../context/cart-context"
-import { cn } from "@/lib/utils"
-import { useState } from "react"
-import { ThemeToggle } from "./theme-toggle"
 
-const adminNavItems = [
+const navigation = [
   {
-    title: "Dashboard",
+    name: "Dashboard",
     href: "/admin",
     icon: LayoutDashboard,
-    color: "text-blue-600",
+    description: "Resumen general del sistema",
+    badge: null,
   },
   {
-    title: "Productos",
+    name: "Productos",
     href: "/admin/products",
     icon: Package,
-    color: "text-green-600",
+    description: "Gestión de inventario",
+    badge: null,
   },
   {
-    title: "Usuarios",
+    name: "Usuarios",
     href: "/admin/users",
     icon: Users,
-    color: "text-purple-600",
+    description: "Administrar usuarios",
+    badge: null,
   },
   {
-    title: "Reportes",
+    name: "Reportes de Ventas",
     href: "/admin/sales-reports",
     icon: BarChart3,
-    color: "text-orange-600",
+    description: "Análisis de ventas",
+    badge: null,
   },
   {
-    title: "Gastos",
+    name: "Gastos",
     href: "/admin/expenses",
     icon: DollarSign,
-    color: "text-red-600",
+    description: "Control de gastos",
+    badge: null,
   },
   {
-    title: "Configuración",
+    name: "Compras",
+    href: "/admin/purchases",
+    icon: ShoppingCart,
+    description: "Gestión de compras",
+    badge: null,
+  },
+  {
+    name: "Dashboard Compras",
+    href: "/admin/purchases-dashboard",
+    icon: TrendingUp,
+    description: "Análisis de compras",
+    badge: null,
+  },
+  {
+    name: "Proveedores",
+    href: "/admin/suppliers",
+    icon: Truck,
+    description: "Gestión de proveedores",
+    badge: null,
+  },
+  {
+    name: "Transacciones",
+    href: "/admin/supplier-transactions",
+    icon: FileText,
+    description: "Historial de transacciones",
+    badge: null,
+  },
+  {
+    name: "Empresa",
     href: "/admin/company",
-    icon: Building,
-    color: "text-indigo-600",
+    icon: Building2,
+    description: "Configuración empresarial",
+    badge: null,
   },
 ]
 
 export default function AdminNav() {
-  const router = useRouter()
   const pathname = usePathname()
-  const { user, logout, syncWithDatabase: syncUsers } = useAuth()
-  const { syncWithDatabase: syncProducts } = useCart()
-  const [collapsed, setCollapsed] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
+  const { notifications } = useNotifications()
 
-  const handleLogout = () => {
-    logout()
-    router.push("/landing")
-  }
-
-  const goToPOS = () => {
-    router.push("/pos")
-  }
-
-  const handleSync = async () => {
-    setIsSyncing(true)
-    try {
-      await Promise.all([syncUsers(), syncProducts()])
-      alert("Sincronización completada exitosamente")
-    } catch (error) {
-      alert("Error durante la sincronización")
-      console.error("Error de sincronización:", error)
-    } finally {
-      setIsSyncing(false)
-    }
-  }
+  const unreadCount = notifications.filter((n) => !n.read).length
 
   return (
-    <div
-      className={cn(
-        "bg-white border-r border-gray-200 flex flex-col h-screen transition-all duration-300 shadow-lg dark:bg-gray-900 dark:border-gray-800",
-        collapsed ? "w-16" : "w-64",
-      )}
-    >
+    <div className="flex h-full w-64 flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-lg flex items-center justify-center">
-                <Zap className="h-5 w-5 text-white" />
-              </div>
-              <div className="ml-3">
-                <h2 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 bg-clip-text text-transparent">
-                  POS CNID
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Panel Admin</p>
-              </div>
-            </div>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(!collapsed)} className="h-8 w-8">
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
-
-        {!collapsed && (
-          <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Bienvenido</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">{user?.name}</p>
-              </div>
-              <ThemeToggle />
-            </div>
+      <div className="flex h-16 items-center border-b border-gray-200 dark:border-gray-800 px-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
+            <LayoutDashboard className="h-4 w-4 text-white" />
           </div>
-        )}
+          <div>
+            <h1 className="text-lg font-semibold">HeroUI POS</h1>
+            <p className="text-xs text-muted-foreground">Panel Administrativo</p>
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <div className="space-y-2">
-          {adminNavItems.map((item) => {
-            const Icon = item.icon
+      <ScrollArea className="flex-1 px-3 py-4">
+        <nav className="space-y-1">
+          {navigation.map((item) => {
             const isActive = pathname === item.href
+            const Icon = item.icon
+
+            // Agregar badge de notificaciones al Dashboard
+            const showNotificationBadge = item.href === "/admin" && unreadCount > 0
 
             return (
-              <Button
-                key={item.href}
-                variant="ghost"
+              <Link
+                key={item.name}
+                href={item.href}
                 className={cn(
-                  "w-full justify-start text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200",
-                  isActive &&
-                    "bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800",
-                  collapsed ? "px-2" : "px-3",
+                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100",
                 )}
-                onClick={() => router.push(item.href)}
               >
-                <Icon
-                  className={cn(
-                    "h-5 w-5",
-                    isActive ? "text-blue-600 dark:text-blue-400" : item.color,
-                    collapsed ? "mr-0" : "mr-3",
-                  )}
-                />
-                {!collapsed && <span className="font-medium">{item.title}</span>}
-              </Button>
+                <Icon className="h-4 w-4 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{item.name}</span>
+                    {showNotificationBadge && (
+                      <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                    {item.badge && (
+                      <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                </div>
+              </Link>
             )
           })}
+        </nav>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 dark:border-gray-800 p-4">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <Bell className="h-4 w-4" />
+          <span>{unreadCount > 0 ? `${unreadCount} notificaciones` : "Sin notificaciones"}</span>
         </div>
-      </nav>
-
-      {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start hover:bg-green-50 hover:text-green-700 dark:hover:bg-green-900/20 dark:hover:text-green-400 transition-colors",
-            collapsed ? "px-2" : "px-3",
-          )}
-          onClick={handleSync}
-          disabled={isSyncing}
-        >
-          {isSyncing ? (
-            <RefreshCw className={cn("h-5 w-5 text-green-600 animate-spin", collapsed ? "mr-0" : "mr-3")} />
-          ) : (
-            <Database className={cn("h-5 w-5 text-green-600", collapsed ? "mr-0" : "mr-3")} />
-          )}
-          {!collapsed && <span className="font-medium">{isSyncing ? "Sincronizando..." : "Sincronizar BD"}</span>}
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 transition-colors",
-            collapsed ? "px-2" : "px-3",
-          )}
-          onClick={goToPOS}
-        >
-          <ShoppingCart className={cn("h-5 w-5 text-blue-600", collapsed ? "mr-0" : "mr-3")} />
-          {!collapsed && <span className="font-medium">Ir al POS</span>}
-        </Button>
-
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors",
-            collapsed ? "px-2" : "px-3",
-          )}
-          onClick={handleLogout}
-        >
-          <LogOut className={cn("h-5 w-5 text-red-600", collapsed ? "mr-0" : "mr-3")} />
-          {!collapsed && <span className="font-medium">Cerrar Sesión</span>}
-        </Button>
       </div>
     </div>
   )
