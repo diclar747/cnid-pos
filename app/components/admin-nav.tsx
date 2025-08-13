@@ -26,12 +26,16 @@ import { usePathname, useRouter } from "next/navigation"
 import { useNotifications } from "../context/notifications-context"
 import { useAuth } from "../context/auth-context"
 
-export default function AdminNav() {
+interface AdminNavProps {
+  isCollapsed: boolean
+  onToggleCollapse: (collapsed: boolean) => void
+}
+
+export default function AdminNav({ isCollapsed, onToggleCollapse }: AdminNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { unreadCount } = useNotifications()
   const { logout } = useAuth()
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   const handleLogout = () => {
@@ -134,10 +138,10 @@ export default function AdminNav() {
       `}
       >
         {/* Header */}
-        <div className={`p-6 border-b ${isCollapsed ? "px-3" : ""}`}>
+        <div className={`p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 ${isCollapsed ? "px-3" : ""}`}>
           <div className="flex items-center justify-between">
             <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
                 <LayoutDashboard className="h-6 w-6 text-white" />
               </div>
               {!isCollapsed && (
@@ -145,14 +149,19 @@ export default function AdminNav() {
                   <h1 className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     CNID POS
                   </h1>
-                  <p className="text-sm text-muted-foreground">Panel de Administración</p>
+                  <p className="text-sm text-gray-600">Panel de Administración</p>
                 </div>
               )}
             </div>
 
             {/* Desktop Collapse Button */}
             <div className="hidden lg:block">
-              <Button variant="ghost" size="sm" onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onToggleCollapse(!isCollapsed)}
+                className="p-1.5 hover:bg-white/50 rounded-full"
+              >
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
               </Button>
             </div>
@@ -161,7 +170,7 @@ export default function AdminNav() {
 
         {/* Navigation */}
         <ScrollArea className="flex-1 px-4 py-6">
-          <div className="space-y-2">
+          <div className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -172,33 +181,42 @@ export default function AdminNav() {
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
                   className={`
-                    flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200
-                    hover:bg-muted/50 group relative
-                    ${isActive ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md" : ""}
+                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
+                    hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:shadow-sm
+                    group relative
+                    ${isActive ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-[1.02]" : ""}
                     ${isCollapsed ? "justify-center" : ""}
                   `}
                 >
-                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? "text-white" : "text-gray-600"}`} />
 
                   {!isCollapsed && (
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{item.title}</div>
-                      <div className={`text-xs truncate ${isActive ? "text-white/80" : "text-muted-foreground"}`}>
+                      <div className={`font-medium text-sm ${isActive ? "text-white" : "text-gray-900"}`}>
+                        {item.title}
+                      </div>
+                      <div className={`text-xs truncate ${isActive ? "text-white/80" : "text-gray-500"}`}>
                         {item.description}
                       </div>
                     </div>
                   )}
 
                   {!isCollapsed && item.badge && (
-                    <Badge variant={isActive ? "secondary" : "secondary"} className="ml-auto">
+                    <Badge
+                      variant={isActive ? "secondary" : "secondary"}
+                      className={`ml-auto text-xs ${isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}
+                    >
                       {item.badge}
                     </Badge>
                   )}
 
                   {/* Tooltip for collapsed state */}
                   {isCollapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                      {item.title}
+                    <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+                      <div className="font-medium">{item.title}</div>
+                      <div className="text-xs text-gray-300">{item.description}</div>
+                      {/* Arrow */}
+                      <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
                   )}
                 </Link>
@@ -208,33 +226,36 @@ export default function AdminNav() {
         </ScrollArea>
 
         {/* Footer */}
-        <div className={`p-4 border-t space-y-3 ${isCollapsed ? "px-2" : ""}`}>
+        <div className={`p-4 border-t bg-gray-50 space-y-3 ${isCollapsed ? "px-2" : ""}`}>
           {/* Notifications */}
-          <div
-            className={`flex items-center gap-2 text-sm text-muted-foreground ${isCollapsed ? "justify-center" : ""}`}
-          >
+          <div className={`flex items-center gap-2 text-sm text-gray-600 ${isCollapsed ? "justify-center" : ""}`}>
             <Bell className="h-4 w-4 flex-shrink-0" />
-            {!isCollapsed && <span>{unreadCount > 0 ? `${unreadCount} notificaciones` : "Sin notificaciones"}</span>}
+            {!isCollapsed && (
+              <span className="text-xs">
+                {unreadCount > 0 ? `${unreadCount} notificaciones` : "Sin notificaciones"}
+              </span>
+            )}
           </div>
 
           {/* Logout Button */}
-          <Button
-            variant="outline"
-            onClick={handleLogout}
-            className={`w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 ${isCollapsed ? "px-2" : ""}`}
-          >
-            <LogOut className="h-4 w-4 flex-shrink-0" />
-            {!isCollapsed && <span>Cerrar Sesión</span>}
-          </Button>
+          <div className="relative group">
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className={`w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200 ${isCollapsed ? "px-2" : ""}`}
+            >
+              <LogOut className="h-4 w-4 flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm">Cerrar Sesión</span>}
+            </Button>
 
-          {/* Tooltip for logout in collapsed state */}
-          {isCollapsed && (
-            <div className="relative group">
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+            {/* Tooltip for logout in collapsed state */}
+            {isCollapsed && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-lg">
                 Cerrar Sesión
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1 w-2 h-2 bg-gray-900 rotate-45"></div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </>
