@@ -1,260 +1,273 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { useCart } from "../context/cart-context"
-import { useSales } from "../context/sales-context"
-import { useNotifications } from "../context/notifications-context"
+import { Package, DollarSign, TrendingUp, ShoppingCart, Star, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { StockAlerts } from "../components/stock-alerts"
-import { Package, DollarSign, TrendingUp, AlertTriangle, ShoppingCart, Calendar, Target } from "lucide-react"
-import { useEffect } from "react"
+import { useNotifications } from "../context/notifications-context"
+import { useCart } from "../context/cart-context"
 
 export default function AdminDashboard() {
-  const { products, purchases } = useCart()
-  const { sales } = useSales()
-  const { checkStockLevels, getLowStockProducts, getCriticalStockProducts, getOutOfStockProducts } = useNotifications()
+  const { checkStockLevels, getCriticalStockProducts, getLowStockProducts, getOutOfStockProducts } = useNotifications()
+  const { products } = useCart()
 
-  // Sincronizar productos con notificaciones
   useEffect(() => {
-    if (products.length > 0) {
+    if (products && products.length > 0) {
       checkStockLevels(products)
     }
   }, [products, checkStockLevels])
 
-  const formatCurrency = (amount: number) => {
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-PY", {
       style: "currency",
       currency: "PYG",
       minimumFractionDigits: 0,
-    }).format(amount)
+    }).format(price)
   }
 
-  // Calcular estadísticas
-  const totalProducts = products.length
-  const totalSales = sales.reduce((sum, sale) => sum + sale.total, 0)
-  const totalPurchases = purchases.reduce((sum, purchase) => sum + purchase.total, 0)
-  const lowStockCount = getLowStockProducts().length
-  const criticalStockCount = getCriticalStockProducts().length
-  const outOfStockCount = getOutOfStockProducts().length
+  // Mock data for demonstration
+  const stats = {
+    totalProducts: products?.length || 15,
+    totalSales: 1250000,
+    monthlySales: 8500000,
+    totalPurchases: 3200000,
+  }
 
-  // Ventas del mes actual
-  const currentMonth = new Date().getMonth()
-  const currentYear = new Date().getFullYear()
-  const monthlySales = sales.filter((sale) => {
-    const saleDate = new Date(sale.date)
-    return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear
-  })
-  const monthlyRevenue = monthlySales.reduce((sum, sale) => sum + sale.total, 0)
+  const topProducts = [
+    { name: "Hamburguesa Clásica", sales: 45, revenue: 1125000 },
+    { name: "Pizza Margherita", sales: 32, revenue: 1120000 },
+    { name: "Café Latte", sales: 67, revenue: 1005000 },
+    { name: "Alitas de Pollo", sales: 28, revenue: 616000 },
+    { name: "Torta de Chocolate", sales: 23, revenue: 414000 },
+  ]
 
-  // Productos más vendidos
-  const productSales = sales.reduce(
-    (acc, sale) => {
-      sale.items.forEach((item) => {
-        if (!acc[item.productId]) {
-          acc[item.productId] = {
-            name: item.name,
-            quantity: 0,
-            revenue: 0,
-          }
-        }
-        acc[item.productId].quantity += item.quantity
-        acc[item.productId].revenue += item.price * item.quantity
-      })
-      return acc
-    },
-    {} as Record<number, { name: string; quantity: number; revenue: number }>,
-  )
+  const criticalStock = getCriticalStockProducts()
+  const lowStock = getLowStockProducts()
+  const outOfStock = getOutOfStockProducts()
+  const inStock = products?.filter((p) => p.stock > 5).length || 0
 
-  const topProducts = Object.values(productSales)
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5)
-
-  // Progreso de stock
-  const totalStock = products.reduce((sum, product) => sum + product.stock, 0)
-  const averageStock = totalStock / products.length || 0
-  const stockHealth = Math.max(0, Math.min(100, (averageStock / 50) * 100)) // Asumiendo 50 como stock ideal
+  const stockProgress = products?.length ? (inStock / products.length) * 100 : 0
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Dashboard Administrativo</h1>
-        <p className="text-muted-foreground">Resumen general del sistema POS</p>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Vista general de tu negocio</p>
       </div>
 
-      {/* Métricas principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-dark">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts}</div>
-            <p className="text-xs text-muted-foreground">
-              {lowStockCount + criticalStockCount + outOfStockCount > 0 && (
-                <span className="text-orange-600">
-                  {lowStockCount + criticalStockCount + outOfStockCount} con alertas
-                </span>
-              )}
-            </p>
+            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <p className="text-xs text-muted-foreground">En el inventario</p>
           </CardContent>
         </Card>
 
-        <Card className="card-dark">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
+            <CardTitle className="text-sm font-medium">Ventas Hoy</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalSales)}</div>
-            <p className="text-xs text-muted-foreground">{sales.length} transacciones</p>
+            <div className="text-2xl font-bold">{formatPrice(stats.totalSales)}</div>
+            <p className="text-xs text-muted-foreground">+12% desde ayer</p>
           </CardContent>
         </Card>
 
-        <Card className="card-dark">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(monthlyRevenue)}</div>
-            <p className="text-xs text-muted-foreground">{monthlySales.length} ventas este mes</p>
+            <div className="text-2xl font-bold">{formatPrice(stats.monthlySales)}</div>
+            <p className="text-xs text-muted-foreground">+8% desde el mes pasado</p>
           </CardContent>
         </Card>
 
-        <Card className="card-dark">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Compras Totales</CardTitle>
+            <CardTitle className="text-sm font-medium">Compras del Mes</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPurchases)}</div>
-            <p className="text-xs text-muted-foreground">{purchases.length} compras registradas</p>
+            <div className="text-2xl font-bold">{formatPrice(stats.totalPurchases)}</div>
+            <p className="text-xs text-muted-foreground">-5% desde el mes pasado</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alertas de Stock y Estado del Inventario */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <StockAlerts />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stock Alerts */}
+        <div>
+          <StockAlerts />
+        </div>
 
-        <Card className="card-dark">
+        {/* Inventory Status */}
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-blue-500" />
+              <Package className="h-5 w-5" />
               Estado del Inventario
             </CardTitle>
-            <CardDescription>Salud general del stock</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span>Salud del Stock</span>
-                <span>{Math.round(stockHealth)}%</span>
+                <span>Stock General</span>
+                <span>{Math.round(stockProgress)}%</span>
               </div>
-              <Progress value={stockHealth} className="h-2" />
+              <Progress value={stockProgress} className="h-2" />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-red-600">{outOfStockCount}</p>
-                <p className="text-xs text-muted-foreground">Agotados</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <div>
+                  <div className="font-medium text-sm">{inStock}</div>
+                  <div className="text-xs text-muted-foreground">En Stock</div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-orange-600">{criticalStockCount}</p>
-                <p className="text-xs text-muted-foreground">Críticos</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-yellow-600">{lowStockCount}</p>
-                <p className="text-xs text-muted-foreground">Stock Bajo</p>
-              </div>
-            </div>
 
-            <div className="pt-2 border-t">
-              <div className="flex justify-between text-sm">
-                <span>Stock Total:</span>
-                <span className="font-medium">{totalStock.toLocaleString()} unidades</span>
+              <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <div>
+                  <div className="font-medium text-sm">{lowStock.length}</div>
+                  <div className="text-xs text-muted-foreground">Stock Bajo</div>
+                </div>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Promedio por Producto:</span>
-                <span className="font-medium">{Math.round(averageStock)} unidades</span>
+
+              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <div>
+                  <div className="font-medium text-sm">{criticalStock.length}</div>
+                  <div className="text-xs text-muted-foreground">Crítico</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-950/20 rounded-lg">
+                <Package className="h-4 w-4 text-gray-600" />
+                <div>
+                  <div className="font-medium text-sm">{outOfStock.length}</div>
+                  <div className="text-xs text-muted-foreground">Agotado</div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Productos más vendidos */}
-      {topProducts.length > 0 && (
-        <Card className="card-dark">
+      {/* Top Products */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Star className="h-5 w-5" />
+            Productos Más Vendidos
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {topProducts.map((product, index) => (
+              <div key={product.name} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="w-8 h-8 rounded-full flex items-center justify-center p-0">
+                    {index + 1}
+                  </Badge>
+                  <div>
+                    <p className="font-medium text-sm">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">{product.sales} ventas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-sm">{formatPrice(product.revenue)}</p>
+                  <p className="text-xs text-muted-foreground">Ingresos</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-500" />
-              Productos Más Vendidos
-            </CardTitle>
-            <CardDescription>Top 5 productos por cantidad vendida</CardDescription>
+            <CardTitle className="text-sm">Resumen de Alertas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-red-600">Stock Crítico</span>
+                <Badge variant="destructive">{criticalStock.length}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-yellow-600">Stock Bajo</span>
+                <Badge variant="outline" className="border-yellow-600 text-yellow-600">
+                  {lowStock.length}
+                </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Agotados</span>
+                <Badge variant="secondary">{outOfStock.length}</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Rendimiento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Margen Promedio</span>
+                <span className="font-medium">35%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Rotación</span>
+                <span className="font-medium">2.3x</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Satisfacción</span>
+                <span className="font-medium">4.6★</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Objetivos del Mes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="secondary" className="w-8 h-8 rounded-full flex items-center justify-center">
-                      {index + 1}
-                    </Badge>
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">{product.quantity} unidades vendidas</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">{formatCurrency(product.revenue)}</p>
-                    <p className="text-sm text-muted-foreground">ingresos</p>
-                  </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Ventas</span>
+                  <span>85%</span>
                 </div>
-              ))}
+                <Progress value={85} className="h-2" />
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Nuevos Clientes</span>
+                  <span>62%</span>
+                </div>
+                <Progress value={62} className="h-2" />
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Resumen de alertas */}
-      {(lowStockCount > 0 || criticalStockCount > 0 || outOfStockCount > 0) && (
-        <Card className="card-dark border-orange-200 dark:border-orange-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-600">
-              <AlertTriangle className="h-5 w-5" />
-              Resumen de Alertas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {outOfStockCount > 0 && (
-                <div className="text-center p-4 bg-red-50 dark:bg-red-950 rounded-lg">
-                  <p className="text-2xl font-bold text-red-600">{outOfStockCount}</p>
-                  <p className="text-sm text-red-600">Productos Agotados</p>
-                  <p className="text-xs text-muted-foreground mt-1">Requieren reabastecimiento inmediato</p>
-                </div>
-              )}
-              {criticalStockCount > 0 && (
-                <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                  <p className="text-2xl font-bold text-orange-600">{criticalStockCount}</p>
-                  <p className="text-sm text-orange-600">Stock Crítico</p>
-                  <p className="text-xs text-muted-foreground mt-1">Menos de 5 unidades disponibles</p>
-                </div>
-              )}
-              {lowStockCount > 0 && (
-                <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                  <p className="text-2xl font-bold text-yellow-600">{lowStockCount}</p>
-                  <p className="text-sm text-yellow-600">Stock Bajo</p>
-                  <p className="text-xs text-muted-foreground mt-1">Considera reabastecer pronto</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      </div>
     </div>
   )
 }

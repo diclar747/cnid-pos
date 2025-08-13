@@ -12,12 +12,12 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!loading) {
       if (!user) {
         router.push("/login")
         return
@@ -30,21 +30,17 @@ export default function ProtectedRoute({ children, requireAdmin = false }: Prote
 
       setIsChecking(false)
     }
-  }, [user, isLoading, requireAdmin, router])
+  }, [user, loading, requireAdmin, router])
 
-  if (isLoading || isChecking) {
+  if (loading || isChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
 
-  if (!user) {
-    return null
-  }
-
-  if (requireAdmin && user.role !== "admin") {
+  if (!user || (requireAdmin && user.role !== "admin")) {
     return null
   }
 

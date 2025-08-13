@@ -1,8 +1,10 @@
+"use client"
+
 import type React from "react"
+
 import { Suspense } from "react"
-import AdminNav from "../components/admin-nav"
 import ProtectedRoute from "../components/protected-route"
-import { NotificationsProvider } from "../context/notifications-context"
+import AdminNav from "../components/admin-nav"
 
 export default function AdminLayout({
   children,
@@ -11,22 +13,27 @@ export default function AdminLayout({
 }) {
   return (
     <ProtectedRoute requireAdmin>
-      <NotificationsProvider>
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-          <AdminNav />
-          <main className="flex-1 overflow-auto">
+      <div className="min-h-screen bg-background">
+        <div className="flex h-screen">
+          {/* Sidebar */}
+          <div className="w-64 border-r bg-card/50">
+            <AdminNav />
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 overflow-hidden">
             <Suspense
               fallback={
                 <div className="flex items-center justify-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               }
             >
               {children}
             </Suspense>
-          </main>
+          </div>
         </div>
-      </NotificationsProvider>
+      </div>
     </ProtectedRoute>
   )
 }

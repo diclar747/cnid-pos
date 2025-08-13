@@ -20,151 +20,85 @@ import {
   CheckCircle,
 } from "lucide-react"
 import { useCart } from "../context/cart-context"
+import { products } from "../data/products"
 
 interface CategorySidebarProps {
   selectedCategory: string
   onCategoryChange: (category: string) => void
+  selectedFilter: string
+  onFilterChange: (filter: string) => void
 }
 
-export default function CategorySidebar({ selectedCategory, onCategoryChange }: CategorySidebarProps) {
-  const { products } = useCart()
+export default function CategorySidebar({
+  selectedCategory,
+  onCategoryChange,
+  selectedFilter,
+  onFilterChange,
+}: CategorySidebarProps) {
+  const { products: cartProducts } = useCart()
 
   const categories = [
-    {
-      id: "todos",
-      name: "Todos los Productos",
-      icon: LayoutGrid,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200",
-    },
-    {
-      id: "comida",
-      name: "Comida",
-      icon: Utensils,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200",
-    },
-    {
-      id: "bebidas",
-      name: "Bebidas",
-      icon: Coffee,
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-50",
-      borderColor: "border-cyan-200",
-    },
-    {
-      id: "postres",
-      name: "Postres",
-      icon: IceCream,
-      color: "text-pink-600",
-      bgColor: "bg-pink-50",
-      borderColor: "border-pink-200",
-    },
-    {
-      id: "carnes",
-      name: "Carnes",
-      icon: Beef,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-      borderColor: "border-red-200",
-    },
-    {
-      id: "ensaladas",
-      name: "Ensaladas",
-      icon: Salad,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200",
-    },
+    { id: "all", name: "Todos", icon: LayoutGrid, color: "bg-blue-500" },
+    { id: "food", name: "Comida", icon: Utensils, color: "bg-orange-500" },
+    { id: "drinks", name: "Bebidas", icon: Coffee, color: "bg-cyan-500" },
+    { id: "desserts", name: "Postres", icon: IceCream, color: "bg-pink-500" },
+    { id: "meat", name: "Carnes", icon: Beef, color: "bg-red-500" },
+    { id: "salads", name: "Ensaladas", icon: Salad, color: "bg-green-500" },
   ]
 
   const filters = [
-    {
-      id: "mas-vendidos",
-      name: "Más Vendidos",
-      icon: TrendingUp,
-      color: "text-purple-600",
-    },
-    {
-      id: "mejor-valorados",
-      name: "Mejor Valorados",
-      icon: Star,
-      color: "text-yellow-600",
-    },
-    {
-      id: "ofertas",
-      name: "Ofertas",
-      icon: Tag,
-      color: "text-red-600",
-    },
-    {
-      id: "nuevos",
-      name: "Nuevos",
-      icon: Sparkles,
-      color: "text-indigo-600",
-    },
+    { id: "bestsellers", name: "Más Vendidos", icon: TrendingUp },
+    { id: "top-rated", name: "Mejor Valorados", icon: Star },
+    { id: "offers", name: "Ofertas", icon: Tag },
+    { id: "new", name: "Nuevos", icon: Sparkles },
   ]
 
-  const getProductCount = (categoryId: string) => {
-    if (!products || products.length === 0) return 0
-
-    if (categoryId === "todos") return products.length
-
-    return products.filter((product) => product.category.toLowerCase() === categoryId.toLowerCase()).length
+  const getCategoryCount = (categoryId: string) => {
+    if (categoryId === "all") return products.length
+    return products.filter((product) => product.category === categoryId).length
   }
 
   const getStockStats = () => {
-    if (!products || products.length === 0) {
-      return { total: 0, inStock: 0, lowStock: 0, outOfStock: 0 }
-    }
-
-    const total = products.length
     const inStock = products.filter((p) => p.stock > 5).length
     const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5).length
     const outOfStock = products.filter((p) => p.stock === 0).length
-
-    return { total, inStock, lowStock, outOfStock }
+    return { inStock, lowStock, outOfStock }
   }
 
   const stockStats = getStockStats()
 
   return (
-    <div className="flex flex-col h-full bg-card border-r">
-      {/* Header */}
+    <div className="h-full flex flex-col">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold mb-2">Categorías</h2>
-        <div className="text-sm text-muted-foreground">{stockStats.total} productos en total</div>
+        <h2 className="font-semibold text-lg mb-2">Categorías</h2>
+        <div className="text-sm text-muted-foreground">{products.length} productos disponibles</div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
-          {/* Categorías principales */}
+          {/* Categories */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">CATEGORÍAS</h3>
             {categories.map((category) => {
               const Icon = category.icon
-              const count = getProductCount(category.id)
+              const count = getCategoryCount(category.id)
               const isSelected = selectedCategory === category.id
 
               return (
                 <Button
                   key={category.id}
-                  variant={isSelected ? "secondary" : "ghost"}
-                  className={`w-full justify-start h-auto p-3 ${
-                    isSelected
-                      ? `${category.bgColor} ${category.borderColor} border ${category.color}`
-                      : "hover:bg-muted/50"
-                  }`}
+                  variant={isSelected ? "default" : "ghost"}
+                  className={`w-full justify-start h-auto p-3 ${isSelected ? "" : "hover:bg-muted/50"}`}
                   onClick={() => onCategoryChange(category.id)}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3">
-                      <Icon className={`h-4 w-4 ${isSelected ? category.color : "text-muted-foreground"}`} />
-                      <span className={`text-sm ${isSelected ? "font-medium" : ""}`}>{category.name}</span>
+                  <div className="flex items-center gap-3 w-full">
+                    <div className={`p-2 rounded-lg ${category.color} text-white`}>
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <Badge variant={isSelected ? "default" : "secondary"} className="text-xs">
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">{category.name}</div>
+                      <div className="text-xs text-muted-foreground">{count} productos</div>
+                    </div>
+                    <Badge variant="secondary" className="ml-auto">
                       {count}
                     </Badge>
                   </div>
@@ -175,24 +109,22 @@ export default function CategorySidebar({ selectedCategory, onCategoryChange }: 
 
           <Separator />
 
-          {/* Filtros especiales */}
+          {/* Filters */}
           <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">FILTROS</h3>
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Filtros</h3>
             {filters.map((filter) => {
               const Icon = filter.icon
-              const isSelected = selectedCategory === filter.id
+              const isSelected = selectedFilter === filter.id
 
               return (
                 <Button
                   key={filter.id}
-                  variant={isSelected ? "secondary" : "ghost"}
-                  className={`w-full justify-start h-auto p-3 ${isSelected ? "bg-secondary" : "hover:bg-muted/50"}`}
-                  onClick={() => onCategoryChange(filter.id)}
+                  variant={isSelected ? "default" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => onFilterChange(isSelected ? "" : filter.id)}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-4 w-4 ${isSelected ? filter.color : "text-muted-foreground"}`} />
-                    <span className={`text-sm ${isSelected ? "font-medium" : ""}`}>{filter.name}</span>
-                  </div>
+                  <Icon className="h-4 w-4 mr-2" />
+                  {filter.name}
                 </Button>
               )
             })}
@@ -200,44 +132,46 @@ export default function CategorySidebar({ selectedCategory, onCategoryChange }: 
 
           <Separator />
 
-          {/* Estadísticas de stock */}
+          {/* Stock Status */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">ESTADO DEL INVENTARIO</h3>
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Estado del Stock</h3>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 border border-green-200">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-950/20">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-green-800">En Stock</span>
+                  <span className="text-sm">En Stock</span>
                 </div>
-                <Badge variant="outline" className="text-green-700 border-green-300">
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                >
                   {stockStats.inStock}
                 </Badge>
               </div>
 
-              {stockStats.lowStock > 0 && (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                    <span className="text-sm text-yellow-800">Stock Bajo</span>
-                  </div>
-                  <Badge variant="outline" className="text-yellow-700 border-yellow-300">
-                    {stockStats.lowStock}
-                  </Badge>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                  <span className="text-sm">Stock Bajo</span>
                 </div>
-              )}
+                <Badge
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                >
+                  {stockStats.lowStock}
+                </Badge>
+              </div>
 
-              {stockStats.outOfStock > 0 && (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-red-50 border border-red-200">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-red-600" />
-                    <span className="text-sm text-red-800">Agotado</span>
-                  </div>
-                  <Badge variant="outline" className="text-red-700 border-red-300">
-                    {stockStats.outOfStock}
-                  </Badge>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-red-600" />
+                  <span className="text-sm">Agotado</span>
                 </div>
-              )}
+                <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                  {stockStats.outOfStock}
+                </Badge>
+              </div>
             </div>
           </div>
         </div>

@@ -1,39 +1,43 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Minus, Plus, ShoppingCart, Trash2, CreditCard, User, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
+import { ShoppingCart, Plus, Minus, Trash2, X, User } from "lucide-react"
 import { useCart } from "../context/cart-context"
-import { toast } from "react-hot-toast"
+import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
 
 interface CartSidebarProps {
   onClose?: () => void
 }
 
 export default function CartSidebar({ onClose }: CartSidebarProps) {
-  const router = useRouter()
-  const { cart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount } = useCart()
+  const { cart, updateQuantity, removeFromCart, clearCart, getCartTotal } = useCart()
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [notes, setNotes] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const router = useRouter()
 
-  const formatCurrency = (amount: number) => {
+  const subtotal = getCartTotal()
+  const tax = subtotal * 0.1 // 10% IVA
+  const total = subtotal + tax
+
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-PY", {
       style: "currency",
       currency: "PYG",
       minimumFractionDigits: 0,
-    }).format(amount)
+    }).format(price)
   }
 
-  const handleQuantityChange = (productId: number, newQuantity: number) => {
+  const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeFromCart(productId)
       toast.success("Producto eliminado del carrito")
@@ -42,63 +46,44 @@ export default function CartSidebar({ onClose }: CartSidebarProps) {
     }
   }
 
-  const handleRemoveItem = (productId: number, productName: string) => {
-    removeFromCart(productId)
-    toast.success(`${productName} eliminado del carrito`)
-  }
-
-  const handleClearCart = () => {
-    clearCart()
-    setCustomerName("")
-    setCustomerPhone("")
-    setNotes("")
-    toast.success("Carrito vaciado")
-  }
-
   const handleCheckout = async () => {
-    if (!cart || cart.length === 0) {
-      toast.error("El carrito está vacío")
+    if (!customerName.trim()) {
+      toast.error("Por favor ingresa el nombre del cliente")
       return
     }
 
-    if (!customerName.trim()) {
-      toast.error("Por favor ingresa el nombre del cliente")
+    if (!cart || cart.length === 0) {
+      toast.error("El carrito está vacío")
       return
     }
 
     setIsProcessing(true)
 
     try {
-      // Simular procesamiento de pago
+      // Simulate processing
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // Crear orden
-      const order = {
-        id: Date.now().toString(),
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
+      // Store order data for success page
+      const orderData = {
         items: cart,
-        total: cartTotal,
-        notes: notes.trim(),
-        date: new Date().toISOString(),
-        status: "completed",
+        customer: {
+          name: customerName,
+          phone: customerPhone,
+          notes,
+        },
+        totals: {
+          subtotal,
+          tax,
+          total,
+        },
+        timestamp: new Date().toISOString(),
       }
 
-      // Limpiar carrito y formulario
+      localStorage.setItem("lastOrder", JSON.stringify(orderData))
+
       clearCart()
-      setCustomerName("")
-      setCustomerPhone("")
-      setNotes("")
-
       toast.success("¡Venta procesada exitosamente!")
-
-      // Cerrar sidebar móvil si existe
-      if (onClose) {
-        onClose()
-      }
-
-      // Redirigir a página de éxito
-      router.push(`/success?orderId=${order.id}&total=${order.total}`)
+      router.push("/success")
     } catch (error) {
       toast.error("Error al procesar la venta")
     } finally {
@@ -106,175 +91,194 @@ export default function CartSidebar({ onClose }: CartSidebarProps) {
     }
   }
 
-  // Estado vacío del carrito
   if (!cart || cart.length === 0) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Carrito vacío</h3>
-          <p className="text-muted-foreground text-sm">
-            Agrega productos desde el catálogo para comenzar una nueva venta
-          </p>
+      <div className="h-full flex flex-col">
+        {onClose && (
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="font-semibold">Carrito</h2>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+              <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-medium">Carrito vacío</h3>
+              <p className="text-sm text-muted-foreground">Agrega productos para comenzar una venta</p>
+            </div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header del carrito */}
-      <div className="p-4 border-b bg-card">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            <span className="font-semibold">Carrito</span>
-            <Badge variant="secondary">{itemCount} items</Badge>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearCart}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center gap-2">
+          <h2 className="font-semibold">Carrito</h2>
+          <Badge variant="secondary">{cart.reduce((sum, item) => sum + item.quantity, 0)} items</Badge>
         </div>
+        {onClose && (
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
-      {/* Lista de productos */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      {/* Cart Items */}
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4">
           {cart.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div key={item.id} className="flex gap-3 p-3 border rounded-lg">
               <img
                 src={item.image || "/placeholder.svg"}
                 alt={item.name}
-                className="w-12 h-12 object-cover rounded-md"
+                className="w-16 h-16 object-cover rounded-md"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
-                  target.src = `/placeholder.svg?height=48&width=48&text=${encodeURIComponent(item.name.charAt(0))}`
+                  target.src = `/placeholder.svg?height=64&width=64&text=${encodeURIComponent(item.name)}`
                 }}
               />
-              <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                <p className="text-xs text-muted-foreground">{formatCurrency(item.price)} c/u</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 bg-transparent"
-                  onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 w-8 p-0 bg-transparent"
-                  onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-sm">{formatCurrency(item.price * item.quantity)}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                  onClick={() => handleRemoveItem(item.id, item.name)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+
+              <div className="flex-1 space-y-2">
+                <div>
+                  <h4 className="font-medium text-sm">{item.name}</h4>
+                  <p className="text-xs text-muted-foreground">{formatPrice(item.price)} c/u</p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 bg-transparent"
+                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+
+                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0 bg-transparent"
+                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      disabled={item.quantity >= item.stock}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{formatPrice(item.price * item.quantity)}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        removeFromCart(item.id)
+                        toast.success("Producto eliminado")
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </ScrollArea>
 
-      {/* Información del cliente */}
-      <div className="p-4 border-t space-y-4 bg-card">
-        <div className="flex items-center gap-2 mb-3">
+      {/* Customer Info */}
+      <div className="border-t p-4 space-y-4">
+        <h3 className="font-medium flex items-center gap-2">
           <User className="h-4 w-4" />
-          <span className="font-medium text-sm">Información del Cliente</span>
-        </div>
+          Información del Cliente
+        </h3>
 
         <div className="space-y-3">
           <div>
             <Label htmlFor="customerName" className="text-xs">
-              Nombre del Cliente *
+              Nombre (requerido)
             </Label>
             <Input
               id="customerName"
-              placeholder="Nombre completo"
+              placeholder="Nombre del cliente"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="h-8 text-sm"
+              className="h-9"
             />
           </div>
 
           <div>
             <Label htmlFor="customerPhone" className="text-xs">
-              Teléfono (opcional)
+              Teléfono
             </Label>
             <Input
               id="customerPhone"
               placeholder="Número de teléfono"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
-              className="h-8 text-sm"
+              className="h-9"
             />
           </div>
 
           <div>
-            <Label htmlFor="notes" className="text-xs flex items-center gap-1">
-              <MessageSquare className="h-3 w-3" />
-              Notas adicionales
+            <Label htmlFor="notes" className="text-xs">
+              Notas
             </Label>
             <Textarea
               id="notes"
-              placeholder="Instrucciones especiales, descuentos, etc."
+              placeholder="Notas adicionales..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="h-16 text-sm resize-none"
+              className="h-16 resize-none"
             />
           </div>
         </div>
       </div>
 
-      {/* Total y checkout */}
-      <div className="p-4 border-t bg-muted/30">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Subtotal:</span>
-            <span className="font-medium">{formatCurrency(cartTotal)}</span>
+      {/* Totals */}
+      <div className="border-t p-4 space-y-3">
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span>Subtotal:</span>
+            <span>{formatPrice(subtotal)}</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">IVA (10%):</span>
-            <span className="font-medium">{formatCurrency(cartTotal * 0.1)}</span>
+          <div className="flex justify-between">
+            <span>IVA (10%):</span>
+            <span>{formatPrice(tax)}</span>
           </div>
           <Separator />
-          <div className="flex justify-between items-center">
-            <span className="font-semibold">Total:</span>
-            <span className="font-bold text-lg text-primary">{formatCurrency(cartTotal * 1.1)}</span>
+          <div className="flex justify-between font-bold text-lg">
+            <span>Total:</span>
+            <span>{formatPrice(total)}</span>
           </div>
-
-          <Button
-            className="w-full"
-            onClick={handleCheckout}
-            disabled={isProcessing || !cart || cart.length === 0 || !customerName.trim()}
-          >
-            <CreditCard className="h-4 w-4 mr-2" />
-            {isProcessing ? "Procesando..." : "Procesar Venta"}
-          </Button>
-
-          <p className="text-xs text-muted-foreground text-center">
-            {cart?.length || 0} productos • Total con IVA incluido
-          </p>
         </div>
+
+        <Button onClick={handleCheckout} disabled={isProcessing || !customerName.trim()} className="w-full" size="lg">
+          {isProcessing ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              Procesando...
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Procesar Venta
+            </>
+          )}
+        </Button>
       </div>
     </div>
   )
