@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode, useEffect } from "react"
+import { createContext, useContext, useState, type ReactNode } from "react"
 
 export interface SupplierContact {
   id: number
@@ -12,22 +12,15 @@ export interface SupplierContact {
 }
 
 export interface Supplier {
-  id: number
+  id: string
   name: string
-  ruc: string
-  address: string
-  phone: string
+  contact: string
   email: string
-  website?: string
+  phone: string
+  address: string
   category: string
-  paymentTerms: string
-  creditLimit: number
-  isActive: boolean
   rating: number
-  notes?: string
-  contacts: SupplierContact[]
-  createdAt: string
-  updatedAt: string
+  status: "active" | "inactive"
 }
 
 export interface AutoOrder {
@@ -45,13 +38,13 @@ export interface AutoOrder {
 interface SuppliersContextType {
   suppliers: Supplier[]
   autoOrders: AutoOrder[]
-  addSupplier: (supplier: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => void
-  updateSupplier: (id: number, supplier: Partial<Supplier>) => void
-  deleteSupplier: (id: number) => void
-  getSupplierById: (id: number) => Supplier | undefined
-  addContact: (supplierId: number, contact: Omit<SupplierContact, "id">) => void
-  updateContact: (supplierId: number, contactId: number, contact: Partial<SupplierContact>) => void
-  deleteContact: (supplierId: number, contactId: number) => void
+  addSupplier: (supplier: Omit<Supplier, "id">) => void
+  updateSupplier: (supplier: Supplier) => void
+  deleteSupplier: (id: string) => void
+  getSupplierById: (id: string) => Supplier | undefined
+  addContact: (supplierId: string, contact: Omit<SupplierContact, "id">) => void
+  updateContact: (supplierId: string, contactId: number, contact: Partial<SupplierContact>) => void
+  deleteContact: (supplierId: string, contactId: number) => void
   addAutoOrder: (autoOrder: Omit<AutoOrder, "id">) => void
   updateAutoOrder: (id: number, autoOrder: Partial<AutoOrder>) => void
   deleteAutoOrder: (id: number) => void
@@ -63,137 +56,57 @@ interface SuppliersContextType {
 const SuppliersContext = createContext<SuppliersContextType | undefined>(undefined)
 
 export function SuppliersProvider({ children }: { children: ReactNode }) {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([
+    {
+      id: "1",
+      name: "Distribuidora Central",
+      contact: "Juan Pérez",
+      email: "juan@distribuidora.com",
+      phone: "+595 21 555-0001",
+      address: "Av. España 456, Asunción",
+      category: "Alimentos",
+      rating: 4.5,
+      status: "active",
+    },
+    {
+      id: "2",
+      name: "Bebidas del Paraguay",
+      contact: "María González",
+      email: "maria@bebidas.com",
+      phone: "+595 21 555-0002",
+      address: "Ruta 2 Km 15, Luque",
+      category: "Bebidas",
+      rating: 4.2,
+      status: "active",
+    },
+  ])
   const [autoOrders, setAutoOrders] = useState<AutoOrder[]>([])
 
-  useEffect(() => {
-    // Cargar proveedores desde localStorage
-    const savedSuppliers = localStorage.getItem("suppliers")
-    if (savedSuppliers) {
-      try {
-        setSuppliers(JSON.parse(savedSuppliers))
-      } catch (error) {
-        console.error("Error al cargar proveedores:", error)
-      }
-    } else {
-      // Datos de ejemplo
-      const exampleSuppliers: Supplier[] = [
-        {
-          id: 1,
-          name: "Distribuidora Central S.A.",
-          ruc: "80012345-1",
-          address: "Av. Eusebio Ayala 1234, Asunción",
-          phone: "+595 21 123456",
-          email: "ventas@distribuidoracentral.com.py",
-          website: "www.distribuidoracentral.com.py",
-          category: "Bebidas",
-          paymentTerms: "30 días",
-          creditLimit: 50000000,
-          isActive: true,
-          rating: 4.5,
-          notes: "Proveedor principal de bebidas. Excelente servicio.",
-          contacts: [
-            {
-              id: 1,
-              name: "María González",
-              position: "Gerente de Ventas",
-              phone: "+595 981 123456",
-              email: "maria.gonzalez@distribuidoracentral.com.py",
-              isPrimary: true,
-            },
-            {
-              id: 2,
-              name: "Carlos Rodríguez",
-              position: "Ejecutivo de Cuentas",
-              phone: "+595 981 654321",
-              email: "carlos.rodriguez@distribuidoracentral.com.py",
-              isPrimary: false,
-            },
-          ],
-          createdAt: "2024-01-15T10:00:00Z",
-          updatedAt: "2024-01-15T10:00:00Z",
-        },
-        {
-          id: 2,
-          name: "Alimentos del Paraguay LTDA",
-          ruc: "80023456-2",
-          address: "Ruta 2 Km 15, San Lorenzo",
-          phone: "+595 21 234567",
-          email: "pedidos@alimentosparaguay.com.py",
-          category: "Alimentos",
-          paymentTerms: "15 días",
-          creditLimit: 30000000,
-          isActive: true,
-          rating: 4.2,
-          contacts: [
-            {
-              id: 3,
-              name: "Ana Martínez",
-              position: "Coordinadora de Ventas",
-              phone: "+595 982 123456",
-              email: "ana.martinez@alimentosparaguay.com.py",
-              isPrimary: true,
-            },
-          ],
-          createdAt: "2024-01-20T14:30:00Z",
-          updatedAt: "2024-01-20T14:30:00Z",
-        },
-      ]
-      setSuppliers(exampleSuppliers)
-    }
-
-    // Cargar órdenes automáticas
-    const savedAutoOrders = localStorage.getItem("autoOrders")
-    if (savedAutoOrders) {
-      try {
-        setAutoOrders(JSON.parse(savedAutoOrders))
-      } catch (error) {
-        console.error("Error al cargar órdenes automáticas:", error)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    // Guardar proveedores en localStorage
-    localStorage.setItem("suppliers", JSON.stringify(suppliers))
-  }, [suppliers])
-
-  useEffect(() => {
-    // Guardar órdenes automáticas en localStorage
-    localStorage.setItem("autoOrders", JSON.stringify(autoOrders))
-  }, [autoOrders])
-
-  const addSupplier = (supplierData: Omit<Supplier, "id" | "createdAt" | "updatedAt">) => {
+  const addSupplier = (supplier: Omit<Supplier, "id">) => {
     const newSupplier: Supplier = {
-      ...supplierData,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      ...supplier,
+      id: Date.now().toString(),
     }
     setSuppliers((prev) => [...prev, newSupplier])
   }
 
-  const updateSupplier = (id: number, supplierData: Partial<Supplier>) => {
-    setSuppliers((prev) =>
-      prev.map((supplier) =>
-        supplier.id === id ? { ...supplier, ...supplierData, updatedAt: new Date().toISOString() } : supplier,
-      ),
-    )
+  const updateSupplier = (supplier: Supplier) => {
+    setSuppliers((prev) => prev.map((s) => (s.id === supplier.id ? supplier : s)))
   }
 
-  const deleteSupplier = (id: number) => {
-    setSuppliers((prev) => prev.filter((supplier) => supplier.id !== id))
+  const deleteSupplier = (id: string) => {
+    setSuppliers((prev) => prev.filter((s) => s.id !== id))
     // También eliminar órdenes automáticas relacionadas
-    setAutoOrders((prev) => prev.filter((order) => order.supplierId !== id))
+    setAutoOrders((prev) => prev.filter((order) => order.supplierId !== Number.parseInt(id)))
   }
 
-  const getSupplierById = (id: number): Supplier | undefined => {
+  const getSupplierById = (id: string): Supplier | undefined => {
     return suppliers.find((supplier) => supplier.id === id)
   }
 
-  const addContact = (supplierId: number, contactData: Omit<SupplierContact, "id">) => {
+  const addContact = (supplierId: string, contact: Omit<SupplierContact, "id">) => {
     const newContact: SupplierContact = {
-      ...contactData,
+      ...contact,
       id: Date.now(),
     }
 
@@ -203,53 +116,48 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
           ? {
               ...supplier,
               contacts: [...supplier.contacts, newContact],
-              updatedAt: new Date().toISOString(),
             }
           : supplier,
       ),
     )
   }
 
-  const updateContact = (supplierId: number, contactId: number, contactData: Partial<SupplierContact>) => {
+  const updateContact = (supplierId: string, contactId: number, contact: Partial<SupplierContact>) => {
     setSuppliers((prev) =>
       prev.map((supplier) =>
         supplier.id === supplierId
           ? {
               ...supplier,
-              contacts: supplier.contacts.map((contact) =>
-                contact.id === contactId ? { ...contact, ...contactData } : contact,
-              ),
-              updatedAt: new Date().toISOString(),
+              contacts: supplier.contacts.map((c) => (c.id === contactId ? { ...c, ...contact } : c)),
             }
           : supplier,
       ),
     )
   }
 
-  const deleteContact = (supplierId: number, contactId: number) => {
+  const deleteContact = (supplierId: string, contactId: number) => {
     setSuppliers((prev) =>
       prev.map((supplier) =>
         supplier.id === supplierId
           ? {
               ...supplier,
-              contacts: supplier.contacts.filter((contact) => contact.id !== contactId),
-              updatedAt: new Date().toISOString(),
+              contacts: supplier.contacts.filter((c) => c.id !== contactId),
             }
           : supplier,
       ),
     )
   }
 
-  const addAutoOrder = (autoOrderData: Omit<AutoOrder, "id">) => {
+  const addAutoOrder = (autoOrder: Omit<AutoOrder, "id">) => {
     const newAutoOrder: AutoOrder = {
-      ...autoOrderData,
+      ...autoOrder,
       id: Date.now(),
     }
     setAutoOrders((prev) => [...prev, newAutoOrder])
   }
 
-  const updateAutoOrder = (id: number, autoOrderData: Partial<AutoOrder>) => {
-    setAutoOrders((prev) => prev.map((order) => (order.id === id ? { ...order, ...autoOrderData } : order)))
+  const updateAutoOrder = (id: number, autoOrder: Partial<AutoOrder>) => {
+    setAutoOrders((prev) => prev.map((order) => (order.id === id ? { ...order, ...autoOrder } : order)))
   }
 
   const deleteAutoOrder = (id: number) => {
@@ -267,12 +175,12 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
   }
 
   const getSuppliersByCategory = (category: string): Supplier[] => {
-    return suppliers.filter((supplier) => supplier.category === category && supplier.isActive)
+    return suppliers.filter((supplier) => supplier.category === category && supplier.status === "active")
   }
 
   const getTopSuppliers = (limit = 5): Supplier[] => {
     return suppliers
-      .filter((supplier) => supplier.isActive)
+      .filter((supplier) => supplier.status === "active")
       .sort((a, b) => b.rating - a.rating)
       .slice(0, limit)
   }
@@ -305,7 +213,7 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
 export function useSuppliers() {
   const context = useContext(SuppliersContext)
   if (context === undefined) {
-    throw new Error("useSuppliers debe usarse dentro de un SuppliersProvider")
+    throw new Error("useSuppliers must be used within a SuppliersProvider")
   }
   return context
 }
