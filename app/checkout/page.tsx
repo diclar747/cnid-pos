@@ -89,6 +89,13 @@ export default function CheckoutPage() {
     }
   }
 
+  const handleRucKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleRucConsultation()
+    }
+  }
+
   const handlePayment = async () => {
     if (paymentMethod === "cash" && cashAmount < total) {
       toast.error("El monto recibido es insuficiente")
@@ -368,6 +375,7 @@ export default function CheckoutPage() {
                       id="customerRuc"
                       value={customerRuc}
                       onChange={handleRucChange}
+                      onKeyDown={handleRucKeyDown}
                       placeholder="80000000-0"
                       className={rucValidated ? "border-green-500" : ""}
                     />
@@ -395,7 +403,7 @@ export default function CheckoutPage() {
                   {customerRuc && !rucValidated && !isConsultingRuc && (
                     <div className="flex items-center gap-2 mt-2 text-sm text-amber-600">
                       <AlertCircle className="h-4 w-4" />
-                      <span>Haz clic en buscar para verificar el RUC</span>
+                      <span>Presiona Enter o haz clic en buscar para verificar el RUC</span>
                     </div>
                   )}
                 </div>

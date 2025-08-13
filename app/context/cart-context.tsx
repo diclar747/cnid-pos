@@ -16,6 +16,10 @@ interface CartContextType {
   clearCart: () => void
   getCartTotal: () => number
   getCartItemCount: () => number
+  addProduct: (product: Product) => void
+  updateProduct: (product: Product) => void
+  deleteProduct: (productId: string) => void
+  addPurchase: (purchase: any) => void
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -89,6 +93,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return cart.reduce((count, item) => count + item.quantity, 0)
   }
 
+  const addProduct = (product: Product) => {
+    setProducts((currentProducts) => {
+      const newProducts = [...currentProducts, product]
+      // Save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("products", JSON.stringify(newProducts))
+      }
+      return newProducts
+    })
+  }
+
+  const updateProduct = (updatedProduct: Product) => {
+    setProducts((currentProducts) => {
+      const newProducts = currentProducts.map((product) =>
+        product.id === updatedProduct.id ? updatedProduct : product
+      )
+      // Save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("products", JSON.stringify(newProducts))
+      }
+      return newProducts
+    })
+  }
+
+  const deleteProduct = (productId: string) => {
+    setProducts((currentProducts) => {
+      const newProducts = currentProducts.filter((product) => product.id !== productId)
+      // Save to localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("products", JSON.stringify(newProducts))
+      }
+      return newProducts
+    })
+    // También remover del carrito si existe
+    removeFromCart(productId)
+  }
+
+  const addPurchase = (purchase: any) => {
+    // Para este ejemplo, solo guardamos las compras en localStorage
+    if (typeof window !== "undefined") {
+      const purchases = JSON.parse(localStorage.getItem("purchases") || "[]")
+      purchases.push(purchase)
+      localStorage.setItem("purchases", JSON.stringify(purchases))
+    }
+  }
+
   return (
     <CartContext.Provider
       value={{
@@ -100,6 +150,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart,
         getCartTotal,
         getCartItemCount,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        addPurchase,
       }}
     >
       {children}
