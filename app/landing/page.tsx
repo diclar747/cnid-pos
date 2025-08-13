@@ -439,6 +439,13 @@ export default function LandingPage() {
               <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                 Prueba Gratis
               </Button>
+              <Button
+                variant="outline"
+                className="border-2 bg-transparent hover:bg-blue-50"
+                onClick={() => (window.location.href = "/login")}
+              >
+                Acceder
+              </Button>
             </div>
 
             <button className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -464,6 +471,13 @@ export default function LandingPage() {
                 Contacto
               </a>
               <Button className="w-full mt-2 bg-gradient-to-r from-blue-600 to-purple-600">Prueba Gratis</Button>
+              <Button
+                variant="outline"
+                className="w-full mt-2 border-2 bg-transparent"
+                onClick={() => (window.location.href = "/login")}
+              >
+                Acceder
+              </Button>
             </div>
           </div>
         )}
@@ -496,8 +510,13 @@ export default function LandingPage() {
               Prueba Gratis 30 Días
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-3 border-2 bg-transparent">
-              Ver Demo en Vivo
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-lg px-8 py-3 border-2 bg-transparent"
+              onClick={() => (window.location.href = "/login")}
+            >
+              Acceder al Sistema
             </Button>
           </div>
 
