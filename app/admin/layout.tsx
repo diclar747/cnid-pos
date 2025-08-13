@@ -1,8 +1,11 @@
 "use client"
 
 import type React from "react"
-import { Suspense, useState } from "react"
-import ProtectedRoute from "../components/protected-route"
+
+import { useState } from "react"
+import { useAuth } from "../context/auth-context"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import AdminNav from "../components/admin-nav"
 
 export default function AdminLayout({
@@ -10,38 +13,43 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
-  return (
-    <ProtectedRoute requireAdmin>
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex h-screen">
-          {/* Sidebar */}
-          <div className={`${isCollapsed ? "w-16" : "w-80"} transition-all duration-300 ease-in-out flex-shrink-0`}>
-            <AdminNav isCollapsed={isCollapsed} onToggleCollapse={setIsCollapsed} />
-          </div>
+  useEffect(() => {
+    if (!loading && (!user || user.role !== "admin")) {
+      router.push("/login")
+    }
+  }, [user, loading, router])
 
-          {/* Main Content */}
-          <div
-            className={`flex-1 overflow-hidden transition-all duration-300 ease-in-out ${isCollapsed ? "ml-0" : "ml-0"}`}
-          >
-            <div className="h-full overflow-auto">
-              <Suspense
-                fallback={
-                  <div className="flex items-center justify-center h-full">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                      <p className="text-gray-600">Cargando...</p>
-                    </div>
-                  </div>
-                }
-              >
-                <div className="p-6">{children}</div>
-              </Suspense>
-            </div>
-          </div>
-        </div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
-    </ProtectedRoute>
+    )
+  }
+
+  if (!user || user.role !== "admin") {
+    return null
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar */}
+      <div
+        className={`fixed left-0 top-0 h-full bg-card border-r transition-all duration-300 z-40 ${
+          isCollapsed ? "w-20" : "w-80"
+        }`}
+      >
+        <AdminNav isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+      </div>
+
+      {/* Main Content */}
+      <div className={`flex-1 transition-all duration-300 ${isCollapsed ? "ml-20" : "ml-80"}`}>
+        <main className="p-6">{children}</main>
+      </div>
+    </div>
   )
 }

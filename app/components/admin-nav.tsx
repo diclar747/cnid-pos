@@ -1,262 +1,269 @@
 "use client"
 
 import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
-  LayoutDashboard,
+  BarChart3,
   Package,
   Users,
-  BarChart3,
-  Receipt,
-  Building2,
   ShoppingCart,
-  Truck,
-  FileText,
-  Bell,
-  LogOut,
+  Settings,
+  Home,
+  TrendingUp,
+  DollarSign,
+  Building2,
+  CreditCard,
   ChevronLeft,
   ChevronRight,
+  LogOut,
   Menu,
   X,
 } from "lucide-react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { useNotifications } from "../context/notifications-context"
 import { useAuth } from "../context/auth-context"
+import { cn } from "@/lib/utils"
 
 interface AdminNavProps {
   isCollapsed: boolean
-  onToggleCollapse: (collapsed: boolean) => void
+  setIsCollapsed: (collapsed: boolean) => void
 }
 
-export default function AdminNav({ isCollapsed, onToggleCollapse }: AdminNavProps) {
-  const pathname = usePathname()
+export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps) {
   const router = useRouter()
-  const { unreadCount } = useNotifications()
-  const { logout } = useAuth()
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const pathname = usePathname()
+  const { logout, user } = useAuth()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
     router.push("/")
   }
 
-  const navItems = [
+  const menuItems = [
     {
       title: "Dashboard",
+      icon: Home,
       href: "/admin",
-      icon: LayoutDashboard,
-      description: "Vista general del sistema",
-      badge: unreadCount > 0 ? unreadCount : undefined,
+      badge: null,
+    },
+    {
+      title: "Punto de Venta",
+      icon: ShoppingCart,
+      href: "/pos",
+      badge: null,
     },
     {
       title: "Productos",
-      href: "/admin/products",
       icon: Package,
-      description: "Gestión de inventario",
+      href: "/admin/products",
+      badge: "50+",
     },
     {
       title: "Usuarios",
-      href: "/admin/users",
       icon: Users,
-      description: "Administrar empleados",
+      href: "/admin/users",
+      badge: null,
     },
     {
       title: "Reportes de Ventas",
-      href: "/admin/sales-reports",
       icon: BarChart3,
-      description: "Análisis y estadísticas",
+      href: "/admin/sales-reports",
+      badge: null,
     },
     {
       title: "Gastos",
+      icon: DollarSign,
       href: "/admin/expenses",
-      icon: Receipt,
-      description: "Control de gastos",
-    },
-    {
-      title: "Empresa",
-      href: "/admin/company",
-      icon: Building2,
-      description: "Configuración general",
+      badge: null,
     },
     {
       title: "Compras",
+      icon: TrendingUp,
       href: "/admin/purchases",
-      icon: ShoppingCart,
-      description: "Gestión de compras",
+      badge: null,
     },
     {
       title: "Dashboard Compras",
+      icon: BarChart3,
       href: "/admin/purchases-dashboard",
-      icon: Truck,
-      description: "Análisis de compras",
+      badge: "Nuevo",
     },
     {
       title: "Proveedores",
+      icon: Building2,
       href: "/admin/suppliers",
-      icon: Truck,
-      description: "Gestión de proveedores",
+      badge: null,
     },
     {
       title: "Transacciones",
+      icon: CreditCard,
       href: "/admin/supplier-transactions",
-      icon: FileText,
-      description: "Historial de transacciones",
+      badge: null,
+    },
+    {
+      title: "Configuración",
+      icon: Settings,
+      href: "/admin/company",
+      badge: null,
     },
   ]
 
-  return (
-    <>
-      {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="bg-white shadow-md"
-        >
-          {isMobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
+  const NavContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div
+        className={cn(
+          "flex items-center gap-3 p-6 border-b bg-gradient-to-r from-blue-600 to-purple-600",
+          isCollapsed && "justify-center p-4",
+        )}
+      >
+        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+          <ShoppingCart className="h-5 w-5 text-blue-600" />
+        </div>
+        {!isCollapsed && (
+          <div>
+            <h1 className="text-lg font-bold text-white">HeroUI Admin</h1>
+            <p className="text-xs text-blue-100">Panel de Administración</p>
+          </div>
+        )}
       </div>
 
-      {/* Mobile Overlay */}
-      {isMobileOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMobileOpen(false)} />
+      {/* User Info */}
+      {!isCollapsed && (
+        <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-300">
+                {user?.name?.charAt(0) || "A"}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-medium">{user?.name || "Administrador"}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`
-        fixed lg:relative inset-y-0 left-0 z-50 lg:z-0
-        ${isCollapsed ? "w-16" : "w-80"}
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        transition-all duration-300 ease-in-out
-        bg-white border-r border-gray-200 shadow-lg lg:shadow-none
-        flex flex-col h-full
-      `}
-      >
-        {/* Header */}
-        <div className={`p-6 border-b bg-gradient-to-r from-blue-50 to-purple-50 ${isCollapsed ? "px-3" : ""}`}>
-          <div className="flex items-center justify-between">
-            <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
-                <LayoutDashboard className="h-6 w-6 text-white" />
-              </div>
-              {!isCollapsed && (
-                <div>
-                  <h1 className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    CNID POS
-                  </h1>
-                  <p className="text-sm text-gray-600">Panel de Administración</p>
+      {/* Navigation Items */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        {menuItems.map((item) => {
+          const isActive = pathname === item.href
+          const Icon = item.icon
+
+          return (
+            <div key={item.href} className="relative group">
+              <Button
+                variant={isActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start gap-3 h-12 transition-all duration-200",
+                  isCollapsed && "justify-center px-2",
+                  isActive && "bg-blue-600 text-white shadow-md",
+                  !isActive && "hover:bg-blue-50 dark:hover:bg-blue-950",
+                )}
+                onClick={() => {
+                  router.push(item.href)
+                  setIsMobileMenuOpen(false)
+                }}
+              >
+                <Icon className={cn("h-5 w-5", isActive && "text-white")} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-left">{item.title}</span>
+                    {item.badge && (
+                      <Badge variant={isActive ? "secondary" : "outline"} className="text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </Button>
+
+              {/* Tooltip for collapsed state */}
+              {isCollapsed && (
+                <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                  {item.title}
+                  {item.badge && <span className="ml-2 bg-blue-600 px-1 rounded text-xs">{item.badge}</span>}
+                  <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
                 </div>
               )}
             </div>
+          )
+        })}
+      </nav>
 
-            {/* Desktop Collapse Button */}
-            <div className="hidden lg:block">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onToggleCollapse(!isCollapsed)}
-                className="p-1.5 hover:bg-white/50 rounded-full"
-              >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
+      {/* Footer Controls */}
+      <div className="p-4 border-t space-y-2">
+        {/* Collapse Toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn("w-full justify-center gap-2", isCollapsed && "px-2")}
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronLeft className="h-4 w-4" />
+              <span>Minimizar</span>
+            </>
+          )}
+        </Button>
+
+        {/* Logout Button */}
+        <Button
+          variant="destructive"
+          size="sm"
+          className={cn("w-full justify-center gap-2", isCollapsed && "px-2")}
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4" />
+          {!isCollapsed && <span>Cerrar Sesión</span>}
+        </Button>
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop Navigation */}
+      <div className="hidden md:block h-full">
+        <NavContent />
+      </div>
+
+      {/* Mobile Navigation */}
+      <div className="md:hidden">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <ShoppingCart className="h-5 w-5 text-blue-600" />
+            </div>
+            <h1 className="text-lg font-bold text-white">HeroUI Admin</h1>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
+
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setIsMobileMenuOpen(false)}>
+            <div
+              className="absolute left-0 top-0 h-full w-80 bg-background border-r"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <NavContent />
             </div>
           </div>
-        </div>
-
-        {/* Navigation */}
-        <ScrollArea className="flex-1 px-4 py-6">
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = pathname === item.href
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={`
-                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
-                    hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:shadow-sm
-                    group relative
-                    ${isActive ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-[1.02]" : ""}
-                    ${isCollapsed ? "justify-center" : ""}
-                  `}
-                >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? "text-white" : "text-gray-600"}`} />
-
-                  {!isCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <div className={`font-medium text-sm ${isActive ? "text-white" : "text-gray-900"}`}>
-                        {item.title}
-                      </div>
-                      <div className={`text-xs truncate ${isActive ? "text-white/80" : "text-gray-500"}`}>
-                        {item.description}
-                      </div>
-                    </div>
-                  )}
-
-                  {!isCollapsed && item.badge && (
-                    <Badge
-                      variant={isActive ? "secondary" : "secondary"}
-                      className={`ml-auto text-xs ${isActive ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
-
-                  {/* Tooltip for collapsed state */}
-                  {isCollapsed && (
-                    <div className="absolute left-full ml-3 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-xs text-gray-300">{item.description}</div>
-                      {/* Arrow */}
-                      <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                    </div>
-                  )}
-                </Link>
-              )
-            })}
-          </div>
-        </ScrollArea>
-
-        {/* Footer */}
-        <div className={`p-4 border-t bg-gray-50 space-y-3 ${isCollapsed ? "px-2" : ""}`}>
-          {/* Notifications */}
-          <div className={`flex items-center gap-2 text-sm text-gray-600 ${isCollapsed ? "justify-center" : ""}`}>
-            <Bell className="h-4 w-4 flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="text-xs">
-                {unreadCount > 0 ? `${unreadCount} notificaciones` : "Sin notificaciones"}
-              </span>
-            )}
-          </div>
-
-          {/* Logout Button */}
-          <div className="relative group">
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              className={`w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200 ${isCollapsed ? "px-2" : ""}`}
-            >
-              <LogOut className="h-4 w-4 flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm">Cerrar Sesión</span>}
-            </Button>
-
-            {/* Tooltip for logout in collapsed state */}
-            {isCollapsed && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-lg">
-                Cerrar Sesión
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1 w-2 h-2 bg-gray-900 rotate-45"></div>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </>
   )

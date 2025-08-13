@@ -1,14 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Star, Plus, Package, Search } from "lucide-react"
+import { Plus, Minus, AlertTriangle } from "lucide-react"
+import { products, type Product } from "../data/products"
 import { useCart } from "../context/cart-context"
-import { products } from "../data/products"
-import toast from "react-hot-toast"
+import Image from "next/image"
 
 interface ProductGridProps {
   searchTerm: string
@@ -17,69 +16,52 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ searchTerm, selectedCategory, selectedFilter }: ProductGridProps) {
-  const { addToCart } = useCart()
-  const [loadingProduct, setLoadingProduct] = useState<string | null>(null)
+  const { addToCart, cart } = useCart()
 
-  const filteredProducts = products.filter((product) => {
-    // Filter by search term
-    if (
-      searchTerm &&
-      !product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false
+  const filteredProducts = useMemo(() => {
+    let filtered = products.filter((product) => product.isActive)
+
+    // Filter by search term (name or barcode)
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchLower) ||
+          product.barcode?.includes(searchTerm) ||
+          product.description?.toLowerCase().includes(searchLower),
+      )
     }
 
     // Filter by category
-    if (selectedCategory !== "all" && product.category !== selectedCategory) {
-      return false
+    if (selectedCategory && selectedCategory !== "all") {
+      filtered = filtered.filter((product) => product.category === selectedCategory)
     }
 
-    // Filter by special filters
+    // Filter by additional filters
     if (selectedFilter) {
       switch (selectedFilter) {
-        case "bestsellers":
-          return product.popular
-        case "top-rated":
-          return product.rating >= 4.5
-        case "offers":
-          return product.discount > 0
-        case "new":
-          return product.isNew
-        default:
-          return true
+        case "low-stock":
+          filtered = filtered.filter((product) => product.stock < 20 && product.stock > 0)
+          break
+        case "out-of-stock":
+          filtered = filtered.filter((product) => product.stock === 0)
+          break
+        case "high-price":
+          filtered = filtered.filter((product) => product.price > 30000)
+          break
+        case "popular":
+          // Sort by stock (assuming lower stock means more popular)
+          filtered = filtered.sort((a, b) => a.stock - b.stock)
+          break
       }
     }
 
-    return true
-  })
+    return filtered
+  }, [searchTerm, selectedCategory, selectedFilter])
 
-  const handleAddToCart = async (product: any) => {
-    if (product.stock === 0) {
-      toast.error("Producto agotado")
-      return
-    }
-
-    setLoadingProduct(product.id)
-
-    // Simulate loading
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    addToCart(product)
-    toast.success(`${product.name} agregado al carrito`)
-    setLoadingProduct(null)
-  }
-
-  const getProductBadges = (product: any) => {
-    const badges = []
-
-    if (product.popular) badges.push({ text: "Popular", variant: "default" as const })
-    if (product.isNew) badges.push({ text: "Nuevo", variant: "secondary" as const })
-    if (product.discount > 0) badges.push({ text: `${product.discount}% OFF`, variant: "destructive" as const })
-    if (product.stock <= 5 && product.stock > 0) badges.push({ text: "Stock Bajo", variant: "outline" as const })
-    if (product.stock === 0) badges.push({ text: "Agotado", variant: "destructive" as const })
-
-    return badges
+  const getCartQuantity = (productId: number) => {
+    const cartItem = cart?.find((item) => item.id === productId)
+    return cartItem?.quantity || 0
   }
 
   const formatPrice = (price: number) => {
@@ -90,130 +72,155 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedFilt
     }).format(price)
   }
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-3 w-3 ${i < Math.floor(rating) ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-      />
-    ))
+  const handleAddToCart = (product: Product) => {
+    if (product.stock > 0) {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+      })
+    }
   }
 
   if (filteredProducts.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">No se encontraron productos</h3>
-            <p className="text-muted-foreground">
-              {searchTerm ? `No hay productos que coincidan con "${searchTerm}"` : "No hay productos en esta categoría"}
-            </p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+        <div className="text-6xl mb-4">🔍</div>
+        <h3 className="text-xl font-semibold mb-2">No se encontraron productos</h3>
+        <p className="text-muted-foreground">
+          {searchTerm
+            ? `No hay productos que coincidan con "${searchTerm}"`
+            : "No hay productos disponibles con los filtros seleccionados"}
+        </p>
       </div>
     )
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => {
-            const badges = getProductBadges(product)
-            const isLoading = loadingProduct === product.id
+    <div className="p-6 overflow-auto h-full">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{searchTerm ? `Resultados para "${searchTerm}"` : "Productos"}</h2>
+        <Badge variant="secondary">{filteredProducts.length} productos</Badge>
+      </div>
 
-            return (
-              <Card key={product.id} className="group overflow-hidden hover:shadow-lg transition-all duration-200">
-                <div className="relative">
-                  <div className="aspect-square overflow-hidden bg-gray-100">
-                    <img
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredProducts.map((product) => {
+          const cartQuantity = getCartQuantity(product.id)
+          const isOutOfStock = product.stock === 0
+          const isLowStock = product.stock < 10 && product.stock > 0
+
+          return (
+            <Card
+              key={product.id}
+              className={`hover:shadow-lg transition-all duration-200 ${
+                isOutOfStock ? "opacity-60" : ""
+              } ${cartQuantity > 0 ? "ring-2 ring-blue-200 dark:ring-blue-800" : ""}`}
+            >
+              <CardContent className="p-4">
+                <div className="relative mb-3">
+                  <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                    <Image
                       src={product.image || "/placeholder.svg"}
                       alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = `/placeholder.svg?height=200&width=200&text=${encodeURIComponent(product.name)}`
-                      }}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                     />
                   </div>
 
-                  {/* Badges */}
-                  <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                    {badges.slice(0, 2).map((badge, index) => (
-                      <Badge key={index} variant={badge.variant} className="text-xs">
-                        {badge.text}
+                  {/* Stock badges */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    {isOutOfStock && (
+                      <Badge variant="destructive" className="text-xs">
+                        Sin Stock
                       </Badge>
-                    ))}
+                    )}
+                    {isLowStock && (
+                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Bajo Stock
+                      </Badge>
+                    )}
+                    {cartQuantity > 0 && (
+                      <Badge className="text-xs bg-blue-100 text-blue-800">En Carrito: {cartQuantity}</Badge>
+                    )}
                   </div>
 
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                    <Button
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.stock === 0 || isLoading}
-                      className="bg-white text-black hover:bg-gray-100"
-                    >
-                      {isLoading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2" />
-                      )}
-                      {product.stock === 0 ? "Agotado" : "Agregar"}
-                    </Button>
-                  </div>
+                  {/* Barcode display */}
+                  {product.barcode && (
+                    <div className="absolute bottom-2 left-2">
+                      <Badge variant="outline" className="text-xs">
+                        {product.barcode}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-medium text-sm leading-tight line-clamp-2">{product.name}</h3>
-                      <div className="flex items-center gap-1 ml-2">
-                        {renderStars(product.rating)}
-                        <span className="text-xs text-muted-foreground ml-1">{product.rating}</span>
-                      </div>
-                    </div>
-
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-sm line-clamp-2">{product.name}</h3>
+                  {product.description && (
                     <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
+                  )}
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="font-bold text-lg">{formatPrice(product.price)}</div>
-                        {product.discount > 0 && (
-                          <div className="text-xs text-muted-foreground line-through">
-                            {formatPrice(product.price / (1 - product.discount / 100))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Package className="h-3 w-3" />
-                        <span>{product.stock}</span>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={() => handleAddToCart(product)}
-                      disabled={product.stock === 0 || isLoading}
-                      className="w-full"
-                      size="sm"
-                    >
-                      {isLoading ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2" />
-                      )}
-                      {product.stock === 0 ? "Agotado" : "Agregar al Carrito"}
-                    </Button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-bold text-green-600">{formatPrice(product.price)}</span>
+                    <span className="text-xs text-muted-foreground">Stock: {product.stock}</span>
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+
+                  <div className="flex items-center gap-2">
+                    {cartQuantity > 0 ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 bg-transparent"
+                          onClick={() => {
+                            // Remove one item from cart
+                            const currentItem = cart?.find((item) => item.id === product.id)
+                            if (currentItem && currentItem.quantity > 1) {
+                              addToCart({
+                                id: product.id,
+                                name: product.name,
+                                price: product.price,
+                                image: product.image,
+                                quantity: -1,
+                              })
+                            }
+                          }}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-sm font-medium min-w-[2rem] text-center">{cartQuantity}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 bg-transparent"
+                          onClick={() => handleAddToCart(product)}
+                          disabled={isOutOfStock || cartQuantity >= product.stock}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleAddToCart(product)}
+                        disabled={isOutOfStock}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        {isOutOfStock ? "Sin Stock" : "Agregar"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
-    </ScrollArea>
+    </div>
   )
 }
