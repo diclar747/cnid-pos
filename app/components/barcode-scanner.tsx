@@ -4,12 +4,12 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Scan, X, Search, ShoppingCart } from "lucide-react"
-import { products } from "../data/products"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Camera, Scan, Search, Package, ShoppingCart, X } from "lucide-react"
 import { useCart } from "../context/cart-context"
-import Image from "next/image"
+import { products } from "../data/products"
 import toast from "react-hot-toast"
 
 interface BarcodeScannerProps {
@@ -17,69 +17,73 @@ interface BarcodeScannerProps {
 }
 
 export default function BarcodeScanner({ onClose }: BarcodeScannerProps) {
-  const [barcode, setBarcode] = useState("")
+  const [manualBarcode, setManualBarcode] = useState("")
   const [isScanning, setIsScanning] = useState(false)
   const [foundProduct, setFoundProduct] = useState<any>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState("")
   const { addToCart } = useCart()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
 
-  useEffect(() => {
-    // Focus on input when component mounts
-    if (inputRef.current) {
-      inputRef.current.focus()
-    }
-  }, [])
+  // Frequent products for quick access
+  const frequentProducts = products.filter((p) => p.isPopular).slice(0, 6)
 
-  const searchByBarcode = (code: string) => {
-    if (!code.trim()) {
-      setFoundProduct(null)
-      return
-    }
-
-    const product = products.find(
-      (p) => p.barcode === code || p.barcode?.includes(code) || p.name.toLowerCase().includes(code.toLowerCase()),
-    )
-
+  const searchProduct = (barcode: string) => {
+    const product = products.find((p) => p.barcode === barcode)
     if (product) {
       setFoundProduct(product)
-      toast.success(`Producto encontrado: ${product.name}`)
+      setError("")
+      return product
     } else {
       setFoundProduct(null)
-      toast.error("Producto no encontrado")
-    }
-  }
-
-  const handleBarcodeChange = (value: string) => {
-    setBarcode(value)
-
-    // Auto-search when barcode length is typical (8-13 digits)
-    if (value.length >= 8) {
-      searchByBarcode(value)
-    } else {
-      setFoundProduct(null)
+      setError(`No se encontró producto con código: ${barcode}`)
+      return null
     }
   }
 
   const handleManualSearch = () => {
-    searchByBarcode(barcode)
+    if (!manualBarcode.trim()) {
+      setError("Ingresa un código de barras")
+      return
+    }
+    searchProduct(manualBarcode.trim())
   }
 
-  const handleAddToCart = () => {
-    if (foundProduct && foundProduct.stock > 0) {
-      addToCart({
-        id: foundProduct.id,
-        name: foundProduct.name,
-        price: foundProduct.price,
-        image: foundProduct.image,
-        quantity: 1,
-      })
-      toast.success(`${foundProduct.name} agregado al carrito`)
+  const handleAddToCart = (product: any) => {
+    addToCart(product, 1)
+    toast.success(`${product.name} agregado al carrito`)
+    onClose()
+  }
 
-      // Clear and close after adding
-      setBarcode("")
-      setFoundProduct(null)
-      onClose()
+  const startCamera = async () => {
+    try {
+      setIsScanning(true)
+      setError("")
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment", // Use back camera
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      })
+
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
+    } catch (err) {
+      setError("No se pudo acceder a la cámara. Verifica los permisos.")
+      setIsScanning(false)
     }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    setIsScanning(false)
   }
 
   const formatPrice = (price: number) => {
@@ -90,26 +94,18 @@ export default function BarcodeScanner({ onClose }: BarcodeScannerProps) {
     }).format(price)
   }
 
-  const startScanning = () => {
-    setIsScanning(true)
-    // Simulate camera scanning - in a real app, you'd integrate with a camera library
-    toast.success("Escáner activado - Enfoca el código de barras")
-
-    // For demo purposes, simulate finding a product after 2 seconds
-    setTimeout(() => {
-      const randomProduct = products[Math.floor(Math.random() * products.length)]
-      setBarcode(randomProduct.barcode || "")
-      setFoundProduct(randomProduct)
-      setIsScanning(false)
-      toast.success("Código escaneado exitosamente")
-    }, 2000)
-  }
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-md mx-auto">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Scan className="h-5 w-5" />
+          <Scan className="h-5 w-5 text-blue-600" />
           <h2 className="text-lg font-semibold">Escáner de Códigos</h2>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -120,28 +116,50 @@ export default function BarcodeScanner({ onClose }: BarcodeScannerProps) {
       {/* Manual Input */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Ingreso Manual</CardTitle>
-          <CardDescription>Ingresa el código de barras o busca por nombre del producto</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Search className="h-4 w-4" />
+            Búsqueda Manual
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="barcode">Código de Barras / Nombre</Label>
+            <Label htmlFor="barcode">Código de Barras</Label>
             <div className="flex gap-2">
               <Input
-                ref={inputRef}
                 id="barcode"
-                placeholder="Ej: 7891234567890 o Hamburguesa"
-                value={barcode}
-                onChange={(e) => handleBarcodeChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleManualSearch()
-                  }
-                }}
+                placeholder="Ej: 7891234567890-801"
+                value={manualBarcode}
+                onChange={(e) => setManualBarcode(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleManualSearch()}
+                className="font-mono"
               />
               <Button onClick={handleManualSearch} size="sm">
                 <Search className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+
+          {/* Sample Barcodes */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Códigos de ejemplo:</Label>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              {products.slice(0, 4).map((product) => (
+                <Button
+                  key={product.id}
+                  variant="outline"
+                  size="sm"
+                  className="h-auto p-2 text-left justify-start bg-transparent"
+                  onClick={() => {
+                    setManualBarcode(product.barcode)
+                    searchProduct(product.barcode)
+                  }}
+                >
+                  <div>
+                    <div className="font-mono text-xs">{product.barcode}</div>
+                    <div className="text-xs text-muted-foreground truncate">{product.name}</div>
+                  </div>
+                </Button>
+              ))}
             </div>
           </div>
         </CardContent>
@@ -150,115 +168,116 @@ export default function BarcodeScanner({ onClose }: BarcodeScannerProps) {
       {/* Camera Scanner */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Escáner de Cámara</CardTitle>
-          <CardDescription>Usa la cámara para escanear códigos de barras automáticamente</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            Escáner por Cámara
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Button
-            onClick={startScanning}
-            disabled={isScanning}
-            className="w-full"
-            variant={isScanning ? "secondary" : "default"}
-          >
-            <Scan className="h-4 w-4 mr-2" />
-            {isScanning ? "Escaneando..." : "Activar Escáner"}
-          </Button>
-
-          {isScanning && (
-            <div className="mt-4 p-4 border-2 border-dashed border-blue-300 rounded-lg text-center">
-              <div className="animate-pulse">
-                <Scan className="h-12 w-12 mx-auto text-blue-500 mb-2" />
-                <p className="text-sm text-muted-foreground">Enfoca el código de barras en el centro de la pantalla</p>
+        <CardContent className="space-y-4">
+          {!isScanning ? (
+            <Button onClick={startCamera} className="w-full">
+              <Camera className="h-4 w-4 mr-2" />
+              Activar Cámara
+            </Button>
+          ) : (
+            <div className="space-y-2">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-48 object-cover" />
+                <div className="absolute inset-0 border-2 border-blue-500 border-dashed rounded-lg flex items-center justify-center">
+                  <div className="bg-black/50 text-white px-3 py-1 rounded text-sm">Enfoca el código de barras</div>
+                </div>
               </div>
+              <Button onClick={stopCamera} variant="outline" className="w-full bg-transparent">
+                Detener Cámara
+              </Button>
+              <Alert>
+                <AlertDescription className="text-sm">
+                  <strong>Nota:</strong> El escaneo automático no está implementado en esta demo. Usa la búsqueda manual
+                  con los códigos de ejemplo.
+                </AlertDescription>
+              </Alert>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Product Result */}
-      {foundProduct && (
-        <Card className="border-green-200 dark:border-green-800">
+      {/* Frequent Products */}
+      {frequentProducts.length > 0 && (
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base text-green-700 dark:text-green-300">Producto Encontrado</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Productos Frecuentes
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <div className="w-20 h-20 relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 flex-shrink-0">
-                <Image
-                  src={foundProduct.image || "/placeholder.svg"}
-                  alt={foundProduct.name}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
-                />
-              </div>
-
-              <div className="flex-1 space-y-2">
-                <h3 className="font-semibold">{foundProduct.name}</h3>
-                {foundProduct.description && (
-                  <p className="text-sm text-muted-foreground">{foundProduct.description}</p>
-                )}
-
-                <div className="flex items-center gap-4">
-                  <span className="text-lg font-bold text-green-600">{formatPrice(foundProduct.price)}</span>
-                  <Badge variant={foundProduct.stock > 0 ? "secondary" : "destructive"}>
-                    Stock: {foundProduct.stock}
-                  </Badge>
-                </div>
-
-                {foundProduct.barcode && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Código:</span>
-                    <Badge variant="outline" className="text-xs">
-                      {foundProduct.barcode}
+            <div className="grid grid-cols-1 gap-2">
+              {frequentProducts.map((product) => (
+                <Button
+                  key={product.id}
+                  variant="outline"
+                  className="h-auto p-3 justify-between bg-transparent"
+                  onClick={() => handleAddToCart(product)}
+                >
+                  <div className="text-left">
+                    <div className="font-medium text-sm">{product.name}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{product.barcode}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-semibold text-sm">{formatPrice(product.price)}</div>
+                    <Badge variant="secondary" className="text-xs">
+                      Stock: {product.stock}
                     </Badge>
                   </div>
-                )}
-
-                <Button onClick={handleAddToCart} disabled={foundProduct.stock === 0} className="w-full mt-3">
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  {foundProduct.stock > 0 ? "Agregar al Carrito" : "Sin Stock"}
                 </Button>
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Quick Access Products */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Productos Frecuentes</CardTitle>
-          <CardDescription>Acceso rápido a productos más vendidos</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-2">
-            {products.slice(0, 4).map((product) => (
-              <Button
-                key={product.id}
-                variant="outline"
-                size="sm"
-                className="h-auto p-2 flex flex-col items-center gap-1 bg-transparent"
-                onClick={() => {
-                  setBarcode(product.barcode || "")
-                  setFoundProduct(product)
-                }}
-              >
-                <div className="w-8 h-8 relative overflow-hidden rounded bg-gray-100 dark:bg-gray-800">
-                  <Image
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    sizes="32px"
-                  />
-                </div>
-                <span className="text-xs text-center line-clamp-2">{product.name}</span>
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Found Product */}
+      {foundProduct && (
+        <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+          <CardHeader>
+            <CardTitle className="text-base text-green-800 dark:text-green-200 flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Producto Encontrado
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-green-900 dark:text-green-100">{foundProduct.name}</h3>
+              <p className="text-sm text-green-700 dark:text-green-300">{foundProduct.description}</p>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-lg text-green-800 dark:text-green-200">
+                  {formatPrice(foundProduct.price)}
+                </span>
+                <Badge variant="outline" className="border-green-300 text-green-700">
+                  Stock: {foundProduct.stock}
+                </Badge>
+              </div>
+              <p className="text-xs font-mono text-green-600 dark:text-green-400">Código: {foundProduct.barcode}</p>
+            </div>
+
+            <Button
+              onClick={() => handleAddToCart(foundProduct)}
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={foundProduct.stock === 0}
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {foundProduct.stock === 0 ? "Sin Stock" : "Agregar al Carrito"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

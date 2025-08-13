@@ -1,12 +1,13 @@
 "use client"
 
-import { useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Minus, AlertTriangle } from "lucide-react"
-import { products, type Product } from "../data/products"
+import { Input } from "@/components/ui/input"
+import { Plus, Minus, ShoppingCart, Package, Search } from "lucide-react"
 import { useCart } from "../context/cart-context"
+import { products } from "../data/products"
 import Image from "next/image"
 
 interface ProductGridProps {
@@ -16,52 +17,57 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ searchTerm, selectedCategory, selectedFilter }: ProductGridProps) {
-  const { addToCart, cart } = useCart()
+  const { cart, addToCart, updateQuantity } = useCart()
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({})
 
   const filteredProducts = useMemo(() => {
-    let filtered = products.filter((product) => product.isActive)
+    return products.filter((product) => {
+      // Search by name, description, or barcode
+      const matchesSearch =
+        searchTerm === "" ||
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.barcode.toLowerCase().includes(searchTerm.toLowerCase())
 
-    // Filter by search term (name or barcode)
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchLower) ||
-          product.barcode?.includes(searchTerm) ||
-          product.description?.toLowerCase().includes(searchLower),
-      )
-    }
+      // Filter by category
+      const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
 
-    // Filter by category
-    if (selectedCategory && selectedCategory !== "all") {
-      filtered = filtered.filter((product) => product.category === selectedCategory)
-    }
-
-    // Filter by additional filters
-    if (selectedFilter) {
-      switch (selectedFilter) {
-        case "low-stock":
-          filtered = filtered.filter((product) => product.stock < 20 && product.stock > 0)
-          break
-        case "out-of-stock":
-          filtered = filtered.filter((product) => product.stock === 0)
-          break
-        case "high-price":
-          filtered = filtered.filter((product) => product.price > 30000)
-          break
-        case "popular":
-          // Sort by stock (assuming lower stock means more popular)
-          filtered = filtered.sort((a, b) => a.stock - b.stock)
-          break
+      // Filter by additional filters
+      let matchesFilter = true
+      if (selectedFilter === "low-stock") {
+        matchesFilter = product.stock <= 5
+      } else if (selectedFilter === "out-of-stock") {
+        matchesFilter = product.stock === 0
+      } else if (selectedFilter === "popular") {
+        matchesFilter = product.isPopular || false
       }
-    }
 
-    return filtered
+      return matchesSearch && matchesCategory && matchesFilter
+    })
   }, [searchTerm, selectedCategory, selectedFilter])
 
-  const getCartQuantity = (productId: number) => {
+  const getCartQuantity = (productId: string) => {
     const cartItem = cart?.find((item) => item.id === productId)
     return cartItem?.quantity || 0
+  }
+
+  const handleQuantityChange = (productId: string, value: string) => {
+    const quantity = Number.parseInt(value) || 0
+    setQuantities({ ...quantities, [productId]: quantity })
+  }
+
+  const handleAddToCart = (product: any) => {
+    const quantity = quantities[product.id] || 1
+    addToCart(product, quantity)
+    setQuantities({ ...quantities, [product.id]: 1 }) // Reset to 1 after adding
+  }
+
+  const handleUpdateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      updateQuantity(productId, 0) // This will remove the item
+    } else {
+      updateQuantity(productId, newQuantity)
+    }
   }
 
   const formatPrice = (price: number) => {
@@ -72,149 +78,160 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedFilt
     }).format(price)
   }
 
-  const handleAddToCart = (product: Product) => {
-    if (product.stock > 0) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: 1,
-      })
-    }
-  }
-
   if (filteredProducts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <div className="text-6xl mb-4">🔍</div>
-        <h3 className="text-xl font-semibold mb-2">No se encontraron productos</h3>
-        <p className="text-muted-foreground">
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          {searchTerm ? (
+            <Search className="h-12 w-12 text-gray-400" />
+          ) : (
+            <Package className="h-12 w-12 text-gray-400" />
+          )}
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          {searchTerm ? "No se encontraron productos" : "No hay productos disponibles"}
+        </h3>
+        <p className="text-gray-600 max-w-md">
           {searchTerm
-            ? `No hay productos que coincidan con "${searchTerm}"`
-            : "No hay productos disponibles con los filtros seleccionados"}
+            ? `No encontramos productos que coincidan con "${searchTerm}". Intenta con otro término de búsqueda o código de barras.`
+            : "No hay productos disponibles en esta categoría."}
         </p>
+        {searchTerm && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              <strong>Consejo:</strong> Puedes buscar por nombre del producto o código de barras (ej: 7891234567890-801)
+            </p>
+          </div>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="p-6 overflow-auto h-full">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{searchTerm ? `Resultados para "${searchTerm}"` : "Productos"}</h2>
-        <Badge variant="secondary">{filteredProducts.length} productos</Badge>
+    <div className="p-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Productos</h2>
+            <p className="text-muted-foreground">
+              {filteredProducts.length} producto{filteredProducts.length !== 1 ? "s" : ""}
+              {searchTerm && ` encontrado${filteredProducts.length !== 1 ? "s" : ""} para "${searchTerm}"`}
+            </p>
+          </div>
+          {searchTerm && (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+              Búsqueda: {searchTerm}
+            </Badge>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.map((product) => {
           const cartQuantity = getCartQuantity(product.id)
-          const isOutOfStock = product.stock === 0
-          const isLowStock = product.stock < 10 && product.stock > 0
+          const inputQuantity = quantities[product.id] || 1
 
           return (
-            <Card
-              key={product.id}
-              className={`hover:shadow-lg transition-all duration-200 ${
-                isOutOfStock ? "opacity-60" : ""
-              } ${cartQuantity > 0 ? "ring-2 ring-blue-200 dark:ring-blue-800" : ""}`}
-            >
-              <CardContent className="p-4">
-                <div className="relative mb-3">
-                  <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                    <Image
-                      src={product.image || "/placeholder.svg"}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    />
-                  </div>
-
-                  {/* Stock badges */}
-                  <div className="absolute top-2 right-2 flex flex-col gap-1">
-                    {isOutOfStock && (
-                      <Badge variant="destructive" className="text-xs">
-                        Sin Stock
-                      </Badge>
-                    )}
-                    {isLowStock && (
-                      <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Bajo Stock
-                      </Badge>
-                    )}
-                    {cartQuantity > 0 && (
-                      <Badge className="text-xs bg-blue-100 text-blue-800">En Carrito: {cartQuantity}</Badge>
-                    )}
-                  </div>
-
-                  {/* Barcode display */}
-                  {product.barcode && (
-                    <div className="absolute bottom-2 left-2">
-                      <Badge variant="outline" className="text-xs">
-                        {product.barcode}
-                      </Badge>
-                    </div>
-                  )}
+            <Card key={product.id} className="group hover:shadow-lg transition-all duration-200 overflow-hidden">
+              <div className="relative">
+                <div className="aspect-square bg-gray-50 overflow-hidden">
+                  <Image
+                    src={product.image || "/placeholder.svg"}
+                    alt={product.name}
+                    width={300}
+                    height={300}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="font-semibold text-sm line-clamp-2">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{product.description}</p>
+                {/* Stock Badge */}
+                <div className="absolute top-2 left-2">
+                  {product.stock <= 5 && product.stock > 0 && (
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                      Stock Bajo
+                    </Badge>
                   )}
+                  {product.stock === 0 && <Badge variant="destructive">Agotado</Badge>}
+                </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-green-600">{formatPrice(product.price)}</span>
-                    <span className="text-xs text-muted-foreground">Stock: {product.stock}</span>
+                {/* Popular Badge */}
+                {product.isPopular && (
+                  <div className="absolute top-2 right-2">
+                    <Badge className="bg-green-600 text-white">Popular</Badge>
+                  </div>
+                )}
+
+                {/* Price */}
+                <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-sm font-semibold">
+                  {formatPrice(product.price)}
+                </div>
+              </div>
+
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-lg leading-tight">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">Código: {product.barcode}</p>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {cartQuantity > 0 ? (
-                      <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Stock: {product.stock}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {product.category}
+                    </Badge>
+                  </div>
+
+                  {cartQuantity > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
+                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                          En carrito: {cartQuantity}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 bg-transparent"
+                            onClick={() => handleUpdateQuantity(product.id, cartQuantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-8 text-center text-sm font-medium">{cartQuantity}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0 bg-transparent"
+                            onClick={() => handleUpdateQuantity(product.id, cartQuantity + 1)}
+                            disabled={cartQuantity >= product.stock}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          max={product.stock}
+                          value={inputQuantity}
+                          onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                          className="w-20 h-9 text-center"
+                        />
                         <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 bg-transparent"
-                          onClick={() => {
-                            // Remove one item from cart
-                            const currentItem = cart?.find((item) => item.id === product.id)
-                            if (currentItem && currentItem.quantity > 1) {
-                              addToCart({
-                                id: product.id,
-                                name: product.name,
-                                price: product.price,
-                                image: product.image,
-                                quantity: -1,
-                              })
-                            }
-                          }}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-sm font-medium min-w-[2rem] text-center">{cartQuantity}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 bg-transparent"
                           onClick={() => handleAddToCart(product)}
-                          disabled={isOutOfStock || cartQuantity >= product.stock}
+                          disabled={product.stock === 0 || inputQuantity > product.stock}
+                          className="flex-1 h-9"
                         >
-                          <Plus className="h-3 w-3" />
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Agregar
                         </Button>
                       </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleAddToCart(product)}
-                        disabled={isOutOfStock}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {isOutOfStock ? "Sin Stock" : "Agregar"}
-                      </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
