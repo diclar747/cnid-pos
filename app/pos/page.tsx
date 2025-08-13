@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Menu, X, Scan, ShoppingCart } from "lucide-react"
+import { Search, Menu, X, Scan, ShoppingCart, LogOut, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useRouter } from "next/navigation"
 import { useCart } from "../context/cart-context"
 import CategorySidebar from "../components/category-sidebar"
 import ProductGrid from "../components/product-grid"
@@ -21,8 +23,15 @@ export default function POSPage() {
   const [showCart, setShowCart] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const { cart } = useCart()
+  const router = useRouter()
 
   const totalItems = cart?.reduce((sum, item) => sum + item.quantity, 0) || 0
+
+  const handleLogout = () => {
+    // Clear any stored session data
+    localStorage.removeItem("user")
+    router.push("/login")
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -78,6 +87,25 @@ export default function POSPage() {
             <div className="hidden md:block">
               <ThemeToggle />
             </div>
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => router.push("/admin")}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Administración
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Cerrar Sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>

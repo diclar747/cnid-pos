@@ -1,33 +1,33 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { ArrowLeft, CreditCard, DollarSign, Smartphone, Receipt } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, CreditCard, User, Phone, FileText } from "lucide-react"
 import { useCart } from "../context/cart-context"
+import { useCompany } from "../context/company-context"
 import { useSales } from "../context/sales-context"
 import toast from "react-hot-toast"
 
 export default function CheckoutPage() {
-  const [customerName, setCustomerName] = useState("")
-  const [customerPhone, setCustomerPhone] = useState("")
-  const [notes, setNotes] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
-  const { cart, getCartTotal, clearCart } = useCart()
-  const { addSale } = useSales()
   const router = useRouter()
+  const { cart, clearCart, getCartTotal } = useCart()
+  const { companyConfig } = useCompany()
+  const { addSale } = useSales()
+  const [paymentMethod, setPaymentMethod] = useState("cash")
+  const [cashReceived, setCashReceived] = useState("")
+  const [customerName, setCustomerName] = useState("")
+  const [customerRuc, setCustomerRuc] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
 
-  const subtotal = getCartTotal()
-  const tax = subtotal * 0.1
-  const total = subtotal + tax
+  const total = getCartTotal()
+  const cashAmount = Number.parseFloat(cashReceived) || 0
+  const change = cashAmount - total
 
   useEffect(() => {
     if (!cart || cart.length === 0) {
@@ -35,229 +35,325 @@ export default function CheckoutPage() {
     }
   }, [cart, router])
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-PY", {
-      style: "currency",
-      currency: "PYG",
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!customerName.trim()) {
-      toast.error("Por favor ingresa el nombre del cliente")
+  const handlePayment = async () => {
+    if (paymentMethod === "cash" && cashAmount < total) {
+      toast.error("El monto recibido es insuficiente")
       return
     }
 
     setIsProcessing(true)
 
     try {
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
       // Create sale record
-      addSale({
-        items: cart.map((item) => ({
-          productId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity,
-        })),
-        total,
-        customer: {
-          name: customerName.trim(),
-          phone: customerPhone.trim() || undefined,
-          notes: notes.trim() || undefined,
-        },
+      const saleData = {
+        id: Date.now().toString(),
         date: new Date().toISOString(),
-        status: "completed",
-      })
-
-      // Store order data for success page
-      const orderData = {
-        items: cart,
-        customer: {
-          name: customerName.trim(),
-          phone: customerPhone.trim(),
-          notes: notes.trim(),
-        },
-        totals: {
-          subtotal,
-          tax,
-          total,
-        },
-        timestamp: new Date().toISOString(),
+        items: cart || [],
+        total,
+        paymentMethod,
+        customerName: customerName || "Cliente General",
+        customerRuc: customerRuc || "",
+        cashReceived: paymentMethod === "cash" ? cashAmount : total,
+        change: paymentMethod === "cash" ? change : 0,
       }
 
-      localStorage.setItem("lastOrder", JSON.stringify(orderData))
+      addSale(saleData)
 
-      // Clear cart
+      // Generate and print receipt
+      await generateReceipt(saleData)
+
+      // Clear cart and redirect
       clearCart()
-
-      toast.success("¡Venta procesada exitosamente!")
       router.push("/success")
+
+      toast.success("Venta procesada exitosamente")
     } catch (error) {
       toast.error("Error al procesar la venta")
+      console.error("Payment error:", error)
     } finally {
       setIsProcessing(false)
     }
   }
 
-  if (!cart || cart.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  const generateReceipt = async (saleData: any) => {
+    const receiptContent = `
+      <div style="width: 300px; font-family: monospace; font-size: 12px; line-height: 1.4;">
+        <!-- Header -->
+        <div style="text-center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
+          <img src="${companyConfig.logo || "/placeholder.svg?height=60&width=150&text=LOGO"}" 
+               alt="Logo" style="max-height: 60px; max-width: 150px; margin-bottom: 5px;" />
+          <div style="font-weight: bold; font-size: 14px;">${companyConfig.name}</div>
+          <div style="font-size: 10px; color: #666;">${companyConfig.slogan}</div>
+          <div style="font-size: 10px; margin-top: 5px;">
+            <div>RUC: ${companyConfig.ruc}</div>
+            <div>${companyConfig.address}</div>
+            <div>Tel: ${companyConfig.phone}</div>
+            ${companyConfig.email ? `<div>Email: ${companyConfig.email}</div>` : ""}
+            ${companyConfig.website ? `<div>Web: ${companyConfig.website}</div>` : ""}
+          </div>
+        </div>
+
+        <!-- Sale Info -->
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>FACTURA #${saleData.id}</span>
+            <span>${new Date(saleData.date).toLocaleDateString("es-PY")}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Hora:</span>
+            <span>${new Date(saleData.date).toLocaleTimeString("es-PY")}</span>
+          </div>
+          ${
+            saleData.customerName !== "Cliente General"
+              ? `
+            <div style="margin-top: 5px;">
+              <div>Cliente: ${saleData.customerName}</div>
+              ${saleData.customerRuc ? `<div>RUC: ${saleData.customerRuc}</div>` : ""}
+            </div>
+          `
+              : ""
+          }
+        </div>
+
+        <!-- Items -->
+        <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0;">
+          ${saleData.items
+            .map(
+              (item: any) => `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+              <div style="flex: 1;">
+                <div style="font-weight: bold;">${item.name}</div>
+                <div style="font-size: 10px; color: #666;">
+                  ${item.quantity} x Gs ${item.price.toLocaleString("es-PY")}
+                </div>
+              </div>
+              <div style="text-align: right; font-weight: bold;">
+                Gs ${(item.price * item.quantity).toLocaleString("es-PY")}
+              </div>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
+
+        <!-- Totals -->
+        <div style="margin: 10px 0;">
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+            <span>TOTAL:</span>
+            <span>Gs ${saleData.total.toLocaleString("es-PY")}</span>
+          </div>
+          ${
+            saleData.paymentMethod === "cash"
+              ? `
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span>Efectivo:</span>
+              <span>Gs ${saleData.cashReceived.toLocaleString("es-PY")}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Cambio:</span>
+              <span>Gs ${saleData.change.toLocaleString("es-PY")}</span>
+            </div>
+          `
+              : `
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span>Método:</span>
+              <span>${saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</span>
+            </div>
+          `
+          }
+        </div>
+
+        <!-- Footer -->
+        <div style="text-center; font-size: 10px; color: #666; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
+          <div>¡Gracias por su compra!</div>
+          <div>Conserve este comprobante</div>
+          <div style="margin-top: 5px;">
+            Sistema HeroUI POS
+          </div>
+        </div>
       </div>
-    )
+    `
+
+    // Create a new window for printing
+    const printWindow = window.open("", "_blank", "width=400,height=600")
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Factura #${saleData.id}</title>
+            <style>
+              body { margin: 0; padding: 20px; }
+              @media print {
+                body { margin: 0; padding: 0; }
+              }
+            </style>
+          </head>
+          <body>
+            ${receiptContent}
+            <script>
+              window.onload = function() {
+                window.print();
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `)
+      printWindow.document.close()
+    }
+  }
+
+  if (!cart || cart.length === 0) {
+    return null
   }
 
   return (
     <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.push("/pos")}>
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Finalizar Venta</h1>
-            <p className="text-muted-foreground">Completa los datos para procesar la venta</p>
-          </div>
+          <h1 className="text-2xl font-bold">Checkout</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Customer Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Información del Cliente
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">
-                    Nombre del Cliente <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="customerName"
-                    placeholder="Nombre completo"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customerPhone">Teléfono</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="customerPhone"
-                      placeholder="+595 21 123-456"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notas Adicionales</Label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Textarea
-                      id="notes"
-                      placeholder="Instrucciones especiales, descuentos, etc."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="pl-10 min-h-[100px] resize-none"
-                    />
-                  </div>
-                </div>
-
-                <Button type="submit" className="w-full" size="lg" disabled={isProcessing}>
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Procesando Venta...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Procesar Venta - {formatPrice(total)}
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
           {/* Order Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Resumen del Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Items */}
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <img
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded-md"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = `/placeholder.svg?height=48&width=48&text=${encodeURIComponent(item.name)}`
-                      }}
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {formatPrice(item.price)} × {item.quantity}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="secondary">{item.quantity}</Badge>
-                      <p className="font-medium text-sm mt-1">{formatPrice(item.price * item.quantity)}</p>
-                    </div>
+              {cart.map((item) => (
+                <div key={item.id} className="flex justify-between items-center">
+                  <div className="flex-1">
+                    <h3 className="font-medium">{item.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {item.quantity} x Gs {item.price.toLocaleString("es-PY")}
+                    </p>
                   </div>
-                ))}
+                  <div className="font-medium">Gs {(item.price * item.quantity).toLocaleString("es-PY")}</div>
+                </div>
+              ))}
+              <Separator />
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Total:</span>
+                <span>Gs {total.toLocaleString("es-PY")}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Información de Pago</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Customer Info */}
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="customerName">Nombre del Cliente (Opcional)</Label>
+                  <Input
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Cliente General"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customerRuc">RUC del Cliente (Opcional)</Label>
+                  <Input
+                    id="customerRuc"
+                    value={customerRuc}
+                    onChange={(e) => setCustomerRuc(e.target.value)}
+                    placeholder="80000000-0"
+                  />
+                </div>
               </div>
 
               <Separator />
 
-              {/* Totals */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>IVA (10%):</span>
-                  <span>{formatPrice(tax)}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total:</span>
-                  <span className="text-primary">{formatPrice(total)}</span>
-                </div>
+              {/* Payment Method */}
+              <div>
+                <Label className="text-base font-medium">Método de Pago</Label>
+                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mt-2">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cash" id="cash" />
+                    <Label htmlFor="cash" className="flex items-center cursor-pointer">
+                      <DollarSign className="h-4 w-4 mr-2" />
+                      Efectivo
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card" className="flex items-center cursor-pointer">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Tarjeta
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="digital" id="digital" />
+                    <Label htmlFor="digital" className="flex items-center cursor-pointer">
+                      <Smartphone className="h-4 w-4 mr-2" />
+                      Pago Digital
+                    </Label>
+                  </div>
+                </RadioGroup>
               </div>
 
-              {/* Payment Info */}
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">Información de Pago</h4>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>• Efectivo</p>
-                  <p>• Tarjeta de débito/crédito</p>
-                  <p>• Transferencia bancaria</p>
+              {/* Cash Payment Details */}
+              {paymentMethod === "cash" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="cashReceived">Monto Recibido</Label>
+                    <Input
+                      id="cashReceived"
+                      type="number"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                  {cashAmount > 0 && (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span>Total:</span>
+                        <span className="font-medium">Gs {total.toLocaleString("es-PY")}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Recibido:</span>
+                        <span className="font-medium">Gs {cashAmount.toLocaleString("es-PY")}</span>
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="flex justify-between items-center text-lg font-bold">
+                        <span>Cambio:</span>
+                        <span className={change >= 0 ? "text-green-600" : "text-red-600"}>
+                          Gs {change.toLocaleString("es-PY")}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Process Payment Button */}
+              <Button
+                onClick={handlePayment}
+                disabled={isProcessing || (paymentMethod === "cash" && cashAmount < total)}
+                className="w-full"
+                size="lg"
+              >
+                {isProcessing ? (
+                  "Procesando..."
+                ) : (
+                  <>
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Procesar Pago e Imprimir
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
         </div>
