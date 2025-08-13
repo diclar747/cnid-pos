@@ -14,8 +14,8 @@ import { CompanyProvider } from "./context/company-context"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "POS CNID - Sistema de Gestión Integral",
-  description: "Sistema completo de punto de venta y gestión empresarial",
+  title: "CNID POS System",
+  description: "Sistema de punto de venta completo para restaurantes y comercios",
     generator: 'v0.app'
 }
 
@@ -27,21 +27,21 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <ThemeProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <ThemeProvider>
             <CompanyProvider>
-              <NotificationsProvider>
-                <SalesProvider>
-                  <PurchasesProvider>
-                    <SuppliersProvider>
-                      <CartProvider>{children}</CartProvider>
-                    </SuppliersProvider>
-                  </PurchasesProvider>
-                </SalesProvider>
-              </NotificationsProvider>
+              <SalesProvider>
+                <PurchasesProvider>
+                  <SuppliersProvider>
+                    <CartProvider>
+                      <NotificationsProvider>{children}</NotificationsProvider>
+                    </CartProvider>
+                  </SuppliersProvider>
+                </PurchasesProvider>
+              </SalesProvider>
             </CompanyProvider>
-          </AuthProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )

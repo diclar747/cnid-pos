@@ -12,15 +12,19 @@ export interface SupplierContact {
 }
 
 export interface Supplier {
-  id: string
+  id: number
   name: string
+  ruc: string
   contact: string
   email: string
   phone: string
   address: string
   category: string
   rating: number
-  status: "active" | "inactive"
+  isActive: boolean
+  creditLimit: number
+  paymentTerms: string
+  contacts: SupplierContact[]
 }
 
 export interface AutoOrder {
@@ -40,11 +44,11 @@ interface SuppliersContextType {
   autoOrders: AutoOrder[]
   addSupplier: (supplier: Omit<Supplier, "id">) => void
   updateSupplier: (supplier: Supplier) => void
-  deleteSupplier: (id: string) => void
-  getSupplierById: (id: string) => Supplier | undefined
-  addContact: (supplierId: string, contact: Omit<SupplierContact, "id">) => void
-  updateContact: (supplierId: string, contactId: number, contact: Partial<SupplierContact>) => void
-  deleteContact: (supplierId: string, contactId: number) => void
+  deleteSupplier: (id: number) => void
+  getSupplierById: (id: number) => Supplier | undefined
+  addContact: (supplierId: number, contact: Omit<SupplierContact, "id">) => void
+  updateContact: (supplierId: number, contactId: number, contact: Partial<SupplierContact>) => void
+  deleteContact: (supplierId: number, contactId: number) => void
   addAutoOrder: (autoOrder: Omit<AutoOrder, "id">) => void
   updateAutoOrder: (id: number, autoOrder: Partial<AutoOrder>) => void
   deleteAutoOrder: (id: number) => void
@@ -58,34 +62,108 @@ const SuppliersContext = createContext<SuppliersContextType | undefined>(undefin
 export function SuppliersProvider({ children }: { children: ReactNode }) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([
     {
-      id: "1",
+      id: 1,
       name: "Distribuidora Central",
+      ruc: "80012345-1",
       contact: "Juan Pérez",
       email: "juan@distribuidora.com",
       phone: "+595 21 555-0001",
       address: "Av. España 456, Asunción",
       category: "Alimentos",
       rating: 4.5,
-      status: "active",
+      isActive: true,
+      creditLimit: 50000000,
+      paymentTerms: "30 días",
+      contacts: [
+        {
+          id: 1,
+          name: "Juan Pérez",
+          position: "Gerente de Ventas",
+          phone: "+595 21 555-0001",
+          email: "juan@distribuidora.com",
+          isPrimary: true,
+        },
+      ],
     },
     {
-      id: "2",
+      id: 2,
       name: "Bebidas del Paraguay",
+      ruc: "80012346-2",
       contact: "María González",
       email: "maria@bebidas.com",
       phone: "+595 21 555-0002",
       address: "Ruta 2 Km 15, Luque",
       category: "Bebidas",
       rating: 4.2,
-      status: "active",
+      isActive: true,
+      creditLimit: 30000000,
+      paymentTerms: "15 días",
+      contacts: [
+        {
+          id: 2,
+          name: "María González",
+          position: "Directora Comercial",
+          phone: "+595 21 555-0002",
+          email: "maria@bebidas.com",
+          isPrimary: true,
+        },
+      ],
+    },
+    {
+      id: 3,
+      name: "Carnes Premium",
+      ruc: "80012347-3",
+      contact: "Carlos Rodríguez",
+      email: "carlos@carnespremium.com",
+      phone: "+595 21 555-0003",
+      address: "Mercado Central, Local 45",
+      category: "Carnes",
+      rating: 4.8,
+      isActive: true,
+      creditLimit: 25000000,
+      paymentTerms: "7 días",
+      contacts: [
+        {
+          id: 3,
+          name: "Carlos Rodríguez",
+          position: "Propietario",
+          phone: "+595 21 555-0003",
+          email: "carlos@carnespremium.com",
+          isPrimary: true,
+        },
+      ],
     },
   ])
-  const [autoOrders, setAutoOrders] = useState<AutoOrder[]>([])
+
+  const [autoOrders, setAutoOrders] = useState<AutoOrder[]>([
+    {
+      id: 1,
+      supplierId: 1,
+      productId: 1,
+      productName: "Hamburguesa Clásica",
+      minStock: 10,
+      orderQuantity: 50,
+      isActive: true,
+      lastOrderDate: "2024-01-10",
+      nextOrderDate: "2024-01-20",
+    },
+    {
+      id: 2,
+      supplierId: 2,
+      productId: 6,
+      productName: "Coca Cola",
+      minStock: 20,
+      orderQuantity: 100,
+      isActive: true,
+      lastOrderDate: "2024-01-08",
+      nextOrderDate: "2024-01-18",
+    },
+  ])
 
   const addSupplier = (supplier: Omit<Supplier, "id">) => {
     const newSupplier: Supplier = {
       ...supplier,
-      id: Date.now().toString(),
+      id: Date.now(),
     }
     setSuppliers((prev) => [...prev, newSupplier])
   }
@@ -94,17 +172,17 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
     setSuppliers((prev) => prev.map((s) => (s.id === supplier.id ? supplier : s)))
   }
 
-  const deleteSupplier = (id: string) => {
+  const deleteSupplier = (id: number) => {
     setSuppliers((prev) => prev.filter((s) => s.id !== id))
     // También eliminar órdenes automáticas relacionadas
-    setAutoOrders((prev) => prev.filter((order) => order.supplierId !== Number.parseInt(id)))
+    setAutoOrders((prev) => prev.filter((order) => order.supplierId !== id))
   }
 
-  const getSupplierById = (id: string): Supplier | undefined => {
+  const getSupplierById = (id: number): Supplier | undefined => {
     return suppliers.find((supplier) => supplier.id === id)
   }
 
-  const addContact = (supplierId: string, contact: Omit<SupplierContact, "id">) => {
+  const addContact = (supplierId: number, contact: Omit<SupplierContact, "id">) => {
     const newContact: SupplierContact = {
       ...contact,
       id: Date.now(),
@@ -122,7 +200,7 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const updateContact = (supplierId: string, contactId: number, contact: Partial<SupplierContact>) => {
+  const updateContact = (supplierId: number, contactId: number, contact: Partial<SupplierContact>) => {
     setSuppliers((prev) =>
       prev.map((supplier) =>
         supplier.id === supplierId
@@ -135,7 +213,7 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const deleteContact = (supplierId: string, contactId: number) => {
+  const deleteContact = (supplierId: number, contactId: number) => {
     setSuppliers((prev) =>
       prev.map((supplier) =>
         supplier.id === supplierId
@@ -175,12 +253,12 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
   }
 
   const getSuppliersByCategory = (category: string): Supplier[] => {
-    return suppliers.filter((supplier) => supplier.category === category && supplier.status === "active")
+    return suppliers.filter((supplier) => supplier.category === category && supplier.isActive)
   }
 
   const getTopSuppliers = (limit = 5): Supplier[] => {
     return suppliers
-      .filter((supplier) => supplier.status === "active")
+      .filter((supplier) => supplier.isActive)
       .sort((a, b) => b.rating - a.rating)
       .slice(0, limit)
   }
