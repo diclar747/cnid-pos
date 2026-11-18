@@ -102,7 +102,7 @@ const faqs = [
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(0)
-  const nav = [["#demo", "Demo"], ["#funciones", "Funciones"], ["#restaurantes", "Multi-restaurante"], ["#proximamente", "Próximamente"], ["#preguntas", "Preguntas"]]
+  const nav = [["/marketplace", "Marketplace"], ["#demo", "Demo"], ["#funciones", "Funciones"], ["#restaurantes", "Multi-restaurante"], ["#proximamente", "Próximamente"], ["#preguntas", "Preguntas"]]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -153,6 +153,9 @@ export default function LandingPage() {
                 <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3 font-semibold text-white hover:bg-white/10">
                   <MessageCircle className="h-4 w-4" /> Hablar por WhatsApp
                 </a>
+                <Link href="/marketplace" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3 font-semibold text-white hover:bg-white/10">
+                  Restaurantes <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
               <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
                 {["Funciona en el navegador", "Pedidos desde el QR de la mesa", "Varios restaurantes"].map((item) => (
@@ -308,6 +311,7 @@ export default function LandingPage() {
           <p>© {new Date().getFullYear()} RestoPOS · CNID</p>
           <div className="flex gap-5">
             <Link href="/login" className="hover:text-indigo-600">Ingresar</Link>
+            <Link href="/marketplace" className="hover:text-indigo-600">Marketplace</Link>
             <Link href="/photo-credits" className="hover:text-indigo-600">Créditos de fotos</Link>
             <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600">WhatsApp</a>
           </div>

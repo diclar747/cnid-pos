@@ -133,3 +133,9 @@ Requiere la variable `NIRO_API_KEY` en el servidor (ver docs/despliegue.md). Sin
 ## App instalable
 
 RestoPOS se instala como app (Android, iPhone y escritorio) desde **Instalar app** en la portada o en el inicio de sesión. La primera vez muestra una presentación deslizable que termina en **Iniciar sesión**; después abre directo el inicio de sesión. El manifiesto incluye capturas y accesos directos a POS, Pedidos, Cocina y Caja.
+
+## Marketplace
+
+`/marketplace` es la vitrina pública de todos los restaurantes activos de RestoPOS (enlazada desde la portada). Cada restaurante muestra su logo, foto, si está abierto ahora según sus horarios, dirección, teléfono, WhatsApp, modalidades (delivery, retiro, en el local), promociones y el menú completo por categorías con buscador.
+
+El cliente arma su pedido en la página y lo envía por **WhatsApp** al restaurante con el detalle y el total estimado; si el asistente Niro está activo, lo toma desde ahí. Los datos salen de **Empresa → Ficha** (descripción, WhatsApp, Google Maps, horarios, modalidades) y del catálogo activo; nunca se muestran stock, costos ni clientes. Con **Mostrar en el marketplace** desmarcado, el restaurante deja de aparecer. Los restaurantes suspendidos no se listan.

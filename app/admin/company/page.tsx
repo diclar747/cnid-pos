@@ -230,6 +230,10 @@ export default function CompanyConfigPage() {
                   <Input id="businessTypeFicha" value={formData.businessType} onChange={(e) => handleInputChange("businessType", e.target.value)} placeholder="Restaurante, pizzería, cafetería…" />
                 </div>
               </div>
+              <label className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 text-sm dark:border-indigo-900 dark:bg-indigo-950/30">
+                <input type="checkbox" className="mt-0.5" checked={formData.showInMarketplace !== false} onChange={(e) => setFormData((prev) => ({ ...prev, showInMarketplace: e.target.checked }))} />
+                <span><span className="font-medium">Mostrar en el marketplace</span><span className="block text-muted-foreground">Tu ficha y tu menú aparecen en <a href="/marketplace" target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline">restopos · Marketplace</a> con botón de WhatsApp para pedir.</span></span>
+              </label>
               <fieldset className="space-y-2">
                 <legend className="text-sm font-medium">Modalidades de atención</legend>
                 <div className="flex flex-wrap gap-4">

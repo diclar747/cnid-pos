@@ -40,6 +40,8 @@ export interface CompanyConfig {
   longitude: string
   serviceModes: { dineIn: boolean; delivery: boolean; pickup: boolean }
   openingHours: OpeningDay[]
+  /** Aparece en el marketplace público de RestoPOS (por defecto sí). */
+  showInMarketplace: boolean
 }
 
 export interface OpeningDay {
@@ -93,6 +95,7 @@ const defaultCompanyConfig: CompanyConfig = {
   longitude: "",
   serviceModes: { dineIn: true, delivery: true, pickup: true },
   openingHours: defaultHours,
+  showInMarketplace: true,
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
