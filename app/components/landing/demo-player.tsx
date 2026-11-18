@@ -5,15 +5,13 @@ import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { LaptopFrame, PhoneFrame } from "./device-frame"
 
 // Reproductor de recorridos animados con capturas reales del sistema.
-// Cada cuadro hace un acercamiento suave hacia la zona destacada y muestra un subtítulo.
+// Cada cuadro muestra la pantalla completa (sin recortes), resalta la zona clave y muestra un subtítulo.
 
 export interface DemoFrame {
   src: string
   alt: string
   caption: string
   device?: "desktop" | "phone" | "ticket"
-  /** Punto (en %) hacia donde se acerca la cámara y cuánto. */
-  focus?: { x: number; y: number; zoom: number }
   /** Recuadro destacado, en % de la captura. */
   highlight?: { x: number; y: number; w: number; h: number }
 }
@@ -32,7 +30,7 @@ export default function DemoPlayer({ chapters }: { chapters: DemoChapter[] }) {
   const [frame, setFrame] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [progress, setProgress] = useState(0)
-  const [zoomed, setZoomed] = useState(false)
+  const [entered, setEntered] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const [visible, setVisible] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -76,11 +74,11 @@ export default function DemoPlayer({ chapters }: { chapters: DemoChapter[] }) {
     else goTo(chapter - 1, chapters[(chapter - 1 + chapters.length) % chapters.length].frames.length - 1)
   }, [chapter, frame, chapters, goTo])
 
-  // Acercamiento de cámara al cambiar de cuadro.
+  // Animación de entrada de cada cuadro (el resaltado aparece después de la captura).
   useEffect(() => {
-    setZoomed(false)
-    if (reducedMotion) return
-    const id = window.setTimeout(() => setZoomed(true), 60)
+    setEntered(false)
+    if (reducedMotion) { setEntered(true); return }
+    const id = window.setTimeout(() => setEntered(true), 60)
     return () => window.clearTimeout(id)
   }, [chapter, frame, reducedMotion])
 
@@ -114,34 +112,29 @@ export default function DemoPlayer({ chapters }: { chapters: DemoChapter[] }) {
     else if (event.key === " " && event.target === event.currentTarget) { event.preventDefault(); setPlaying((p) => !p) }
   }
 
-  const focus = shot.focus ?? { x: 50, y: 50, zoom: 1.04 }
   const image = (
-    <div className="relative h-full w-full overflow-hidden">
+    <>
       <img
         key={shot.src + chapter + frame}
         src={shot.src}
         alt={shot.alt}
-        className="h-full w-full object-cover object-top"
-        style={{
-          transformOrigin: `${focus.x}% ${focus.y}%`,
-          transform: zoomed ? `scale(${focus.zoom})` : "scale(1)",
-          transition: reducedMotion ? "none" : `transform ${FRAME_MS}ms cubic-bezier(.22,.61,.36,1)`,
-        }}
+        decoding="async"
+        className={`absolute inset-0 h-full w-full object-contain ${reducedMotion ? "" : "animate-in fade-in duration-700"}`}
       />
       {shot.highlight && (
         <span
           aria-hidden
-          className={`pointer-events-none absolute rounded-xl ring-4 ring-amber-400/90 ${reducedMotion ? "" : "animate-pulse"}`}
+          className="pointer-events-none absolute rounded-lg ring-[3px] ring-amber-400 sm:ring-4"
           style={{
             left: `${shot.highlight.x}%`, top: `${shot.highlight.y}%`, width: `${shot.highlight.w}%`, height: `${shot.highlight.h}%`,
-            transformOrigin: `${focus.x}% ${focus.y}%`,
-            transform: zoomed ? `scale(${focus.zoom})` : "scale(1)",
-            transition: reducedMotion ? "none" : `transform ${FRAME_MS}ms cubic-bezier(.22,.61,.36,1)`,
-            boxShadow: "0 0 0 9999px rgba(15,23,42,.18)",
+            boxShadow: "0 0 0 9999px rgba(15,23,42,.22), 0 0 24px 4px rgba(251,191,36,.45)",
+            opacity: entered ? 1 : 0,
+            transform: entered ? "scale(1)" : "scale(1.04)",
+            transition: reducedMotion ? "none" : "opacity 600ms ease 700ms, transform 600ms ease 700ms",
           }}
         />
       )}
-    </div>
+    </>
   )
 
   return (
@@ -190,7 +183,7 @@ export default function DemoPlayer({ chapters }: { chapters: DemoChapter[] }) {
       <div className="min-w-0">
         <div className="relative rounded-[2rem] bg-gradient-to-br from-indigo-100 via-white to-violet-100 p-4 sm:p-8 dark:from-indigo-950/60 dark:via-slate-900 dark:to-violet-950/50">
           {shot.device === "phone"
-            ? <PhoneFrame className="max-w-[15rem] sm:max-w-[17rem]">{image}</PhoneFrame>
+            ? <PhoneFrame className="max-w-[13rem] sm:max-w-[16rem]">{image}</PhoneFrame>
             : shot.device === "ticket"
               ? <div className="mx-auto flex aspect-[16/10] max-h-[32rem] items-center justify-center">
                   <img
@@ -198,7 +191,7 @@ export default function DemoPlayer({ chapters }: { chapters: DemoChapter[] }) {
                     src={shot.src}
                     alt={shot.alt}
                     className="h-full max-h-[30rem] w-auto rounded-md bg-white object-contain shadow-2xl shadow-slate-900/25"
-                    style={{ transform: zoomed ? "translateY(0) rotate(-1.5deg)" : "translateY(24px) rotate(0deg)", transition: reducedMotion ? "none" : "transform 1200ms cubic-bezier(.22,.61,.36,1)" }}
+                    style={{ transform: entered ? "translateY(0) rotate(-1.5deg)" : "translateY(24px) rotate(0deg)", transition: reducedMotion ? "none" : "transform 1200ms cubic-bezier(.22,.61,.36,1)" }}
                   />
                 </div>
               : <LaptopFrame>{image}</LaptopFrame>}

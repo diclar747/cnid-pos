@@ -128,6 +128,38 @@
       "namedRegex": "^/api/table/(?<nxtPcode>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/table/[code]/call",
+      "regex": "^/api/table/([^/]+?)/call(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/api/table/(?<nxtPcode>[^/]+?)/call(?:/)?$"
+    },
+    {
+      "page": "/api/table/[code]/manifest",
+      "regex": "^/api/table/([^/]+?)/manifest(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/api/table/(?<nxtPcode>[^/]+?)/manifest(?:/)?$"
+    },
+    {
+      "page": "/api/table/[code]/push",
+      "regex": "^/api/table/([^/]+?)/push(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/api/table/(?<nxtPcode>[^/]+?)/push(?:/)?$"
+    },
+    {
+      "page": "/api/table-calls/[id]",
+      "regex": "^/api/table\\-calls/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/table\\-calls/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/users/[id]",
       "regex": "^/api/users/([^/]+?)(?:/)?$",
       "routeKeys": {

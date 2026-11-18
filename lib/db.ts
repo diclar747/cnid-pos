@@ -53,6 +53,31 @@ async function currentSchema(): Promise<string> {
   return schema
 }
 
+export type SchemaQuery = <T extends QueryResultRow = any>(sql: string, values?: unknown[]) => Promise<QueryResult<T>>
+
+/**
+ * Consulta atada a un esquema fijo. Sirve para trabajo en segundo plano (por ejemplo
+ * notificaciones) que sigue después de responder, cuando ya no hay cookies de la petición.
+ * Sin esquema usa el del usuario de la sesión actual.
+ */
+export async function schemaQuery(schema?: string): Promise<SchemaQuery> {
+  const target = schema ?? await currentSchema()
+  if (!/^(public|restaurant_[0-9]+)$/.test(target)) throw new Error("Esquema inválido.")
+  return async (sql, values) => {
+    const client = await authDb.connect()
+    try {
+      await client.query("BEGIN")
+      await client.query(`SET LOCAL search_path TO "${target}"`)
+      const result = await client.query(sql, values)
+      await client.query("COMMIT")
+      return result
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined)
+      throw error
+    } finally { client.release() }
+  }
+}
+
 export const db = {
   async query<T extends QueryResultRow = any>(sql: string, values?: unknown[]): Promise<QueryResult<T>> {
     const schema = await currentSchema()

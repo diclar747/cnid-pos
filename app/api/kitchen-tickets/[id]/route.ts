@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionUser, hasPermission } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { db, schemaQuery } from "@/lib/db"
+import { notifyOrder, ticketStatusMessage } from "@/lib/web-push"
 import { logOrderEvent, mapTicket } from "@/lib/service-order-server"
 import type { KitchenStatus, ServiceOrderType } from "@/lib/service-order-types"
 
@@ -44,8 +45,8 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const client = await db.connect()
   try {
     await client.query("BEGIN")
-    const result = await client.query(`SELECT t.status, t.order_id, o.order_type FROM kitchen_tickets t
-      JOIN service_orders o ON o.id = t.order_id WHERE t.id = $1 FOR UPDATE OF t`, [id])
+    const result = await client.query(`SELECT t.status, t.order_id, o.order_type, dt.code AS table_code FROM kitchen_tickets t
+      JOIN service_orders o ON o.id = t.order_id LEFT JOIN dining_tables dt ON dt.id = o.table_id WHERE t.id = $1 FOR UPDATE OF t`, [id])
     const row = result.rows[0]
     if (!row) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Comanda no encontrada." }, { status: 404 }) }
     if (body.status !== nextStatus(row.status, row.order_type)) {
@@ -55,6 +56,11 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     await client.query("UPDATE kitchen_tickets SET status = $1, updated_at = NOW() WHERE id = $2", [body.status, id])
     await logOrderEvent(client, Number(row.order_id), "ticket_status", { status: body.status, ticketId: id, actor: { id: user.id, name: user.name } })
     await client.query("COMMIT")
+    const message = ticketStatusMessage(body.status, row.order_type)
+    if (message) {
+      const query = await schemaQuery()
+      void notifyOrder(query, Number(row.order_id), { ...message, url: row.table_code ? `/table/${row.table_code}` : undefined })
+    }
     return NextResponse.json({ ticket: await findTicket(id) })
   } catch (error) {
     await client.query("ROLLBACK")

@@ -1,4 +1,4 @@
-const CACHE = "cnid-pos-static-v2"
+const CACHE = "restopos-static-v3"
 const STATIC = ["/offline.html", "/pwa-192.png", "/pwa-512.png"]
 
 self.addEventListener("install", (event) => {
@@ -28,4 +28,30 @@ self.addEventListener("fetch", (event) => {
       return response
     })))
   }
+})
+
+// Notificaciones push: estado del pedido (clientes) y llamados de mesa (personal).
+self.addEventListener("push", (event) => {
+  let data = {}
+  try { data = event.data ? event.data.json() : {} } catch { data = { title: "RestoPOS", body: event.data ? event.data.text() : "" } }
+  const title = data.title || "RestoPOS"
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || "",
+    icon: "/pwa-192.png",
+    badge: "/pwa-192.png",
+    tag: data.tag || undefined,
+    renotify: Boolean(data.tag),
+    vibrate: [200, 100, 200],
+    data: { url: data.url || "/" },
+  }))
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || "/", self.location.origin).href
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+    const same = clients.find((client) => client.url === target) || clients.find((client) => new URL(client.url).origin === self.location.origin)
+    if (same) { same.focus(); if (same.url !== target && "navigate" in same) return same.navigate(target) ; return undefined }
+    return self.clients.openWindow(target)
+  }))
 })

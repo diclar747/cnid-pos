@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { Armchair, CheckCircle2, ChefHat, Minus, Plus, Search, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AppExtras, OrderProgress, ServiceActions, useGuestToast, useTicketChanges, type TableCall, type TableTicket } from "./table-service"
 
 type Option = { legacyId: number; name: string; price: number }
 type Group = { legacyId: number; name: string; required: boolean; multiple: boolean; options: Option[] }
@@ -12,7 +13,7 @@ type MenuProduct = { id: number; name: string; description: string; category: st
   stock: number; trackStock?: boolean; modifierGroups: Group[] }
 type CartLine = { key: string; product: MenuProduct; quantity: number; selectedModifiers: { groupId: number; optionId: number; name: string; price: number }[]; unitPrice: number }
 type MenuData = { restaurant: string; table: { id: number; label: string; roomName: string; seats: number; imageData: string };
-  products: MenuProduct[]; order: { id: number; total: number; items: { lineId: string; productName: string; quantity: number; subtotal: number; modifiers: { name: string }[] }[] } | null }
+  products: MenuProduct[]; calls: TableCall[]; order: { id: number; total: number; billedAt: string | null; tickets: TableTicket[]; items: { lineId: string; ticketId: number | null; productName: string; quantity: number; subtotal: number; modifiers: { name: string }[] }[] } | null }
 const money = (value: number) => `Gs ${value.toLocaleString("es-PY")}`
 
 export default function TableMenuPage() {
@@ -32,16 +33,25 @@ export default function TableMenuPage() {
   const [sending, setSending] = useState(false)
   const [success, setSuccess] = useState("")
   const pendingRequestId = useRef<string | null>(null)
-  const load = useCallback(async () => {
+  const toast = useGuestToast()
+  const load = useCallback(async (silent = false) => {
     try {
       const response = await fetch(`/api/table/${encodeURIComponent(code)}`, { cache: "no-store" })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error || "No se pudo abrir el menú.")
       setData(result); setError("")
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo abrir el menú.") }
+    } catch (cause) { if (!silent) setError(cause instanceof Error ? cause.message : "No se pudo abrir el menú.") }
     finally { setLoading(false) }
   }, [code])
   useEffect(() => { void load() }, [load])
+  // Estado en vivo: se consulta cada 8 s mientras la página está visible y al volver a ella.
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") void load(true) }
+    const timer = window.setInterval(refresh, 8000)
+    document.addEventListener("visibilitychange", refresh)
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", refresh) }
+  }, [load])
+  useTicketChanges(data?.order?.tickets, toast.show)
   const categories = useMemo(() => ["Todos", ...new Set((data?.products ?? []).map((product) => product.category).filter(Boolean))], [data?.products])
   const visible = useMemo(() => (data?.products ?? []).filter((product) =>
     (category === "Todos" || product.category === category) && (!search.trim() ||
@@ -91,6 +101,7 @@ export default function TableMenuPage() {
   if (loading) return <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-600">Cargando menú…</main>
   if (!data) return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-center"><div><h1 className="text-2xl font-bold">Mesa no disponible</h1><p className="mt-2 text-slate-600">{error}</p><Button className="mt-4" onClick={() => void load()}>Reintentar</Button></div></main>
   return <main className="min-h-screen bg-gradient-to-b from-indigo-50 via-white to-slate-50 pb-28 text-slate-900">
+    {toast.node}
     <header className="sticky top-0 z-20 border-b border-white/70 bg-white/90 px-4 py-3 shadow-sm backdrop-blur-xl"><div className="mx-auto flex max-w-6xl items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-indigo-600">Menú para pedir</p><h1 className="text-lg font-black">{data.restaurant}</h1></div><div className="rounded-xl bg-indigo-50 px-3 py-2 text-right text-xs text-indigo-900"><span className="block font-bold">{data.table.label}</span><span>{data.table.roomName}</span></div></div></header>
     <div className="mx-auto max-w-6xl px-4">
       <section className="relative mt-5 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-violet-700 to-blue-600 p-6 text-white shadow-xl shadow-indigo-300/40 sm:p-8" style={data.table.imageData ? { backgroundImage: `linear-gradient(90deg,rgba(30,27,75,.88),rgba(49,46,129,.45)),url(${data.table.imageData})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
@@ -98,6 +109,9 @@ export default function TableMenuPage() {
       </section>
       {success && <div role="status" className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"><CheckCircle2 className="h-5 w-5" /> {success}</div>}
       {error && <div role="alert" className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      {data.order && <OrderProgress tickets={data.order.tickets} />}
+      <ServiceActions code={code} calls={data.calls} hasOrder={Boolean(data.order)} billed={Boolean(data.order?.billedAt)} onCalled={() => void load(true)} notify={toast.show} />
+      <AppExtras code={code} orderId={data.order?.id ?? null} notify={toast.show} />
       {data.order && <details className="mt-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm"><summary className="cursor-pointer font-bold">Cuenta de {data.table.label} · orden #{data.order.id} <span className="float-right text-indigo-700">{money(data.order.total)}</span></summary><div className="mt-3 space-y-2 border-t pt-3 text-sm">{data.order.items.map((item) => <div key={item.lineId} className="flex justify-between gap-3"><span>{item.quantity} × {item.productName}{item.modifiers.length ? ` · ${item.modifiers.map((mod) => mod.name).join(", ")}` : ""}</span><strong>{money(item.subtotal)}</strong></div>)}</div></details>}
       <div className="mb-4 mt-7 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-indigo-600">Carta del día</p><h2 className="text-2xl font-black">Elegí tus favoritos</h2></div><p className="text-sm text-slate-500">{data.products.length} productos disponibles</p></div>
       <div className="relative mb-4"><Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar comida o bebida…" className="h-12 rounded-2xl border-indigo-100 bg-white pl-11 shadow-sm" /></div>

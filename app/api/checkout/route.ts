@@ -158,6 +158,9 @@ export async function POST(request: NextRequest) {
       await client.query(`UPDATE service_orders SET status = 'paid', sale_id = $1, customer_id = COALESCE(customer_id, $3),
         closed_at = NOW(), updated_at = NOW() WHERE id = $2`, [saved.rows[0].id, serviceOrder.id, customerId])
       await logOrderEvent(client, serviceOrder.id, "paid", { status: paymentMethod, note: `Venta #${saved.rows[0].id}`, actor: { id: user.id, name: user.name } })
+      // Con la cuenta cobrada se cierran los llamados pendientes de esa mesa.
+      if (serviceOrder.tableId) await client.query(`UPDATE table_calls SET status = 'attended', attended_at = NOW(), attended_by = $2, attended_by_name = $3
+        WHERE table_id = $1 AND status = 'open'`, [serviceOrder.tableId, Number(user.id), user.name])
     }
     await client.query("COMMIT")
     return NextResponse.json({ sale: { ...sale, id: Number(saved.rows[0].id) } }, { status: 201 })

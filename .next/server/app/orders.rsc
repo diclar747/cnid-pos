@@ -1,27 +1,28 @@
 1:"$Sreact.fragment"
-2:I[30421,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"PwaRegistration"]
-3:I[62632,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"AuthProvider"]
-4:I[44433,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"ThemeProvider"]
-5:I[79407,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"CompanyProvider"]
-6:I[33814,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"SalesProvider"]
-7:I[56094,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"PurchasesProvider"]
-8:I[73313,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"SuppliersProvider"]
-9:I[67656,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"CartProvider"]
-a:I[89846,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"NotificationsProvider"]
+2:I[30421,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"PwaRegistration"]
+3:I[62632,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"AuthProvider"]
+4:I[44433,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"ThemeProvider"]
+5:I[79407,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"CompanyProvider"]
+6:I[33814,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"SalesProvider"]
+7:I[56094,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"PurchasesProvider"]
+8:I[73313,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"SuppliersProvider"]
+9:I[67656,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"CartProvider"]
+a:I[89846,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"NotificationsProvider"]
 b:I[87555,[],""]
 c:I[31295,[],""]
-d:I[11024,["3455","static/chunks/3455-3d153d6b4589b0b2.js","4345","static/chunks/app/not-found-a9992ca0502cae8f.js"],"default"]
-e:I[90894,[],"ClientPageRoot"]
-f:I[20995,["3455","static/chunks/3455-3d153d6b4589b0b2.js","1544","static/chunks/1544-661ea179525244f1.js","3568","static/chunks/3568-4d89cea2efa612bb.js","1476","static/chunks/1476-fc9b043f71c4bb88.js","8721","static/chunks/8721-49b6687213992240.js","1778","static/chunks/app/orders/page-71a2c27ca4c1d080.js"],"default"]
-12:I[59665,[],"OutletBoundary"]
-15:I[59665,[],"ViewportBoundary"]
-17:I[59665,[],"MetadataBoundary"]
-19:I[26614,[],""]
-:HL["/_next/static/css/3ceecb59ced83acd.css","style"]
-0:{"P":null,"b":"sd3SUsBKyZKUDzaaQScI0","p":"","c":["","orders"],"i":false,"f":[[["",{"children":["orders",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/3ceecb59ced83acd.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"es","suppressHydrationWarning":true,"children":["$","body",null,{"className":"font-sans","suppressHydrationWarning":true,"children":[["$","$L2",null,{}],["$","$L3",null,{"children":["$","$L4",null,{"children":["$","$L5",null,{"children":["$","$L6",null,{"children":["$","$L7",null,{"children":["$","$L8",null,{"children":["$","$L9",null,{"children":["$","$La",null,{"children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]}]}]}]}]}]}]]}]}]]}],{"children":["orders",["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$Le",null,{"Component":"$f","searchParams":{},"params":{},"promises":["$@10","$@11"]}],"$undefined",null,["$","$L12",null,{"children":["$L13","$L14",null]}]]}],{},null,false]},null,false]},[["$","div","l",{"className":"min-h-screen flex items-center justify-center bg-background","children":["$","div",null,{"className":"flex flex-col items-center space-y-4","children":[["$","div",null,{"className":"animate-spin rounded-full h-12 w-12 border-b-2 border-primary"}],["$","p",null,{"className":"text-muted-foreground","children":"Cargando..."}]]}]}],[],[]],false],["$","$1","h",{"children":[null,["$","$1","Cpwt16BzXL3o01ltaKePI",{"children":[["$","$L15",null,{"children":"$L16"}],null]}],["$","$L17",null,{"children":"$L18"}]]}],false]],"m":"$undefined","G":["$19","$undefined"],"s":false,"S":true}
-10:{}
+d:I[11024,["3455","static/chunks/3455-3d153d6b4589b0b2.js","4345","static/chunks/app/not-found-2a7c3008bc1353d1.js"],"default"]
+e:I[52094,["3455","static/chunks/3455-3d153d6b4589b0b2.js","7177","static/chunks/app/layout-b77ab07c50f6b8ae.js"],"TableCallsListener"]
+f:I[90894,[],"ClientPageRoot"]
+10:I[20995,["3455","static/chunks/3455-3d153d6b4589b0b2.js","1544","static/chunks/1544-661ea179525244f1.js","3568","static/chunks/3568-4d89cea2efa612bb.js","1476","static/chunks/1476-fc9b043f71c4bb88.js","1360","static/chunks/1360-e4acdbb7e26f2f79.js","1778","static/chunks/app/orders/page-ce2f253705f399fc.js"],"default"]
+13:I[59665,[],"OutletBoundary"]
+16:I[59665,[],"ViewportBoundary"]
+18:I[59665,[],"MetadataBoundary"]
+1a:I[26614,[],""]
+:HL["/_next/static/css/851ee9cf721153fa.css","style"]
+0:{"P":null,"b":"kuNfBE4p5FcQ73eVeF9Q3","p":"","c":["","orders"],"i":false,"f":[[["",{"children":["orders",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/851ee9cf721153fa.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"es","suppressHydrationWarning":true,"children":["$","body",null,{"className":"font-sans","suppressHydrationWarning":true,"children":[["$","$L2",null,{}],["$","$L3",null,{"children":["$","$L4",null,{"children":["$","$L5",null,{"children":["$","$L6",null,{"children":["$","$L7",null,{"children":["$","$L8",null,{"children":["$","$L9",null,{"children":["$","$La",null,{"children":[["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}],["$","$Le",null,{}]]}]}]}]}]}]}]}]}]]}]}]]}],{"children":["orders",["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$Lf",null,{"Component":"$10","searchParams":{},"params":{},"promises":["$@11","$@12"]}],"$undefined",null,["$","$L13",null,{"children":["$L14","$L15",null]}]]}],{},null,false]},null,false]},[["$","div","l",{"className":"min-h-screen flex items-center justify-center bg-background","children":["$","div",null,{"className":"flex flex-col items-center space-y-4","children":[["$","div",null,{"className":"animate-spin rounded-full h-12 w-12 border-b-2 border-primary"}],["$","p",null,{"className":"text-muted-foreground","children":"Cargando..."}]]}]}],[],[]],false],["$","$1","h",{"children":[null,["$","$1","W_piOnbJDSNkZDHm1pRSG",{"children":[["$","$L16",null,{"children":"$L17"}],null]}],["$","$L18",null,{"children":"$L19"}]]}],false]],"m":"$undefined","G":["$1a","$undefined"],"s":false,"S":true}
 11:{}
-16:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, viewport-fit=cover"}],["$","meta","2",{"name":"theme-color","content":"#0f172a"}]]
-13:null
+12:{}
+17:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, viewport-fit=cover"}],["$","meta","2",{"name":"theme-color","content":"#0f172a"}]]
 14:null
-18:[["$","title","0",{"children":"RestoPOS"}],["$","meta","1",{"name":"description","content":"Sistema de punto de venta completo para restaurantes y comercios"}],["$","link","2",{"rel":"manifest","href":"/manifest.webmanifest","crossOrigin":"$undefined"}],["$","meta","3",{"name":"mobile-web-app-capable","content":"yes"}],["$","meta","4",{"name":"apple-mobile-web-app-title","content":"RestoPOS"}],["$","meta","5",{"name":"apple-mobile-web-app-status-bar-style","content":"default"}],["$","link","6",{"rel":"icon","href":"/pwa-192.png"}],["$","link","7",{"rel":"apple-touch-icon","href":"/pwa-192.png"}]]
+15:null
+19:[["$","title","0",{"children":"RestoPOS"}],["$","meta","1",{"name":"description","content":"Sistema de punto de venta completo para restaurantes y comercios"}],["$","link","2",{"rel":"manifest","href":"/manifest.webmanifest","crossOrigin":"$undefined"}],["$","meta","3",{"name":"mobile-web-app-capable","content":"yes"}],["$","meta","4",{"name":"apple-mobile-web-app-title","content":"RestoPOS"}],["$","meta","5",{"name":"apple-mobile-web-app-status-bar-style","content":"default"}],["$","link","6",{"rel":"icon","href":"/pwa-192.png"}],["$","link","7",{"rel":"apple-touch-icon","href":"/pwa-192.png"}]]

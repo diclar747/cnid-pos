@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ChefHat, Clock3, Printer, RefreshCw, Truck } from "lu
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import ProtectedRoute from "../components/protected-route"
+import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
 import type { KitchenStatus, KitchenTicket } from "@/lib/service-order-types"
 
@@ -57,7 +58,7 @@ export default function KitchenPage() {
 
   return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-violet-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-6">
     <div className="mx-auto max-w-[1800px]">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button><h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><ChefHat className="h-8 w-8 text-amber-600" /> Cocina y delivery</h1><p className="text-muted-foreground">Las comandas aparecen automáticamente y avanzan hasta la entrega.</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => router.push("/orders")}>Ver órdenes</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div></header>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button><h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><ChefHat className="h-8 w-8 text-amber-600" /> Cocina y delivery</h1><p className="text-muted-foreground">Las comandas aparecen automáticamente y avanzan hasta la entrega.</p></div><div className="flex flex-wrap gap-2"><StaffPushButton /><Button variant="outline" onClick={() => router.push("/orders")}>Ver órdenes</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div></header>
       <div className="mb-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-800 p-5 text-white shadow-lg"><span className="text-sm text-indigo-100">Comandas activas</span><strong className="ml-4 text-3xl">{activeCount}</strong><span className="ml-4 text-xs text-indigo-200">Se actualiza cada 8 segundos</span></div>
       {loading ? <p className="py-12 text-center text-muted-foreground">Cargando cocina…</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">{columns.map((column) => {
         const Icon = column.icon

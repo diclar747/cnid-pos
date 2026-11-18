@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
+import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
 import type { Courier, DeliveryZone, KitchenTicket, OrderEvent, ServiceOrder, StaffMember } from "@/lib/service-order-types"
 import type { DiningTable } from "@/lib/dining-types"
@@ -170,7 +171,7 @@ export default function OrdersPage() {
     <div className="mx-auto max-w-7xl">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div><Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button><h1 className="text-3xl font-bold tracking-tight">Órdenes y cuentas</h1><p className="text-muted-foreground">Asigná una mesa o tarjeta, sumá consumos y cobrá cuando termine.</p></div>
-        <div className="flex flex-wrap gap-2">{hasPermission("manage_company") && <Button variant="outline" onClick={() => router.push("/admin/dining")}><Armchair className="mr-2 h-4 w-4" /> Mesas</Button>}<Button variant="outline" onClick={() => router.push("/orders/cards")}><Ticket className="mr-2 h-4 w-4" /> Tarjetas QR</Button><Button variant="outline" onClick={() => router.push("/kitchen")}><ChefHat className="mr-2 h-4 w-4" /> Cocina</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div>
+        <div className="flex flex-wrap gap-2"><StaffPushButton />{hasPermission("manage_company") && <Button variant="outline" onClick={() => router.push("/admin/dining")}><Armchair className="mr-2 h-4 w-4" /> Mesas</Button>}<Button variant="outline" onClick={() => router.push("/orders/cards")}><Ticket className="mr-2 h-4 w-4" /> Tarjetas QR</Button><Button variant="outline" onClick={() => router.push("/kitchen")}><ChefHat className="mr-2 h-4 w-4" /> Cocina</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div>
       </header>
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg"><p className="text-sm opacity-80">Cuentas abiertas</p><strong className="text-3xl">{orders.filter((order) => order.status === "open").length}</strong></div>
