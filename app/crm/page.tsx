@@ -118,11 +118,10 @@ export default function CrmPage() {
     delivery: columns.find((c) => c.id === "delivery")?.items.length ?? 0, sales: items.filter((item) => item.order.status === "paid").reduce((sum, item) => sum + item.order.grandTotal, 0) }
 
   return <ProtectedRoute requiredPermissions={["access_pos"]}>
-    <main className="flex h-dvh flex-col bg-slate-100 dark:bg-slate-950">
+    <main className="flex h-full min-h-[36rem] flex-col bg-slate-100/70 dark:bg-slate-950">
       <header className="border-b bg-white px-4 py-3 dark:bg-slate-900 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.push("/pos")} aria-label="Volver al POS"><ArrowLeft className="h-5 w-5" /></Button>
             <div><h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight"><KanbanSquare className="h-6 w-6 text-indigo-600" /> Pedidos en vivo</h1>
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Radio className={`h-3.5 w-3.5 ${live ? "text-emerald-500" : "text-slate-400"}`} />
                 {live ? "Conectado en tiempo real" : "Actualizando cada 15 s"} · arrastrá una tarjeta o usá «Avanzar»</p></div>

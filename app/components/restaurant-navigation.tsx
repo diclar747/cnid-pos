@@ -1,15 +1,24 @@
 "use client"
 
 import Link from "next/link"
-import { ChefHat, ClipboardList, QrCode, Armchair, Banknote, KanbanSquare, MessageCircle } from "lucide-react"
-import { openWhatsAppChat, useWhatsAppSummary } from "./whatsapp-drawer"
+import { ChefHat, ClipboardList, QrCode, Armchair, Banknote, KanbanSquare, MessageCircle, ShoppingCart } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { useWhatsAppSummary } from "./whatsapp-drawer"
 import { useAuth } from "@/app/context/auth-context"
 
 type Destination = { href: string; label: string; detail: string; icon: typeof ChefHat; color: string; iconColor: string; permission?: string; chat?: boolean }
 
 const destinations: Destination[] = [
   {
-    href: "/admin/whatsapp",
+    href: "/pos",
+    label: "Punto de venta",
+    detail: "Vender y cobrar",
+    icon: ShoppingCart,
+    color: "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200",
+    iconColor: "bg-blue-600 text-white",
+  },
+  {
+    href: "/whatsapp",
     label: "WhatsApp",
     detail: "Chats y pedidos",
     icon: MessageCircle,
@@ -50,7 +59,7 @@ const destinations: Destination[] = [
     iconColor: "bg-emerald-600 text-white",
   },
   {
-    href: "/admin/dining",
+    href: "/mesas",
     label: "Mesas",
     detail: "Salones y QR",
     icon: Armchair,
@@ -74,6 +83,7 @@ export default function RestaurantNavigation({ variant = "toolbar" }: { variant?
   const whatsapp = useWhatsAppSummary(hasPermission("access_pos"))
   const isSidebar = variant === "sidebar"
   const isRail = variant === "rail"
+  const pathname = usePathname() ?? ""
 
   return (
     <nav aria-label="Opciones del restaurante" className={isRail ? "grid justify-items-center gap-2" : isSidebar ? "grid gap-2" : "grid w-full grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7 2xl:max-w-[1250px]"}>
@@ -81,9 +91,9 @@ export default function RestaurantNavigation({ variant = "toolbar" }: { variant?
         <Link
           key={href}
           href={href}
-          onClick={chat ? (event) => { event.preventDefault(); openWhatsAppChat() } : undefined}
+          aria-current={pathname === href ? "page" : undefined}
           title={isRail ? label : undefined}
-          className={`group flex min-w-0 items-center rounded-xl border shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${color} ${isRail ? "h-11 w-11 justify-center p-1" : isSidebar ? "gap-2.5 px-2.5 py-2" : "flex-col gap-1 px-1 py-2 text-center sm:flex-row sm:gap-2 sm:px-2 sm:py-3 sm:text-left"}`}
+          className={`group flex min-w-0 items-center rounded-xl border shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${color} ${pathname === href ? "ring-2 ring-slate-900/25 ring-offset-1 font-semibold shadow-md dark:ring-white/40 dark:ring-offset-slate-900" : ""} ${isRail ? "h-11 w-11 justify-center p-1" : isSidebar ? "gap-2.5 px-2.5 py-2" : "flex-col gap-1 px-1 py-2 text-center sm:flex-row sm:gap-2 sm:px-2 sm:py-3 sm:text-left"}`}
         >
           <span className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconColor}`}>
             <Icon className="h-4 w-4" aria-hidden="true" />

@@ -1,4 +1,4 @@
-const CACHE = "restopos-static-v4"
+const CACHE = "restopos-static-v5"
 const STATIC = ["/offline.html", "/pwa-192.png", "/pwa-512.png", "/landing/panel.webp", "/landing/pos.webp", "/landing/cocina.webp", "/landing/mesa-qr.webp", "/landing/ordenes.webp"]
 
 self.addEventListener("install", (event) => {

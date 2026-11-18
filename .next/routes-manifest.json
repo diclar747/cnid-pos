@@ -23,6 +23,14 @@
       "namedRegex": "^/api/announcements/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/brand/[kind]",
+      "regex": "^/api/brand/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPkind": "nxtPkind"
+      },
+      "namedRegex": "^/api/brand/(?<nxtPkind>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/card-lookup/[code]",
       "regex": "^/api/card\\-lookup/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -102,6 +110,14 @@
         "nxtPslug": "nxtPslug"
       },
       "namedRegex": "^/api/marketplace/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/marketplace/[slug]/cover",
+      "regex": "^/api/marketplace/([^/]+?)/cover(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/api/marketplace/(?<nxtPslug>[^/]+?)/cover(?:/)?$"
     },
     {
       "page": "/api/marketplace/[slug]/image/[id]",
@@ -456,6 +472,12 @@
       "namedRegex": "^/marketplace(?:/)?$"
     },
     {
+      "page": "/mesas",
+      "regex": "^/mesas(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/mesas(?:/)?$"
+    },
+    {
       "page": "/orders",
       "regex": "^/orders(?:/)?$",
       "routeKeys": {},
@@ -502,6 +524,12 @@
       "regex": "^/welcome(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/welcome(?:/)?$"
+    },
+    {
+      "page": "/whatsapp",
+      "regex": "^/whatsapp(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/whatsapp(?:/)?$"
     }
   ],
   "dataRoutes": [],

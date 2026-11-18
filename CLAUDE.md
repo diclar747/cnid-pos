@@ -13,7 +13,8 @@ Next.js 15, React 19, TypeScript, Tailwind CSS y PostgreSQL local. El paquete se
 - `lib/auth.ts`: sesiones y contraseñas.
 - `app/context`: estado de la interfaz y llamadas a las API.
 - `app/admin`, `app/pos`, `app/checkout`: pantallas principales; `app/crm` (tablero en vivo), `app/cash` (caja), `app/kitchen`, `app/table/[code]` (QR de mesa).
-- Un esquema PostgreSQL por restaurante; migraciones por restaurante en `scripts/06…13-*.sql`, registradas en `scripts/setup-local-db.mjs` y `lib/restaurant-admin.ts`.
+- Un esquema PostgreSQL por restaurante; migraciones por restaurante en `scripts/06…14-*.sql`, registradas en `scripts/setup-local-db.mjs` y `lib/restaurant-admin.ts`.
+- `app/components/workspace-shell.tsx`: marco único (encabezado + «Opciones») para POS, WhatsApp, Pedidos, Órdenes, Cocina, Tarjetas QR, Mesas y Caja; las secciones ponen buscador o categorías con `WorkspaceSlot`. Apariencia del restaurante (logo, portada, color, encabezado) en `app/admin/company/branding-panel.tsx` y `/api/brand/[kind]`.
 - `lib/cash.ts` (caja y pagos) y `lib/credit.ts` (cuenta corriente: cargos, abonos y ajustes); el cobro se hace en `app/components/payment-dialog.tsx`.
 - `lib/marketplace.ts` + `app/marketplace`: vitrina pública de restaurantes activos con ficha y menú (pedido por WhatsApp).
 - `lib/order-flow.ts`: flujo de estados de comandas y avisos al cliente (push y WhatsApp). `lib/realtime.ts` + `/api/events`: tiempo real (LISTEN/NOTIFY + SSE).

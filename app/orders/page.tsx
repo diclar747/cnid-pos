@@ -151,11 +151,11 @@ export default function OrdersPage() {
     </article>
   }
 
-  return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/50 to-sky-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-6">
+  return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="min-h-full bg-gradient-to-br from-slate-50 via-indigo-50/50 to-sky-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-6">
     <div className="mx-auto max-w-7xl">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div><Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button><h1 className="text-3xl font-bold tracking-tight">Órdenes y cuentas</h1><p className="text-muted-foreground">Asigná una mesa o tarjeta, sumá consumos y cobrá cuando termine.</p></div>
-        <div className="flex flex-wrap gap-2"><StaffPushButton />{hasPermission("manage_company") && <Button variant="outline" onClick={() => router.push("/admin/dining")}><Armchair className="mr-2 h-4 w-4" /> Mesas</Button>}<Button variant="outline" onClick={() => router.push("/orders/cards")}><Ticket className="mr-2 h-4 w-4" /> Tarjetas QR</Button><Button variant="outline" onClick={() => router.push("/kitchen")}><ChefHat className="mr-2 h-4 w-4" /> Cocina</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div>
+        <div><h1 className="text-3xl font-bold tracking-tight">Órdenes y cuentas</h1><p className="text-muted-foreground">Asigná una mesa o tarjeta, sumá consumos y cobrá cuando termine.</p></div>
+        <div className="flex flex-wrap gap-2"><StaffPushButton />{hasPermission("manage_company") && <Button variant="outline" onClick={() => router.push("/mesas")}><Armchair className="mr-2 h-4 w-4" /> Mesas</Button>}<Button variant="outline" onClick={() => router.push("/orders/cards")}><Ticket className="mr-2 h-4 w-4" /> Tarjetas QR</Button><Button variant="outline" onClick={() => router.push("/kitchen")}><ChefHat className="mr-2 h-4 w-4" /> Cocina</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div>
       </header>
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-5 text-white shadow-lg"><p className="text-sm opacity-80">Cuentas abiertas</p><strong className="text-3xl">{orders.filter((order) => order.status === "open").length}</strong></div>

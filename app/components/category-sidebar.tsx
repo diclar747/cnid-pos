@@ -21,12 +21,9 @@ import {
   Package,
   AlertTriangle,
   CheckCircle,
-  PanelLeftClose,
-  PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react"
 import { useCart } from "../context/cart-context"
-import RestaurantNavigation from "./restaurant-navigation"
 
 interface CategorySidebarProps {
   selectedCategory: string
@@ -34,7 +31,6 @@ interface CategorySidebarProps {
   selectedFilter: string
   onFilterChange: (filter: string) => void
   collapsed?: boolean
-  onToggleCollapse?: () => void
 }
 
 type CategoryStyle = { icon: LucideIcon; color: string }
@@ -64,7 +60,6 @@ export default function CategorySidebar({
   selectedFilter,
   onFilterChange,
   collapsed = false,
-  onToggleCollapse,
 }: CategorySidebarProps) {
   const { products: allProducts } = useCart()
   // Igual que la grilla del POS: los productos inactivos no se cuentan ni generan categorías.
@@ -103,12 +98,6 @@ export default function CategorySidebar({
   if (collapsed) {
     return (
       <div className="flex h-full min-h-0 flex-col items-center bg-background">
-        <div className="flex w-full flex-col items-center gap-2 border-b px-2 py-3">
-          <Button variant="ghost" size="icon" onClick={onToggleCollapse} aria-label="Expandir categorías" title="Expandir categorías">
-            <PanelLeftOpen className="h-5 w-5" />
-          </Button>
-          <RestaurantNavigation variant="rail" />
-        </div>
         <ScrollArea className="min-h-0 w-full flex-1">
           <div className="flex flex-col items-center gap-2 py-3">
             {categories.map((category) => {
@@ -142,16 +131,7 @@ export default function CategorySidebar({
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b p-3">
-        <div className="mb-2 flex items-center justify-between pl-1">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Opciones</h2>
-          {onToggleCollapse && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleCollapse} aria-label="Minimizar categorías" title="Minimizar categorías">
-            <PanelLeftClose className="h-4 w-4" />
-          </Button>}
-        </div>
-        <RestaurantNavigation variant="sidebar" />
-      </div>
+    <div className="flex h-full min-h-0 flex-col">
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg mb-2">Categorías</h2>
         <div className="text-sm text-muted-foreground">{products.length} productos disponibles</div>

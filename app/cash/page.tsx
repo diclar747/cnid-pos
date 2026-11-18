@@ -72,11 +72,10 @@ export default function CashPage() {
   const difference = summary ? countedValue - summary.expectedCash : 0
 
   return <ProtectedRoute requiredPermissions={["manage_sales"]}>
-    <main className="min-h-screen bg-slate-50 px-4 py-6 dark:bg-slate-950 sm:px-6">
+    <main className="min-h-full px-4 py-6 sm:px-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button>
             <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><Banknote className="h-8 w-8 text-emerald-600" /> Caja</h1>
             <p className="text-muted-foreground">Apertura, ventas por medio de pago, ingresos, egresos y cierre con arqueo.</p>
           </div>

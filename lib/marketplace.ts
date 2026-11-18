@@ -57,6 +57,12 @@ function imageUrl(value: unknown, fallback: string) {
   return ""
 }
 
+/** Logo o portada subidos desde Empresa → Apariencia: se sirven por la ruta pública del marketplace. */
+function brandUrl(value: unknown, slug: string, kind: "logo" | "cover") {
+  const match = typeof value === "string" ? value.match(/^\/api\/brand\/(logo|cover)(?:\?v=([a-z0-9]{1,16}))?$/) : null
+  return match && match[1] === kind ? `/api/marketplace/${slug}/${kind}${match[2] ? `?v=${match[2]}` : ""}` : ""
+}
+
 async function restaurantRows(slug?: string) {
   const result = await authDb.query(`SELECT id, name, slug, schema_name, phone, address FROM public.restaurants
     WHERE status = 'active' ${slug ? "AND slug = $1" : ""} ORDER BY name`, slug ? [slug] : [])
@@ -83,7 +89,8 @@ function profile(row: any, config: any, session: any, products: MarketplaceProdu
     phone: text(config.phone, 40) || text(row.phone, 40), whatsapp, website: /^https?:\/\//.test(config.website ?? "") ? text(config.website, 200) : "",
     mapsUrl: /^https:\/\//.test(config.mapsUrl ?? "") ? text(config.mapsUrl, 300) : "",
     latitude: coordinate(config.latitude), longitude: coordinate(config.longitude),
-    logo: imageUrl(config.logo, `/api/marketplace/${row.slug}/logo`), cover: products.find((p) => p.image)?.image ?? "",
+    logo: brandUrl(config.logo, row.slug, "logo") || imageUrl(config.logo, `/api/marketplace/${row.slug}/logo`),
+    cover: brandUrl(config.coverImage, row.slug, "cover") || products.find((p) => p.image)?.image || "",
     color: /^#[0-9a-f]{6}$/i.test(config.colors?.primary ?? "") ? config.colors.primary : "#4f46e5",
     serviceModes: { dineIn: modes.dineIn !== false, delivery: modes.delivery !== false, pickup: modes.pickup !== false },
     openingHours: hours, ...openState(hours), productCount: products.length, categories, promoCount: products.filter((p) => p.price < p.regularPrice).length,
@@ -129,10 +136,18 @@ export async function getRestaurant(slug: string) {
 }
 
 /** Logo o foto subida en base64: se sirve como archivo para no inflar el listado. */
-export async function storedImage(slug: string, productId: number | null) {
+export async function storedImage(slug: string, productId: number | "cover" | null) {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null
   const row = (await restaurantRows(slug))[0]
   if (!row) return null
+  if (productId == null || productId === "cover") {
+    const shown = (await authDb.query(`SELECT data->>'showInMarketplace' AS shown FROM "${row.schema_name}".company_config WHERE id = 1`)).rows[0]?.shown
+    if (shown === "false") return null
+    const asset = (await authDb.query(`SELECT mime, data FROM "${row.schema_name}".brand_assets WHERE kind = $1`, [productId === "cover" ? "cover" : "logo"])
+      .catch(() => ({ rows: [] as any[] }))).rows[0]
+    if (asset) return { mime: String(asset.mime), data: Buffer.from(asset.data) }
+    if (productId === "cover") return null
+  }
   const value = productId == null
     ? (await authDb.query(`SELECT data->>'logo' AS image, data->>'showInMarketplace' AS shown FROM "${row.schema_name}".company_config WHERE id = 1`)).rows[0]
     : (await authDb.query(`SELECT data->>'image' AS image FROM "${row.schema_name}".products WHERE id = $1 AND data->>'isActive' IS DISTINCT FROM 'false'`, [productId])).rows[0]

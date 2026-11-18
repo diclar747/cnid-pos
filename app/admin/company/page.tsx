@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useCompany } from "../../context/company-context"
+import BrandingPanel from "./branding-panel"
 import { Building2, Save, Upload } from "lucide-react"
 import { toast } from "react-hot-toast"
 
@@ -80,7 +81,7 @@ export default function CompanyConfigPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="ficha">Ficha</TabsTrigger>
           <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="branding">Apariencia</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
           <TabsTrigger value="facturacion">Facturación</TabsTrigger>
         </TabsList>
@@ -349,71 +350,7 @@ export default function CompanyConfigPage() {
         </TabsContent>
 
         <TabsContent value="branding" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Imagen Corporativa</CardTitle>
-              <CardDescription>Logo y colores de la empresa</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="logo">Logo de la Empresa</Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id="logo"
-                    value={formData.logo || ""}
-                    onChange={(e) => handleInputChange("logo", e.target.value)}
-                    placeholder="URL del logo o ruta del archivo"
-                  />
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Subir
-                  </Button>
-                </div>
-                {formData.logo && (
-                  <div className="mt-2">
-                    <img src={formData.logo || "/placeholder.svg"} alt="Logo" className="h-16 w-auto border rounded" />
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Color Primario</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="primaryColor"
-                      type="color"
-                      value={formData.colors?.primary || "#3b82f6"}
-                      onChange={(e) => handleNestedInputChange("colors", "primary", e.target.value)}
-                      className="w-16 h-10"
-                    />
-                    <Input
-                      value={formData.colors?.primary || "#3b82f6"}
-                      onChange={(e) => handleNestedInputChange("colors", "primary", e.target.value)}
-                      placeholder="#3b82f6"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">Color Secundario</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="secondaryColor"
-                      type="color"
-                      value={formData.colors?.secondary || "#64748b"}
-                      onChange={(e) => handleNestedInputChange("colors", "secondary", e.target.value)}
-                      className="w-16 h-10"
-                    />
-                    <Input
-                      value={formData.colors?.secondary || "#64748b"}
-                      onChange={(e) => handleNestedInputChange("colors", "secondary", e.target.value)}
-                      placeholder="#64748b"
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <BrandingPanel formData={formData} setFormData={setFormData} />
         </TabsContent>
 
         <TabsContent value="social" className="space-y-6">
