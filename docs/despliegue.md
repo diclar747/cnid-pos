@@ -124,8 +124,8 @@ El panel corre cada sitio en un contenedor Node 22: clona el repositorio, ejecut
    | `DATABASE_URL` | `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE` |
    | `SESSION_COOKIE_SECURE` | `true` |
    | `SEED_SAMPLE_DATA` | `false` (no crea cuentas ni productos de ejemplo) |
-   | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` / `INITIAL_ADMIN_NAME` | Administrador de «De la Casa» (contraseña de 10+ caracteres). Solo se usa si la base no tiene usuarios. |
-   | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | Cuenta central (contraseña de 14+ caracteres). Solo se crea si no existe. |
+   | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_NAME` | Administrador de «De la Casa». Solo se usa si la base no tiene usuarios. `INITIAL_ADMIN_PASSWORD` (10+ caracteres) es opcional: si falta, se genera y se muestra **una vez** en **Registros**. |
+   | `SUPERADMIN_EMAIL` | Cuenta central; solo se crea si no existe. `SUPERADMIN_PASSWORD` (14+ caracteres) es opcional: si falta, se genera y se muestra una vez en **Registros**. |
 
    Después del primer arranque podés borrar las variables de contraseña: las cuentas ya quedan en la base.
 4. **Despliegue:** URL `https://github.com/diclar747/cnid-pos` (sin credenciales), rama **`panel`**. El panel compila con 1 vCPU y corta a los 10 minutos, y `next build` no entra; por eso se despliega la rama `panel`, que ya trae `.next` compilado: el panel solo instala dependencias (~3 min) y `scripts/build.mjs` omite la compilación al ver `.next/PREBUILT`. El repositorio es público; si vuelve a ser privado, el panel necesita un token cargado desde el botón **Git** de la tarjeta del sitio.
