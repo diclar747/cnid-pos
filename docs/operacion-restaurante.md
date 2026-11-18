@@ -36,3 +36,19 @@ En **Administración → Salones y mesas** creá los espacios del local. Cada sa
 El personal escanea el QR de mesa desde el buscador superior del POS o abre la mesa desde esta pantalla. Si ya existe una cuenta, se recupera; si está libre, se abre una nueva. También se puede elegir la mesa al guardar o enviar una cuenta desde el carrito y cambiarla desde **Órdenes → Datos**.
 
 El cliente abre el mismo QR en su teléfono, busca productos, elige agregados y envía el carrito. El sistema crea una comanda, la coloca en el tablero **Cocina** y descuenta el stock de los productos controlados. Los reintentos del mismo envío no duplican la comanda. La cuenta acumulada se puede consultar desde la página de la mesa. Por ahora el cobro se realiza en el POS; el QR no procesa pagos en línea. El teléfono y el servidor deben estar en la misma red local.
+
+## Clientes
+
+Cada pedido con teléfono (o cobro con RUC) registra o actualiza al cliente del restaurante: nombre, teléfono, RUC, dirección, cantidad de compras, total gastado y última compra. En **Administración → Clientes** se buscan por nombre, teléfono o RUC, se editan sus datos y se ven sus compras con el ticket de cada una. El teléfono se guarda con código de país (595…) para usarlo después con WhatsApp.
+
+## Delivery por zonas
+
+En **Administración → Delivery** se cargan las zonas (barrios o ciudades, costo de envío, monto para envío gratis y demora estimada) y los repartidores. Al abrir una cuenta de delivery desde el POS se elige la zona y la dirección; el envío se suma solo y se recalcula si cambian los consumos (gratis al superar el monto configurado). El repartidor se asigna desde **Órdenes → Datos** y aparece en la comanda, el tablero de cocina y el ticket. El cobro incluye el envío; el ticket muestra subtotal, envío y total.
+
+## Historial y confirmación de pedidos
+
+Cada orden guarda su historial: creación, productos agregados, envíos a cocina, cambios de estado de cada comanda, precuentas, mesero, repartidor, cobro, cancelación o rechazo, con quién lo hizo y cuándo (**Órdenes → Historial**). Los pedidos que lleguen por canales remotos (WhatsApp, próximamente) entran **pendientes de confirmación**: no van a cocina ni se cobran hasta que el local los **Confirma**; caja también puede **Rechazarlos** indicando el motivo. Los pedidos del QR de mesa quedan marcados con su origen.
+
+## Ficha del restaurante
+
+En **Configuración → Ficha** se cargan descripción, WhatsApp, tipo de establecimiento, modalidades de atención (local, delivery, retiro), ubicación (enlace de Google Maps y coordenadas) y horarios por día.

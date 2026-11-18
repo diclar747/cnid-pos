@@ -43,6 +43,67 @@ export interface ServiceOrder {
   /** Última precuenta impresa; null si nunca se imprimió o si se agregaron consumos después. */
   billedAt: string | null
   billCount: number
+  customerId: number | null
+  /** Por dónde entró el pedido. */
+  source: OrderSource
+  /** Los pedidos remotos entran «pending» y el local los confirma o rechaza. */
+  confirmation: OrderConfirmation
+  deliveryZoneId: number | null
+  deliveryZoneName: string
+  /** Costo de envío; no está incluido en `total` (suma de productos). */
+  deliveryFee: number
+  deliveryAddress: string
+  courierId: number | null
+  courierName: string
+  /** total + deliveryFee: lo que paga el cliente. */
+  grandTotal: number
+}
+
+export type OrderSource = "pos" | "table_qr" | "whatsapp" | "web"
+export type OrderConfirmation = "pending" | "confirmed" | "rejected"
+
+export interface OrderEvent {
+  id: number
+  orderId: number
+  ticketId: number | null
+  event: string
+  status: string
+  note: string
+  actorName: string
+  createdAt: string
+}
+
+export interface Customer {
+  id: number
+  name: string
+  phone: string
+  ruc: string
+  email: string
+  address: string
+  notes: string
+  ordersCount: number
+  totalSpent: number
+  lastOrderAt: string | null
+  createdAt: string
+}
+
+export interface DeliveryZone {
+  id: number
+  name: string
+  areas: string
+  fee: number
+  freeOver: number | null
+  etaMinutes: number | null
+  isActive: boolean
+  sortOrder: number
+}
+
+export interface Courier {
+  id: number
+  name: string
+  phone: string
+  vehicle: string
+  isActive: boolean
 }
 
 export interface StaffMember {
@@ -60,6 +121,8 @@ export interface KitchenTicket {
   customerName: string
   cardCode: string | null
   waiterName: string
+  courierName: string
+  deliveryAddress: string
   items: OrderLine[]
   notes: string
   createdAt: string

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authDb } from "@/lib/db"
-import { cleanText, loadOrder, makeOrderLines, saveOrderItems, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
+import { cleanText, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ code: string }> }
@@ -71,8 +71,8 @@ export async function POST(request: NextRequest, { params }: Context) {
     let order
     if (existing.rows[0]) order = await loadOrder(client, Number(existing.rows[0].id), true)
     else {
-      const inserted = await client.query(`INSERT INTO service_orders (table_id, table_label, order_type, customer_name, notes)
-        VALUES ($1,$2,'dineIn',$3,$4) RETURNING id`, [table.id, `${table.room_name} · ${table.label}`,
+      const inserted = await client.query(`INSERT INTO service_orders (table_id, table_label, order_type, customer_name, notes, source)
+        VALUES ($1,$2,'dineIn',$3,$4,'table_qr') RETURNING id`, [table.id, `${table.room_name} · ${table.label}`,
         cleanText(body.customerName, 120), cleanText(body.notes, 300)])
       order = await loadOrder(client, Number(inserted.rows[0].id), true)
     }
@@ -86,6 +86,10 @@ export async function POST(request: NextRequest, { params }: Context) {
     const lines = await makeOrderLines(client, body.items, "dineIn")
     order = await saveOrderItems(client, order, lines)
     const sent = await sendDraftToKitchen(client, order, null)
+    const guest = { id: 0, name: "Cliente (QR de mesa)" }
+    if (!existing.rows[0]) await logOrderEvent(client, sent.order.id, "created", { status: "dineIn", note: "Pedido desde el QR de la mesa", actor: guest })
+    await logOrderEvent(client, sent.order.id, "items_added", { note: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor: guest })
+    await logOrderEvent(client, sent.order.id, "sent_to_kitchen", { status: "pending", ticketId: sent.ticket.id, actor: guest })
     if (requestId) await client.query("UPDATE guest_order_requests SET order_id=$1, ticket_id=$2 WHERE request_id=$3",
       [sent.order.id, sent.ticket.id, requestId])
     await client.query("COMMIT")

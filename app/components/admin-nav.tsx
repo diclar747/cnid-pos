@@ -22,6 +22,8 @@ import {
   Menu,
   X,
   Armchair,
+  Truck,
+  UserRound,
 } from "lucide-react"
 import { useAuth } from "../context/auth-context"
 import { cn } from "@/lib/utils"
@@ -95,9 +97,23 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
       permission: "manage_purchases",
     },
     {
+      title: "Clientes",
+      icon: UserRound,
+      href: "/admin/customers",
+      badge: null,
+      permission: "manage_sales",
+    },
+    {
       title: "Salones y mesas",
       icon: Armchair,
       href: "/admin/dining",
+      badge: null,
+      permission: "manage_company",
+    },
+    {
+      title: "Delivery",
+      icon: Truck,
+      href: "/admin/delivery",
       badge: null,
       permission: "manage_company",
     },

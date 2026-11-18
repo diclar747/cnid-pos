@@ -31,6 +31,12 @@ export interface TicketData {
   cashReceived?: number
   change?: number
   copyNumber?: number
+  /** Suma de productos; si no se indica es igual al total. */
+  subtotal?: number
+  deliveryFee?: number
+  deliveryAddress?: string
+  deliveryZone?: string
+  courierName?: string
 }
 
 export interface TicketCompany {
@@ -66,6 +72,8 @@ export function Ticket75mm({ data, company }: { data: TicketData; company: Ticke
       {data.customerName && data.customerName !== "Cliente General" && <p>Cliente: {data.customerName}</p>}
       {data.customerRuc && <p>RUC/CI: {data.customerRuc}</p>}
       {data.notes && <p>Nota: {data.notes}</p>}
+      {data.orderType === "delivery" && (data.deliveryAddress || data.deliveryZone) && <p>Entrega: {[data.deliveryAddress, data.deliveryZone].filter(Boolean).join(" · ")}</p>}
+      {data.courierName && <p>Repartidor: {data.courierName}</p>}
     </section>
 
     <table className="w-full border-b border-dashed border-black">
@@ -84,7 +92,8 @@ export function Ticket75mm({ data, company }: { data: TicketData; company: Ticke
     </table>
 
     <section className="space-y-0.5 border-b border-dashed border-black py-2">
-      <p className="flex justify-between"><span>Subtotal:</span><span>{money(data.total)}</span></p>
+      <p className="flex justify-between"><span>Subtotal:</span><span>{money(data.subtotal ?? data.total)}</span></p>
+      {data.orderType === "delivery" && data.deliveryFee != null && <p className="flex justify-between"><span>Envío:</span><span>{data.deliveryFee ? money(data.deliveryFee) : "Gratis"}</span></p>}
       {!isBill && data.paymentMethod && <p className="flex justify-between"><span>Pago:</span><span>{paymentLabel[data.paymentMethod] ?? data.paymentMethod}</span></p>}
       {!isBill && data.paymentMethod === "cash" && data.cashReceived != null && <>
         <p className="flex justify-between"><span>Recibido:</span><span>{money(data.cashReceived)}</span></p>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { canTakeOrders, getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { cleanText, loadOrder, makeOrderLines, mapOrder, resolveWaiter, saveOrderItems, sendDraftToKitchen, ServiceOrderError, validOrderType } from "@/lib/service-order-server"
+import { cleanText, deliveryFeeFor, loadOrder, logOrderEvent, makeOrderLines, mapOrder, resolveWaiter, saveOrderItems, sendDraftToKitchen, ServiceOrderError, upsertCustomer, validOrderType } from "@/lib/service-order-server"
 import type { ServiceOrder } from "@/lib/service-order-types"
 
 export const runtime = "nodejs"
@@ -116,37 +116,55 @@ export async function POST(request: NextRequest) {
     const waiter = body.waiterId != null && body.waiterId !== ""
       ? await resolveWaiter(client, body.waiterId, user.restaurantId)
       : !order && user.role === "waiter" ? { id: Number(user.id), name: user.name } : undefined
+    const actor = { id: user.id, name: user.name }
+    const zoneId = body.deliveryZoneId == null || body.deliveryZoneId === "" ? null : Number(body.deliveryZoneId)
+    if (zoneId !== null && (!Number.isSafeInteger(zoneId) || zoneId <= 0)) throw new ServiceOrderError("Zona de delivery inválida.")
     if (!order) {
+      const orderType = body.orderType ?? "dineIn"
+      const customerId = await upsertCustomer(client, { name: body.customerName, phone: body.customerPhone, address: body.deliveryAddress })
+      const zone = orderType === "delivery" ? await deliveryFeeFor(client, zoneId, 0) : null
       const result = await client.query(`INSERT INTO service_orders
-        (card_id, table_id, order_type, table_label, customer_name, customer_phone, notes, created_by, waiter_id, waiter_name)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`, [
-        cardId, tableId, body.orderType ?? "dineIn", tableLabel,
+        (card_id, table_id, order_type, table_label, customer_name, customer_phone, notes, created_by, waiter_id, waiter_name,
+         customer_id, delivery_zone_id, delivery_zone_name, delivery_address)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`, [
+        cardId, tableId, orderType, tableLabel,
         cleanText(body.customerName, 120), cleanText(body.customerPhone, 40),
         cleanText(body.notes, 500), Number(user.id), waiter?.id ?? null, waiter?.name ?? "",
+        customerId, zone?.id ?? null, zone?.name ?? "", orderType === "delivery" ? cleanText(body.deliveryAddress, 300) : "",
       ])
       order = await loadOrder(client, Number(result.rows[0].id), true)
+      await logOrderEvent(client, order.id, "created", { status: orderType, note: tableLabel, actor })
+      if (waiter) await logOrderEvent(client, order.id, "waiter", { note: waiter.name, actor })
     } else if (["tableLabel", "customerName", "customerPhone", "notes"].some((key) => body[key] !== undefined)) {
+      const customerPhone = body.customerPhone === undefined ? order.customerPhone : cleanText(body.customerPhone, 40)
+      const customerName = body.customerName === undefined ? order.customerName : cleanText(body.customerName, 120)
+      const customerId = await upsertCustomer(client, { name: customerName, phone: customerPhone }) ?? order.customerId
       await client.query(`UPDATE service_orders SET table_label = $1, customer_name = $2,
-        customer_phone = $3, notes = $4, updated_at = NOW() WHERE id = $5`, [
+        customer_phone = $3, notes = $4, customer_id = $5, updated_at = NOW() WHERE id = $6`, [
         tableId || order.tableId ? order.tableLabel : body.tableLabel === undefined ? order.tableLabel : cleanText(body.tableLabel, 30),
-        body.customerName === undefined ? order.customerName : cleanText(body.customerName, 120),
-        body.customerPhone === undefined ? order.customerPhone : cleanText(body.customerPhone, 40),
-        body.notes === undefined ? order.notes : cleanText(body.notes, 500), order.id,
+        customerName, customerPhone,
+        body.notes === undefined ? order.notes : cleanText(body.notes, 500), customerId, order.id,
       ])
       order = await loadOrder(client, order.id, true)
     }
     if (waiter !== undefined && order.waiterId !== (waiter?.id ?? null)) {
       await client.query("UPDATE service_orders SET waiter_id = $1, waiter_name = $2, updated_at = NOW() WHERE id = $3",
         [waiter?.id ?? null, waiter?.name ?? "", order.id])
+      await logOrderEvent(client, order.id, "waiter", { note: waiter?.name ?? "", actor })
       order = await loadOrder(client, order.id, true)
     }
     const newLines = await makeOrderLines(client, rawItems, order.orderType)
-    if (newLines.length) order = await saveOrderItems(client, order, newLines)
+    if (newLines.length) {
+      order = await saveOrderItems(client, order, newLines)
+      await logOrderEvent(client, order.id, "items_added", {
+        note: newLines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor })
+    }
     let ticket = null
     if (body.sendToKitchen === true) {
       const sent = await sendDraftToKitchen(client, order, Number(user.id))
       order = sent.order
       ticket = sent.ticket
+      await logOrderEvent(client, order.id, "sent_to_kitchen", { status: "pending", ticketId: ticket.id, actor })
     }
     order = await loadOrder(client, order.id)
     await client.query("COMMIT")

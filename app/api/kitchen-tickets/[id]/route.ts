@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { mapTicket } from "@/lib/service-order-server"
+import { logOrderEvent, mapTicket } from "@/lib/service-order-server"
 import type { KitchenStatus, ServiceOrderType } from "@/lib/service-order-types"
 
 export const runtime = "nodejs"
@@ -16,7 +16,7 @@ const nextStatus = (status: KitchenStatus, type: ServiceOrderType): KitchenStatu
 }
 
 async function findTicket(id: number) {
-  const result = await db.query(`SELECT t.*, o.order_type, o.table_label, o.customer_name, o.waiter_name, c.code AS card_code
+  const result = await db.query(`SELECT t.*, o.order_type, o.table_label, o.customer_name, o.waiter_name, o.courier_name, o.delivery_address, c.code AS card_code
     FROM kitchen_tickets t JOIN service_orders o ON o.id = t.order_id
     LEFT JOIN order_cards c ON c.id = o.card_id WHERE t.id = $1`, [id])
   return result.rows[0] ? mapTicket(result.rows[0]) : null
@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const client = await db.connect()
   try {
     await client.query("BEGIN")
-    const result = await client.query(`SELECT t.status, o.order_type FROM kitchen_tickets t
+    const result = await client.query(`SELECT t.status, t.order_id, o.order_type FROM kitchen_tickets t
       JOIN service_orders o ON o.id = t.order_id WHERE t.id = $1 FOR UPDATE OF t`, [id])
     const row = result.rows[0]
     if (!row) { await client.query("ROLLBACK"); return NextResponse.json({ error: "Comanda no encontrada." }, { status: 404 }) }
@@ -53,6 +53,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       return NextResponse.json({ error: "El cambio de estado no sigue el flujo de esta comanda." }, { status: 409 })
     }
     await client.query("UPDATE kitchen_tickets SET status = $1, updated_at = NOW() WHERE id = $2", [body.status, id])
+    await logOrderEvent(client, Number(row.order_id), "ticket_status", { status: body.status, ticketId: id, actor: { id: user.id, name: user.name } })
     await client.query("COMMIT")
     return NextResponse.json({ ticket: await findTicket(id) })
   } catch (error) {

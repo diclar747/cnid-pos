@@ -21,16 +21,18 @@ try {
   await pool.query(restaurantsMigration)
   const diningMigration = await readFile(resolve("scripts/05-dining.sql"), "utf8")
   await pool.query(diningMigration)
-  // Mesero y precuenta: en public y en el esquema de cada restaurante creado.
-  const billingMigration = await readFile(resolve("scripts/06-service-billing.sql"), "utf8")
-  await pool.query(billingMigration)
+  // Migraciones por restaurante (mesero y precuenta; clientes, historial y delivery):
+  // en public y en el esquema de cada restaurante creado.
+  const tenantMigrations = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql"]
+    .map((file) => readFile(resolve("scripts", file), "utf8")))
+  for (const sql of tenantMigrations) await pool.query(sql)
   const tenantSchemas = await pool.query("SELECT schema_name FROM public.restaurants WHERE schema_name ~ '^restaurant_[0-9]+$'")
   for (const { schema_name: schema } of tenantSchemas.rows) {
     const tenant = await pool.connect()
     try {
       await tenant.query("BEGIN")
       await tenant.query(`SET LOCAL search_path TO "${schema}"`)
-      await tenant.query(billingMigration)
+      for (const sql of tenantMigrations) await tenant.query(sql)
       await tenant.query("COMMIT")
     } catch (error) {
       await tenant.query("ROLLBACK")
