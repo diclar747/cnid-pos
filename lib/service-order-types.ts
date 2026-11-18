@@ -125,6 +125,8 @@ export interface KitchenTicket {
   deliveryAddress: string
   items: OrderLine[]
   notes: string
+  priority: "normal" | "high"
+  delayMinutes: number | null
   createdAt: string
   updatedAt: string
 }

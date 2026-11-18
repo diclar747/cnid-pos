@@ -34,7 +34,7 @@ export const authDb: Pool = new Proxy({} as Pool, {
 })
 
 // Las cuentas y sesiones viven en public. Cada restaurante usa su propio esquema.
-async function currentSchema(): Promise<string> {
+export async function currentSchema(): Promise<string> {
   const token = (await cookies()).get("cnidpos_session")?.value
   if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new Error("Se requiere una sesión activa.")
   const hash = createHash("sha256").update(token).digest("hex")

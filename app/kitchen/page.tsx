@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, ChefHat, Clock3, Printer, RefreshCw, Truck } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Check, ChefHat, Clock3, Flame, Printer, RefreshCw, Truck } from "lucide-react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import ProtectedRoute from "../components/protected-route"
 import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
+import { useLiveTables } from "@/lib/use-live"
 import type { KitchenStatus, KitchenTicket } from "@/lib/service-order-types"
 
 const typeLabel = { dineIn: "En el local", delivery: "Delivery", pickup: "Retiro" }
@@ -38,11 +39,9 @@ export default function KitchenPage() {
     catch (error) { toast.error(error instanceof Error ? error.message : "No se cargaron las comandas") }
     finally { setLoading(false) }
   }, [])
-  useEffect(() => {
-    void load()
-    const timer = window.setInterval(() => { void load() }, 8000)
-    return () => window.clearInterval(timer)
-  }, [load])
+  useEffect(() => { void load() }, [load])
+  // Comandas nuevas y cambios llegan en vivo; sin conexión en vivo, se consulta cada 8 s.
+  useLiveTables(["kitchen_tickets", "service_orders"], () => void load(), 8000)
   const activeCount = useMemo(() => tickets.filter((ticket) => ["pending", "preparing", "ready", "out_for_delivery"].includes(ticket.status)).length, [tickets])
   const advance = async (ticket: KitchenTicket) => {
     const next = nextStatus(ticket)
@@ -56,21 +55,43 @@ export default function KitchenPage() {
     finally { setBusy(null) }
   }
 
+  // Avisos de cocina al cliente y al tablero: demora, falta de producto y prioridad.
+  const notice = async (ticket: KitchenTicket, body: Record<string, unknown>, done: string) => {
+    setBusy(ticket.id)
+    try {
+      const result = await apiRequest<{ ticket: KitchenTicket }>(`/api/kitchen-tickets/${ticket.id}`, { method: "POST", body: JSON.stringify(body) })
+      setTickets((current) => current.map((item) => item.id === ticket.id ? result.ticket : item))
+      toast.success(done)
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo avisar") }
+    finally { setBusy(null) }
+  }
+  const [missingFor, setMissingFor] = useState<number | null>(null)
+  const [missingText, setMissingText] = useState("")
+
   return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-violet-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-6">
     <div className="mx-auto max-w-[1800px]">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><Button variant="ghost" size="sm" onClick={() => router.push("/pos")} className="mb-2"><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button><h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><ChefHat className="h-8 w-8 text-amber-600" /> Cocina y delivery</h1><p className="text-muted-foreground">Las comandas aparecen automáticamente y avanzan hasta la entrega.</p></div><div className="flex flex-wrap gap-2"><StaffPushButton /><Button variant="outline" onClick={() => router.push("/orders")}>Ver órdenes</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div></header>
-      <div className="mb-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-800 p-5 text-white shadow-lg"><span className="text-sm text-indigo-100">Comandas activas</span><strong className="ml-4 text-3xl">{activeCount}</strong><span className="ml-4 text-xs text-indigo-200">Se actualiza cada 8 segundos</span></div>
+      <div className="mb-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-800 p-5 text-white shadow-lg"><span className="text-sm text-indigo-100">Comandas activas</span><strong className="ml-4 text-3xl">{activeCount}</strong><span className="ml-4 text-xs text-indigo-200">Se actualiza en vivo</span></div>
       {loading ? <p className="py-12 text-center text-muted-foreground">Cargando cocina…</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">{columns.map((column) => {
         const Icon = column.icon
-        const items = tickets.filter((ticket) => column.status.includes(ticket.status))
+        const items = tickets.filter((ticket) => column.status.includes(ticket.status)).sort((a, b) => Number(b.priority === "high") - Number(a.priority === "high"))
         return <section key={column.title} className={`min-h-64 rounded-2xl border p-3 ${column.color}`}>
           <div className="mb-4 flex items-start justify-between"><div><h2 className="flex items-center gap-2 font-bold"><Icon className="h-5 w-5" />{column.title}</h2><p className="text-xs text-muted-foreground">{column.subtitle}</p></div><span className="rounded-full bg-white px-2.5 py-1 text-sm font-bold text-slate-900 dark:bg-slate-800 dark:text-white">{items.length}</span></div>
-          <div className="space-y-3">{items.length === 0 && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin comandas</div>}{items.map((ticket) => <article key={ticket.id} className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="space-y-3">{items.length === 0 && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin comandas</div>}{items.map((ticket) => <article key={ticket.id} className={`rounded-xl border bg-card p-4 shadow-sm ${ticket.priority === "high" ? "border-red-400 ring-2 ring-red-200" : ""}`}>
+            {(ticket.priority === "high" || ticket.delayMinutes) && <div className="mb-2 flex flex-wrap gap-1">{ticket.priority === "high" && <span className="inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700"><Flame className="h-3.5 w-3.5" />Prioridad</span>}{ticket.delayMinutes && <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800"><Clock3 className="h-3.5 w-3.5" />Demora +{ticket.delayMinutes} min</span>}</div>}
             <div className="flex items-start justify-between gap-2"><div><p className="text-lg font-extrabold">#{ticket.orderId} <span className="text-xs font-medium text-muted-foreground">/ comanda {ticket.id}</span></p><p className="text-xs text-muted-foreground">{typeLabel[ticket.orderType]} · {new Date(ticket.createdAt).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</p></div><Button variant="ghost" size="icon" title="Imprimir comanda" aria-label={`Imprimir comanda ${ticket.id}`} onClick={() => window.open(`/kitchen/print/${ticket.id}`, "_blank")}><Printer className="h-4 w-4" /></Button></div>
             <div className="mt-3 flex flex-wrap gap-1 text-xs">{ticket.tableLabel && <span className="rounded bg-indigo-100 px-2 py-1 font-semibold text-indigo-800">{ticket.tableLabel}</span>}{ticket.customerName && <span className="rounded bg-slate-100 px-2 py-1 dark:bg-slate-800">{ticket.customerName}</span>}{ticket.cardCode && <span className="rounded bg-violet-100 px-2 py-1 text-violet-800">QR {ticket.cardCode.slice(-6)}</span>}{ticket.courierName && <span className="rounded bg-emerald-100 px-2 py-1 text-emerald-800">🛵 {ticket.courierName}</span>}</div>{ticket.orderType === "delivery" && ticket.deliveryAddress && <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">📍 {ticket.deliveryAddress}</p>}
             <div className="my-3 space-y-2 border-y py-3">{ticket.items.map((line) => <div key={line.lineId} className="text-sm"><strong>{line.quantity} × {line.productName}</strong>{line.modifiers.length > 0 && <p className="pl-4 text-xs text-muted-foreground">{line.modifiers.map((option) => option.name).join(", ")}</p>}</div>)}</div>
             {ticket.notes && <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{ticket.notes}</p>}
             {nextStatus(ticket) && <Button className="w-full" disabled={busy === ticket.id} onClick={() => void advance(ticket)}>{nextStatus(ticket)?.label}</Button>}
+            {["pending", "preparing"].includes(ticket.status) && <div className="mt-2 grid grid-cols-3 gap-1">
+              <Button size="sm" variant="outline" className="h-8 px-1 text-xs" disabled={busy === ticket.id} title="Marcar o quitar prioridad" onClick={() => void notice(ticket, { action: "priority", priority: ticket.priority === "high" ? "normal" : "high" }, ticket.priority === "high" ? "Prioridad normal" : "Marcada como prioridad")}><Flame className="mr-1 h-3.5 w-3.5" />{ticket.priority === "high" ? "Normal" : "Urgente"}</Button>
+              <Button size="sm" variant="outline" className="h-8 px-1 text-xs" disabled={busy === ticket.id} title="Avisar al cliente una demora de 10 minutos" onClick={() => void notice(ticket, { action: "delay", minutes: (ticket.delayMinutes ?? 0) + 10 }, "Demora avisada")}><Clock3 className="mr-1 h-3.5 w-3.5" />+10 min</Button>
+              <Button size="sm" variant="outline" className="h-8 px-1 text-xs" disabled={busy === ticket.id} title="Avisar que falta un producto" onClick={() => { setMissingFor(missingFor === ticket.id ? null : ticket.id); setMissingText("") }}><AlertTriangle className="mr-1 h-3.5 w-3.5" />Falta</Button>
+            </div>}
+            {missingFor === ticket.id && <form className="mt-2 flex gap-1" onSubmit={(event) => { event.preventDefault(); if (missingText.trim()) void notice(ticket, { action: "missing", note: missingText }, "Falta avisada").then(() => setMissingFor(null)) }}>
+              <input autoFocus value={missingText} onChange={(event) => setMissingText(event.target.value)} maxLength={200} placeholder="¿Qué falta?" className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs" />
+              <Button size="sm" className="h-8 text-xs" type="submit" disabled={!missingText.trim()}>Avisar</Button></form>}
           </article>)}</div>
         </section>
       })}</div>}

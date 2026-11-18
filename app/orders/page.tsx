@@ -10,28 +10,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import ProtectedRoute from "../components/protected-route"
 import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
+import { useLiveTables } from "@/lib/use-live"
 import type { Courier, DeliveryZone, KitchenTicket, OrderEvent, ServiceOrder, StaffMember } from "@/lib/service-order-types"
 import type { DiningTable } from "@/lib/dining-types"
 import { useAuth } from "@/app/context/auth-context"
 
 const money = (value: number) => `Gs ${value.toLocaleString("es-PY")}`
-const typeLabel = { dineIn: "En el local", delivery: "Delivery", pickup: "Retiro" }
-const ticketLabel: Record<string, string> = { pending: "Pendiente", preparing: "Preparando", ready: "Listo", served: "Servido", out_for_delivery: "En reparto", delivered: "Entregado", cancelled: "Cancelado" }
-const payLabel: Record<string, string> = { cash: "efectivo", card: "tarjeta", transfer: "transferencia" }
-const eventLabel = (event: OrderEvent) => ({
-  created: `Orden creada${event.note ? ` · ${event.note}` : ""}`,
-  items_added: `Productos agregados: ${event.note}`,
-  sent_to_kitchen: `Enviada a cocina${event.ticketId ? ` (comanda #${event.ticketId})` : ""}`,
-  ticket_status: `Comanda #${event.ticketId}: ${ticketLabel[event.status] ?? event.status}`,
-  billed: `Precuenta impresa${event.status && event.status !== "1" ? ` (n.º ${event.status})` : ""}`,
-  paid: `Cobrada con ${payLabel[event.status] ?? event.status}${event.note ? ` · ${event.note}` : ""}`,
-  cancelled: `Cancelada${event.note ? ` · ${event.note}` : ""}`,
-  rejected: `Rechazada${event.note ? ` · ${event.note}` : ""}`,
-  confirmed: "Pedido confirmado",
-  waiter: `Mesero: ${event.note}`,
-  courier: `Repartidor: ${event.note}`,
-  details: "Datos actualizados",
-} as Record<string, string>)[event.event] ?? event.event
+import { eventLabel, ticketLabel, typeLabel } from "@/lib/order-labels"
 
 export default function OrdersPage() {
   const router = useRouter()
@@ -70,11 +55,8 @@ export default function OrdersPage() {
     } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudieron cargar las órdenes") }
     finally { setLoading(false) }
   }, [])
-  useEffect(() => {
-    void load()
-    const timer = window.setInterval(() => { void load() }, 12000)
-    return () => window.clearInterval(timer)
-  }, [load])
+  useEffect(() => { void load() }, [load])
+  useLiveTables(["service_orders", "kitchen_tickets"], () => void load(), 12000)
 
   const visible = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("es")

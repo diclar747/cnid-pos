@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
 import { apiRequest } from "@/lib/api-client"
+import { useLiveTables } from "@/lib/use-live"
 import { useAuth } from "../context/auth-context"
 
 type Method = { code: string; name: string; kind: string; needsVerification: boolean; isActive: boolean }
@@ -44,7 +45,8 @@ export default function CashPage() {
   const load = useCallback(async () => {
     try { setState(await apiRequest<CashState>("/api/cash")) } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo cargar la caja") }
   }, [])
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 15000); return () => window.clearInterval(timer) }, [load])
+  useEffect(() => { void load() }, [load])
+  useLiveTables(["payments", "cash_sessions", "cash_movements"], () => void load(), 15000)
 
   const run = async (body: Record<string, unknown>, done: string) => {
     setBusy(true)

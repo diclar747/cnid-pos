@@ -6,6 +6,7 @@ import { Bell, BellOff, BellRing, HandPlatter, Receipt } from "lucide-react"
 import { useAuth } from "@/app/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { beep, pushSupport, subscribePush } from "@/lib/push-client"
+import { useLiveTables } from "@/lib/use-live"
 
 type TableCall = { id: number; tableId: number; tableLabel: string; kind: "waiter" | "bill"; createdAt: string; orderId: number | null; waiterName: string }
 
@@ -41,8 +42,6 @@ export function TableCallsListener() {
   useEffect(() => {
     if (!active) { setCalls([]); known.current = null; return }
     void load()
-    const timer = window.setInterval(() => void load(), 5000)
-    return () => window.clearInterval(timer)
   }, [active, load])
 
   // El título de la pestaña parpadea con la cantidad de llamados para verlos desde otra pestaña.
@@ -65,8 +64,8 @@ export function TableCallsListener() {
     finally { setAttending(null) }
   }
 
-  if (!active || !calls.length) return null
-  return <div aria-live="assertive" className="pointer-events-none fixed bottom-4 right-4 z-[70] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 print:hidden">
+  if (!active) return null
+  return <><LiveCalls onChange={load} />{calls.length > 0 && <div aria-live="assertive" className="pointer-events-none fixed bottom-4 right-4 z-[70] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 print:hidden">
     {calls.map((call) => {
       const bill = call.kind === "bill"
       return <div key={call.id} role="alert" className={`pointer-events-auto flex items-center gap-3 rounded-2xl border-2 p-3 shadow-2xl animate-in slide-in-from-right-8 ${bill ? "border-emerald-400 bg-emerald-50 text-emerald-950" : "border-amber-400 bg-amber-50 text-amber-950"}`}>
@@ -79,7 +78,13 @@ export function TableCallsListener() {
         <Button size="sm" onClick={() => void attend(call)} disabled={attending === call.id} className={bill ? "bg-emerald-700 hover:bg-emerald-800" : "bg-amber-600 hover:bg-amber-700"}>{attending === call.id ? "…" : "Atender"}</Button>
       </div>
     })}
-  </div>
+  </div>}</>
+}
+
+/** Escucha los llamados en vivo (con sondeo cada 5 s si no hay conexión en vivo). Solo se monta con sesión. */
+function LiveCalls({ onChange }: { onChange: () => void }) {
+  useLiveTables(["table_calls"], onChange, 5000)
+  return null
 }
 
 /** Botón para que el personal reciba los pedidos y llamados como notificación del teléfono o la PC. */
