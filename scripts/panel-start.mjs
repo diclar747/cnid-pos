@@ -3,7 +3,7 @@
 //
 // En cada arranque:
 //   1. aplica migraciones (setup-local-db, no borra datos);
-//   2. crea el superadministrador si SUPERADMIN_EMAIL y SUPERADMIN_PASSWORD están definidos y no existe;
+//   2. crea el superadministrador si SUPERADMIN_EMAIL está definido y no existe (sin contraseña, la genera);
 //   3. importa la carta de De la Casa si existe el archivo y todavía no se cargó;
 //   4. inicia Next.js en 0.0.0.0:$PORT (el panel usa PORT=8080).
 import { spawn, spawnSync } from "node:child_process"
@@ -29,7 +29,8 @@ function run(script, args = []) {
 }
 
 run("scripts/setup-local-db.mjs")
-if (process.env.SUPERADMIN_EMAIL && process.env.SUPERADMIN_PASSWORD) run("scripts/create-superadmin.mjs")
+// Sin SUPERADMIN_PASSWORD, create-superadmin genera una contraseña y la muestra una sola vez.
+if (process.env.SUPERADMIN_EMAIL) run("scripts/create-superadmin.mjs")
 const exportFile = process.env.LEGACY_EXPORT_FILE || "data/de-la-casa-export.json"
 if (existsSync(exportFile)) run("scripts/import-legacy-export.mjs", [exportFile, "--apply", "--if-empty"])
 

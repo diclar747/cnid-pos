@@ -57,7 +57,9 @@ try {
   // (con contraseñas conocidas) e INITIAL_ADMIN_* crea solo el administrador de «De la Casa».
   const seedSamples = process.env.SEED_SAMPLE_DATA !== "false"
   const initialAdminEmail = process.env.INITIAL_ADMIN_EMAIL?.trim().toLowerCase()
-  const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? ""
+  // Sin INITIAL_ADMIN_PASSWORD se genera una contraseña y se muestra una sola vez en el registro.
+  const generatedAdminPassword = !process.env.INITIAL_ADMIN_PASSWORD
+  const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || randomBytes(12).toString("base64url")
   const userCount = Number((await pool.query("SELECT COUNT(*) AS total FROM app_users")).rows[0].total)
   if (userCount === 0 && initialAdminEmail) {
     if (!initialAdminEmail.includes("@") || initialAdminPassword.length < 10) {
@@ -70,7 +72,9 @@ try {
         ["view_dashboard", "manage_products", "manage_users", "view_reports", "manage_expenses", "manage_company", "manage_purchases", "manage_suppliers", "access_pos", "manage_sales"],
         hashPassword(initialAdminPassword)],
     )
-    console.log(`Administrador inicial creado: ${initialAdminEmail}`)
+    console.log(generatedAdminPassword
+      ? `Administrador inicial creado: ${initialAdminEmail} — contraseña inicial: ${initialAdminPassword} (cambiala en Mi perfil)`
+      : `Administrador inicial creado: ${initialAdminEmail}`)
   } else if (userCount === 0 && seedSamples) {
     const permissions = {
       admin: ["view_dashboard", "manage_products", "manage_users", "view_reports", "manage_expenses", "manage_company", "manage_purchases", "manage_suppliers", "access_pos", "manage_sales"],
