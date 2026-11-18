@@ -1,4 +1,4 @@
-// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\panel-build\app\api\announcements\route.ts
+// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\build-main2\app\api\announcements\route.ts
 import * as entry from '../../../../../app/api/announcements/route.js'
 import type { NextRequest } from 'next/server.js'
 

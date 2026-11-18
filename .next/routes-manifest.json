@@ -47,6 +47,14 @@
       "namedRegex": "^/api/customers/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/customers/[id]/account",
+      "regex": "^/api/customers/([^/]+?)/account(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/customers/(?<nxtPid>[^/]+?)/account(?:/)?$"
+    },
+    {
       "page": "/api/data/[entity]",
       "regex": "^/api/data/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -86,6 +94,31 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/kitchen\\-tickets/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/marketplace/[slug]",
+      "regex": "^/api/marketplace/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/api/marketplace/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/marketplace/[slug]/image/[id]",
+      "regex": "^/api/marketplace/([^/]+?)/image/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug",
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/marketplace/(?<nxtPslug>[^/]+?)/image/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/marketplace/[slug]/logo",
+      "regex": "^/api/marketplace/([^/]+?)/logo(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/api/marketplace/(?<nxtPslug>[^/]+?)/logo(?:/)?$"
     },
     {
       "page": "/api/payment-methods/[code]",
@@ -238,6 +271,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/kitchen/print/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/marketplace/[slug]",
+      "regex": "^/marketplace/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/marketplace/(?<nxtPslug>[^/]+?)(?:/)?$"
     },
     {
       "page": "/receipt/[kind]/[id]",
@@ -407,6 +448,12 @@
       "regex": "^/manifest\\.webmanifest(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/manifest\\.webmanifest(?:/)?$"
+    },
+    {
+      "page": "/marketplace",
+      "regex": "^/marketplace(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/marketplace(?:/)?$"
     },
     {
       "page": "/orders",

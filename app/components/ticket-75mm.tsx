@@ -32,6 +32,10 @@ export interface TicketData {
   paymentStatus?: string
   cashReceived?: number
   change?: number
+  /** Pago dividido y venta a cuenta. */
+  payments?: { name: string; kind?: string; amount: number; status?: string }[]
+  creditAmount?: number
+  creditBalance?: number | null
   copyNumber?: number
   /** Suma de productos; si no se indica es igual al total. */
   subtotal?: number
@@ -97,12 +101,19 @@ export function Ticket75mm({ data, company }: { data: TicketData; company: Ticke
       <p className="flex justify-between"><span>Subtotal:</span><span>{money(data.subtotal ?? data.total)}</span></p>
       {data.orderType === "delivery" && data.deliveryFee != null && <p className="flex justify-between"><span>Envío:</span><span>{data.deliveryFee ? money(data.deliveryFee) : "Gratis"}</span></p>}
       {!isBill && data.paymentMethod && <p className="flex justify-between"><span>Pago:</span><span>{data.paymentMethodName || paymentLabel[data.paymentMethod] || data.paymentMethod}{data.paymentStatus === "pending" ? " (a verificar)" : ""}</span></p>}
+      {!isBill && data.payments && data.payments.length > 1 && data.payments.map((payment, index) => <p key={index} className="flex justify-between pl-2"><span>· {payment.name}{payment.status === "pending" ? " (a verificar)" : ""}</span><span>{money(payment.amount)}</span></p>)}
+      {!isBill && data.paymentMethod === "mixed" && (data.change ?? 0) > 0 && <p className="flex justify-between"><span>Vuelto:</span><span>{money(data.change ?? 0)}</span></p>}
       {!isBill && data.paymentMethod === "cash" && data.cashReceived != null && <>
         <p className="flex justify-between"><span>Recibido:</span><span>{money(data.cashReceived)}</span></p>
         <p className="flex justify-between"><span>Saldo devuelto:</span><span>{money(data.change ?? 0)}</span></p>
       </>}
       <p className="flex justify-between pt-1 text-sm font-black"><span>TOTAL:</span><span>{money(data.total)}</span></p>
     </section>
+    {!isBill && (data.creditAmount ?? 0) > 0 && <section className="space-y-0.5 border-b border-dashed border-black py-2">
+      <p className="flex justify-between font-bold"><span>Cargado a cuenta:</span><span>{money(data.creditAmount ?? 0)}</span></p>
+      {data.creditBalance != null && <p className="flex justify-between"><span>Saldo pendiente:</span><span>{money(data.creditBalance)}</span></p>}
+      <p className="pt-5 text-center">______________________</p><p className="text-center">Firma del cliente</p>
+    </section>}
 
     <footer className="pt-2 text-center">
       {isBill

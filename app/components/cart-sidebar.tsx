@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Minus, Plus, Trash2, ShoppingCart, X, Receipt, ChefHat, Save, Printer, CreditCard, PanelRightClose } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +12,7 @@ import type { DeliveryZone, ServiceOrder, StaffMember } from "@/lib/service-orde
 import type { DiningTable } from "@/lib/dining-types"
 import { apiRequest } from "@/lib/api-client"
 import { useAuth } from "../context/auth-context"
+import PaymentDialog, { type PaymentTarget } from "./payment-dialog"
 
 export interface OrderDetails {
   tableId: number | null
@@ -40,10 +40,10 @@ interface CartSidebarProps {
 export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClearActive, orderSaving, onToggleCollapse }: CartSidebarProps) {
   const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart, orderType } = useCart()
   const [zones, setZones] = useState<DeliveryZone[]>([])
-  const router = useRouter()
   const { user, hasPermission } = useAuth()
   const canCharge = hasPermission("manage_sales")
   const [isClearing, setIsClearing] = useState(false)
+  const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null)
   const [orderAction, setOrderAction] = useState<"draft" | "send" | "print" | null>(null)
   const [details, setDetails] = useState<OrderDetails>(emptyDetails)
   const [tables, setTables] = useState<DiningTable[]>([])
@@ -77,10 +77,7 @@ export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClear
   }
 
   const handleCheckout = () => {
-    if (cart && cart.length > 0) {
-      router.push("/checkout")
-      onClose?.()
-    }
+    if (cart && cart.length > 0) setPayTarget({ kind: "cart" })
   }
 
   const handleOrderAction = (action: "draft" | "send" | "print") => {
@@ -231,7 +228,7 @@ export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClear
                 <Printer className="mr-1 h-4 w-4 shrink-0" /> Enviar e imprimir
               </Button>
             </div>}
-            {canCharge && activeOrder && cart.length === 0 && activeOrder.items.length > 0 && <Button onClick={() => { router.push(`/checkout?order=${activeOrder.id}`); onClose?.() }} className="w-full bg-emerald-600 hover:bg-emerald-700">
+            {canCharge && activeOrder && cart.length === 0 && activeOrder.items.length > 0 && <Button onClick={() => setPayTarget({ kind: "order", orderId: activeOrder.id })} className="w-full bg-emerald-600 hover:bg-emerald-700">
               <CreditCard className="mr-2 h-4 w-4" /> Cobrar cuenta completa
             </Button>}
             {cart.length > 0 && <Button variant="ghost" onClick={handleClearCart} disabled={isClearing} className="w-full">
@@ -241,6 +238,7 @@ export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClear
           </div>
         </div>
       )}
+      <PaymentDialog target={payTarget} onClose={() => setPayTarget(null)} onPaid={() => { if (payTarget?.kind === "order") onClearActive() }} />
       <Dialog open={Boolean(orderAction)} onOpenChange={(open) => { if (!open) setOrderAction(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>

@@ -3,7 +3,8 @@ import { getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { loadOrder, logOrderEvent, recordCustomerPurchase, ServiceOrderError, upsertCustomer, validOrderType } from "@/lib/service-order-server"
 import type { OrderLine } from "@/lib/service-order-types"
-import { findPaymentMethod, recordSalePayment } from "@/lib/cash"
+import { findPaymentMethod, recordSalePayment, type PaymentMethod } from "@/lib/cash"
+import { chargeCredit, CreditError } from "@/lib/credit"
 import { effectivePrice } from "@/lib/product-price"
 
 export const runtime = "nodejs"
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
   const paymentMethod = typeof body?.paymentMethod === "string" ? body.paymentMethod : ""
   const paymentReference = typeof body?.paymentReference === "string" ? body.paymentReference.trim().slice(0, 80) : ""
   const serviceOrderId = body?.serviceOrderId == null ? null : Number(body.serviceOrderId)
-  if (!paymentMethod ||
+  const hasPayments = Array.isArray(body?.payments) && body.payments.length > 0
+  if ((!paymentMethod && !hasPayments) ||
     (serviceOrderId !== null && (!Number.isSafeInteger(serviceOrderId) || serviceOrderId <= 0))) {
     return NextResponse.json({ error: "Venta incompleta." }, { status: 400 })
   }
@@ -29,8 +31,6 @@ export async function POST(request: NextRequest) {
   const client = await db.connect()
   try {
     await client.query("BEGIN")
-    const method = await findPaymentMethod(client, paymentMethod)
-    if (!method) throw new CheckoutError("Elegí un medio de pago válido.")
     const serviceOrder = serviceOrderId ? await loadOrder(client, serviceOrderId, true) : null
     if (serviceOrder && serviceOrder.status !== "open") throw new CheckoutError("La orden ya fue cobrada o cancelada.")
     const rawItems = serviceOrder
@@ -128,25 +128,51 @@ export async function POST(request: NextRequest) {
     const subtotal = total
     const deliveryFee = serviceOrder?.orderType === "delivery" ? serviceOrder.deliveryFee : 0
     const grandTotal = subtotal + deliveryFee
-    const cashReceived = method.kind === "cash" ? Number(body.cashReceived) : grandTotal
-    if (!Number.isSafeInteger(cashReceived) || cashReceived < grandTotal) {
+    // Pagos: uno o varios medios (por ejemplo efectivo + tarjeta). La suma tiene que dar el total.
+    const rawPayments = hasPayments ? body.payments.slice(0, 6) : [{ method: paymentMethod, amount: grandTotal, reference: paymentReference }]
+    const payLines: { method: PaymentMethod; amount: number; reference: string }[] = []
+    for (const entry of rawPayments) {
+      const found = await findPaymentMethod(client, entry?.method)
+      if (!found) throw new CheckoutError("Elegí un medio de pago válido.")
+      const amount = Number(entry?.amount)
+      if (!Number.isSafeInteger(amount) || amount <= 0) throw new CheckoutError(`Monto inválido para ${found.name}.`)
+      payLines.push({ method: found, amount, reference: typeof entry?.reference === "string" ? entry.reference.trim().slice(0, 80) : "" })
+    }
+    const paid = payLines.reduce((sum, line) => sum + line.amount, 0)
+    if (paid !== grandTotal) throw new CheckoutError(`Los pagos suman Gs ${paid.toLocaleString("es-PY")} y el total es Gs ${grandTotal.toLocaleString("es-PY")}.`)
+    const cashAmount = payLines.filter((line) => line.method.kind === "cash").reduce((sum, line) => sum + line.amount, 0)
+    const creditAmount = payLines.filter((line) => line.method.kind === "credit").reduce((sum, line) => sum + line.amount, 0)
+    const received = cashAmount > 0 ? Number(body.cashReceived ?? cashAmount) : 0
+    if (cashAmount > 0 && (!Number.isSafeInteger(received) || received < cashAmount)) {
       throw new CheckoutError("El monto recibido es insuficiente.")
     }
+    const cashReceived = cashAmount > 0 ? received + (grandTotal - cashAmount) : grandTotal
+    const change = cashAmount > 0 ? received - cashAmount : 0
 
-    const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0, 255) || serviceOrder?.customerName || "Cliente General" : serviceOrder?.customerName || "Cliente General"
-    const customerRuc = typeof body.customerRuc === "string" ? body.customerRuc.trim().slice(0, 50) : ""
-    const customerId = await upsertCustomer(client, { name: customerName, phone: serviceOrder?.customerPhone, ruc: customerRuc })
+    // Cliente: elegido de la lista (obligatorio para cargar a cuenta) o por nombre / RUC como siempre.
+    const chosenId = body?.customerId == null || body.customerId === "" ? null : Number(body.customerId)
+    if (chosenId !== null && (!Number.isSafeInteger(chosenId) || chosenId <= 0)) throw new CheckoutError("Cliente inválido.")
+    const chosen = chosenId ? (await client.query("SELECT id, name, ruc FROM customers WHERE id = $1", [chosenId])).rows[0] : null
+    if (chosenId && !chosen) throw new CheckoutError("El cliente elegido no existe.")
+    if (creditAmount > 0 && !chosen) throw new CheckoutError("Elegí el cliente para cargar la venta a su cuenta corriente.")
+    const customerName = chosen ? String(chosen.name || "Cliente") : typeof body.customerName === "string" ? body.customerName.trim().slice(0, 255) || serviceOrder?.customerName || "Cliente General" : serviceOrder?.customerName || "Cliente General"
+    const customerRuc = chosen ? String(chosen.ruc ?? "") : typeof body.customerRuc === "string" ? body.customerRuc.trim().slice(0, 50) : ""
+    const customerId = chosen ? Number(chosen.id) : await upsertCustomer(client, { name: customerName, phone: serviceOrder?.customerPhone, ruc: customerRuc })
       ?? serviceOrder?.customerId ?? null
+    const primary = payLines.length === 1 ? payLines[0].method : null
     const sale = {
       date: new Date().toISOString(),
       total: grandTotal,
       subtotal,
       deliveryFee,
       items,
-      paymentMethod,
-      paymentMethodName: method.name,
-      paymentStatus: method.needsVerification ? "pending" : "confirmed",
-      paymentReference,
+      paymentMethod: primary?.code ?? "mixed",
+      paymentMethodName: payLines.map((line) => line.method.name).join(" + "),
+      paymentStatus: payLines.some((line) => line.method.needsVerification) ? "pending" : "confirmed",
+      paymentReference: payLines.map((line) => line.reference).filter(Boolean).join(" / "),
+      payments: payLines.map((line) => ({ method: line.method.code, name: line.method.name, kind: line.method.kind, amount: line.amount,
+        status: line.method.needsVerification ? "pending" : "confirmed", reference: line.reference })),
+      creditAmount,
       orderType,
       customerName,
       customerRuc,
@@ -156,27 +182,36 @@ export async function POST(request: NextRequest) {
         deliveryZoneName: serviceOrder.deliveryZoneName, deliveryAddress: serviceOrder.deliveryAddress,
         courierName: serviceOrder.courierName, source: serviceOrder.source } : {}),
       cashReceived,
-      change: cashReceived - grandTotal,
+      change,
       userId: Number(user.id),
       userName: user.name,
     }
     const saved = await client.query(`INSERT INTO sales (data) VALUES ($1::jsonb) RETURNING id`, [JSON.stringify(sale)])
     await recordCustomerPurchase(client, customerId, grandTotal)
-    const payment = await recordSalePayment(client, { saleId: Number(saved.rows[0].id), orderId: serviceOrder?.id ?? null, method, amount: grandTotal,
-      reference: paymentReference, user })
+    const saleId = Number(saved.rows[0].id)
+    let sessionId: number | null = null
+    let creditBalance: number | null = null
+    for (const line of payLines) {
+      const recorded = await recordSalePayment(client, { saleId, orderId: serviceOrder?.id ?? null, method: line.method, amount: line.amount,
+        reference: line.reference, user, customerId: line.method.kind === "credit" ? customerId : null })
+      sessionId = recorded.sessionId
+      if (line.method.kind === "credit" && customerId) creditBalance = (await chargeCredit(client, customerId, line.amount, saleId, user)).balance
+    }
+    if (creditBalance !== null) await client.query("UPDATE sales SET data = data || jsonb_build_object('creditBalance', $2::bigint) WHERE id = $1", [saleId, creditBalance])
     if (serviceOrder) {
       await client.query(`UPDATE service_orders SET status = 'paid', sale_id = $1, customer_id = COALESCE(customer_id, $3),
         closed_at = NOW(), updated_at = NOW() WHERE id = $2`, [saved.rows[0].id, serviceOrder.id, customerId])
-      await logOrderEvent(client, serviceOrder.id, "paid", { status: paymentMethod, note: `Venta #${saved.rows[0].id}`, actor: { id: user.id, name: user.name } })
+      await logOrderEvent(client, serviceOrder.id, "paid", { status: primary?.code ?? "mixed", note: `Venta #${saved.rows[0].id}`, actor: { id: user.id, name: user.name } })
       // Con la cuenta cobrada se cierran los llamados pendientes de esa mesa.
       if (serviceOrder.tableId) await client.query(`UPDATE table_calls SET status = 'attended', attended_at = NOW(), attended_by = $2, attended_by_name = $3
         WHERE table_id = $1 AND status = 'open'`, [serviceOrder.tableId, Number(user.id), user.name])
     }
     await client.query("COMMIT")
-    return NextResponse.json({ sale: { ...sale, id: Number(saved.rows[0].id), cashSessionId: payment.sessionId } }, { status: 201 })
+    return NextResponse.json({ sale: { ...sale, id: saleId, cashSessionId: sessionId, creditBalance } }, { status: 201 })
   } catch (error) {
     await client.query("ROLLBACK")
     if (error instanceof CheckoutError || error instanceof ServiceOrderError) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (error instanceof CreditError) return NextResponse.json({ error: error.message }, { status: error.status })
     console.error("Checkout failed", error)
     return NextResponse.json({ error: "No se pudo registrar la venta." }, { status: 500 })
   } finally {

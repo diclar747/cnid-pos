@@ -10,7 +10,18 @@ export const mapCustomer = (row: Row): Customer => ({
   id: Number(row.id), name: row.name, phone: row.phone, ruc: row.ruc, email: row.email, address: row.address,
   notes: row.notes, ordersCount: Number(row.orders_count), totalSpent: Number(row.total_spent),
   lastOrderAt: iso(row.last_order_at), createdAt: iso(row.created_at)!,
+  creditEnabled: Boolean(row.credit_enabled), creditLimit: row.credit_limit == null ? null : Number(row.credit_limit),
+  billingCycle: (row.billing_cycle ?? "monthly") as Customer["billingCycle"], balance: Number(row.balance ?? 0),
 })
+
+/** Datos de crédito del cliente (solo caja o administración los cambia). undefined = no se tocan. */
+export function validateCredit(body: any) {
+  if (body?.creditEnabled === undefined && body?.creditLimit === undefined && body?.billingCycle === undefined) return undefined
+  const limit = body?.creditLimit === null || body?.creditLimit === "" || body?.creditLimit === undefined ? null : Number(body.creditLimit)
+  if (limit !== null && (!Number.isSafeInteger(limit) || limit < 0 || limit > 10_000_000_000)) throw new RecordError("Límite de crédito inválido.")
+  const cycle = ["weekly", "biweekly", "monthly", "none"].includes(body?.billingCycle) ? body.billingCycle : "monthly"
+  return { creditEnabled: body?.creditEnabled === true, creditLimit: limit, billingCycle: cycle as "weekly" | "biweekly" | "monthly" | "none" }
+}
 
 export const mapZone = (row: Row): DeliveryZone => ({
   id: Number(row.id), name: row.name, areas: row.areas, fee: Number(row.fee),

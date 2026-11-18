@@ -18,7 +18,7 @@ const COLORS = ["#6366f1", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e", "#8b5cf6"
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 const SOURCE = { pos: "POS / mostrador", table_qr: "QR de mesa", whatsapp: "WhatsApp", web: "Web" } as Record<string, string>
 const TYPES = { dineIn: "En el local", pickup: "Retiro", delivery: "Delivery" } as Record<string, string>
-const PAY = { cash: "Efectivo", card: "Tarjeta", transfer: "Transferencia", qr: "QR / billetera" } as Record<string, string>
+const PAY = { cash: "Efectivo", card: "Tarjeta", transfer: "Transferencia", qr: "QR / billetera", credit: "A cuenta (crédito)", mixed: "Pago dividido" } as Record<string, string>
 
 const localDay = (date = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Asuncion" }).format(date)
 const shift = (day: string, delta: number) => { const date = new Date(`${day}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + delta); return date.toISOString().slice(0, 10) }

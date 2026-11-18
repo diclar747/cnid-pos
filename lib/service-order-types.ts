@@ -87,6 +87,11 @@ export interface Customer {
   totalSpent: number
   lastOrderAt: string | null
   createdAt: string
+  /** Cuenta corriente: si puede comprar a crédito, límite (null = sin límite), ciclo de cobro y saldo pendiente. */
+  creditEnabled: boolean
+  creditLimit: number | null
+  billingCycle: "weekly" | "biweekly" | "monthly" | "none"
+  balance: number
 }
 
 export interface DeliveryZone {

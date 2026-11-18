@@ -11,7 +11,7 @@ export class CashError extends Error {
   constructor(message: string, status = 400) { super(message); this.status = status }
 }
 
-export type PaymentKind = "cash" | "card" | "transfer" | "qr" | "other"
+export type PaymentKind = "cash" | "card" | "transfer" | "qr" | "other" | "credit"
 export interface PaymentMethod { code: string; name: string; kind: PaymentKind; needsVerification: boolean; isActive: boolean; sortOrder: number }
 
 const methodRow = (row: any): PaymentMethod => ({ code: row.code, name: row.name, kind: row.kind, needsVerification: row.needs_verification,
@@ -35,13 +35,13 @@ export async function openSessionId(db: Queryable, lock = false): Promise<number
 
 /** Registra el pago de una venta y lo asocia a la caja abierta. Transferencias y QR quedan pendientes de verificar. */
 export async function recordSalePayment(db: Queryable, input: { saleId: number; orderId: number | null; method: PaymentMethod; amount: number
-  reference: string; user: { id: string | number; name: string } }) {
+  reference: string; user: { id: string | number; name: string }; customerId?: number | null }) {
   const sessionId = await openSessionId(db)
   const status = input.method.needsVerification ? "pending" : "confirmed"
-  const result = await db.query(`INSERT INTO payments (sale_id, order_id, session_id, method, method_name, kind, amount, status, reference, created_by, created_by_name)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+  const result = await db.query(`INSERT INTO payments (sale_id, order_id, session_id, method, method_name, kind, amount, status, reference, created_by, created_by_name, customer_id)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
     [input.saleId, input.orderId, sessionId, input.method.code, input.method.name, input.method.kind, input.amount, status, input.reference,
-      Number(input.user.id), input.user.name])
+      Number(input.user.id), input.user.name, input.customerId ?? null])
   return { paymentId: Number(result.rows[0].id), sessionId, status }
 }
 
@@ -55,6 +55,12 @@ export interface CashSummary {
   cashIncomes: number
   cashExpenses: number
   cashSales: number
+  /** Ventas cargadas a cuenta corriente (no entra dinero en la caja). */
+  creditSales: number
+  /** Abonos de clientes a su cuenta corriente, por medio, y el efectivo recibido por abonos. */
+  accountPayments: { method: string; name: string; confirmed: number; pending: number; count: number }[]
+  accountTotal: number
+  cashAccountPayments: number
   expectedCash: number
   pendingCount: number
 }
@@ -67,7 +73,10 @@ export async function cashSummary(db: Queryable, sessionId: number): Promise<Cas
       COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) AS pending,
       COALESCE(SUM(amount) FILTER (WHERE status = 'rejected'), 0) AS rejected,
       COUNT(*) AS count
-    FROM payments WHERE session_id = $1 GROUP BY method ORDER BY method`, [sessionId])
+    FROM payments WHERE session_id = $1 AND purpose = 'sale' GROUP BY method ORDER BY method`, [sessionId])
+  const account = await db.query(`SELECT method, MAX(method_name) AS name, COALESCE(SUM(amount) FILTER (WHERE status = 'confirmed'), 0) AS confirmed,
+      COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) AS pending, COUNT(*) AS count
+    FROM payments WHERE session_id = $1 AND purpose = 'account' GROUP BY method ORDER BY method`, [sessionId])
   const movements = await db.query(`SELECT kind, method, COALESCE(SUM(amount), 0) AS total FROM cash_movements WHERE session_id = $1 GROUP BY kind, method`, [sessionId])
   const cashCodes = new Set((await db.query("SELECT code FROM payment_methods WHERE kind = 'cash'")).rows.map((row) => row.code))
   cashCodes.add("cash")
@@ -78,12 +87,16 @@ export async function cashSummary(db: Queryable, sessionId: number): Promise<Cas
   const cashSales = byMethod.filter((row) => cashCodes.has(row.method)).reduce((total, row) => total + row.confirmed, 0)
   const openingAmount = Number(session.opening_amount)
   const cashIncomes = sum("income", true), cashExpenses = sum("expense", true)
+  const accountPayments = account.rows.map((row) => ({ method: row.method, name: row.name || row.method, confirmed: Number(row.confirmed), pending: Number(row.pending), count: Number(row.count) }))
+  const cashAccountPayments = accountPayments.filter((row) => cashCodes.has(row.method)).reduce((total, row) => total + row.confirmed, 0)
   return {
     openingAmount, byMethod,
     salesTotal: byMethod.reduce((total, row) => total + row.confirmed + row.pending, 0),
     salesCount: byMethod.reduce((total, row) => total + row.count, 0),
     incomes: sum("income", false), expenses: sum("expense", false), cashIncomes, cashExpenses, cashSales,
-    expectedCash: openingAmount + cashSales + cashIncomes - cashExpenses,
+    creditSales: byMethod.filter((row) => row.kind === "credit").reduce((total, row) => total + row.confirmed, 0),
+    accountPayments, accountTotal: accountPayments.reduce((total, row) => total + row.confirmed + row.pending, 0), cashAccountPayments,
+    expectedCash: openingAmount + cashSales + cashAccountPayments + cashIncomes - cashExpenses,
     pendingCount: (await db.query("SELECT COUNT(*) AS n FROM payments WHERE session_id = $1 AND status = 'pending'", [sessionId])).rows[0].n * 1,
   }
 }
@@ -100,7 +113,7 @@ export const paymentRow = (row: any) => ({
   sessionId: row.session_id == null ? null : Number(row.session_id), method: row.method, methodName: row.method_name, kind: row.kind,
   amount: Number(row.amount), status: row.status, reference: row.reference, createdBy: row.created_by_name, verifiedBy: row.verified_by_name,
   verifiedAt: row.verified_at ? new Date(row.verified_at).toISOString() : null, verifyNote: row.verify_note, createdAt: new Date(row.created_at).toISOString(),
-  customerName: row.customer_name ?? "",
+  customerName: row.customer_name ?? "", purpose: row.purpose ?? "sale",
 })
 
 export const movementRow = (row: any) => ({

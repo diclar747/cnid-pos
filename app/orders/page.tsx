@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
+import PaymentDialog, { type PaymentTarget } from "../components/payment-dialog"
 import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
@@ -58,6 +59,7 @@ export default function OrdersPage() {
   useEffect(() => { void load() }, [load])
   useLiveTables(["service_orders", "kitchen_tickets"], () => void load(), 12000)
 
+  const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null)
   const visible = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("es")
     return orders.filter((order) => !term || [order.id, order.tableLabel, order.customerName, order.customerPhone, order.cardCode]
@@ -135,7 +137,7 @@ export default function OrdersPage() {
         {order.status === "open" && order.confirmation !== "pending" && <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" onClick={() => router.push(`/pos?order=${order.id}`)}><Plus className="mr-1 h-4 w-4" /> Agregar</Button>
           <Button variant="outline" disabled={!order.items.length || busyId === order.id} onClick={() => void act(order, "bill", {}, true)} className="border-indigo-300 text-indigo-800 dark:text-indigo-200" title="Imprime la cuenta para el cliente antes de cobrar"><ReceiptText className="mr-1 h-4 w-4" /> {order.billedAt ? "Reimprimir precuenta" : "Precuenta"}</Button>
-          {canCharge && <Button onClick={() => router.push(`/checkout?order=${order.id}`)} disabled={!order.items.length} className="col-span-2 bg-emerald-600 hover:bg-emerald-700"><CreditCard className="mr-1 h-4 w-4" /> Cobrar</Button>}
+          {canCharge && <Button onClick={() => setPayTarget({ kind: "order", orderId: order.id })} disabled={!order.items.length} className="col-span-2 bg-emerald-600 hover:bg-emerald-700"><CreditCard className="mr-1 h-4 w-4" /> Cobrar</Button>}
           {drafts > 0 && <Button variant="outline" disabled={busyId === order.id} onClick={() => void act(order, "send", {}, true)} className="col-span-2 border-amber-300 text-amber-900 dark:text-amber-300"><ChefHat className="mr-1 h-4 w-4" /> Enviar e imprimir comanda</Button>}
           <Button variant="ghost" onClick={() => edit(order)} className={canCharge ? "" : "col-span-2"}><Pencil className="mr-1 h-4 w-4" /> Datos</Button>
           {canCharge && <Button variant="ghost" className="text-red-600" disabled={busyId === order.id} onClick={() => { if (window.confirm(`¿Cancelar orden #${order.id}? Se devolverá el stock reservado.`)) void act(order, "cancel") }}><XCircle className="mr-1 h-4 w-4" /> Cancelar</Button>}
@@ -184,5 +186,6 @@ export default function OrdersPage() {
             <p className="text-xs text-muted-foreground">{new Date(event.createdAt).toLocaleString("es-PY", { dateStyle: "short", timeStyle: "medium" })}{event.actorName ? ` · ${event.actorName}` : ""}</p>
           </li>))}</ol>)}
     </DialogContent></Dialog>
+    <PaymentDialog target={payTarget} onClose={() => setPayTarget(null)} onPaid={() => void load()} />
   </main></ProtectedRoute>
 }

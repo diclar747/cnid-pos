@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
+import PaymentDialog, { type PaymentTarget } from "../components/payment-dialog"
 import { StaffPushButton } from "../components/table-calls-listener"
 import { OrderFlowGuide } from "../components/order-flow-guide"
 import { apiRequest } from "@/lib/api-client"
@@ -52,6 +53,7 @@ export default function CrmPage() {
   const router = useRouter()
   const { hasPermission } = useAuth()
   const canManage = hasPermission("manage_sales")
+  const [payTarget, setPayTarget] = useState<PaymentTarget | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [date, setDate] = useState(localToday)
   const [search, setSearch] = useState("")
@@ -165,7 +167,9 @@ export default function CrmPage() {
         </div>
       </div>
 
+      <PaymentDialog target={payTarget} onClose={() => setPayTarget(null)} onPaid={() => void load()} />
       {current && <OrderDetail item={current} canManage={canManage} onClose={() => setSelected(null)} onChanged={() => void load()}
+        onCharge={() => { setSelected(null); setPayTarget({ kind: "order", orderId: current.order.id }) }}
         onAdvance={() => { const to = nextStage(current); if (to) void move(current, to) }} onCancel={() => { setCancelling(current); setReason("") }} />}
 
       <Dialog open={cancelling !== null} onOpenChange={(open) => { if (!open) setCancelling(null) }}>
@@ -230,8 +234,8 @@ function OrderCard({ item, busy, canManage, onOpen, onAdvance, onDragStart, onDr
   </article>
 }
 
-function OrderDetail({ item, canManage, onClose, onChanged, onAdvance, onCancel }: { item: Item; canManage: boolean; onClose: () => void; onChanged: () => void
-  onAdvance: () => void; onCancel: () => void }) {
+function OrderDetail({ item, canManage, onClose, onChanged, onAdvance, onCancel, onCharge }: { item: Item; canManage: boolean; onClose: () => void; onChanged: () => void
+  onAdvance: () => void; onCancel: () => void; onCharge: () => void }) {
   const { order, tickets } = item
   const [history, setHistory] = useState<OrderEvent[]>([])
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -329,7 +333,7 @@ function OrderDetail({ item, canManage, onClose, onChanged, onAdvance, onCancel 
           </section>
           <div className="flex flex-wrap gap-2">
             {next && <Button onClick={onAdvance} className="flex-1"><CheckCircle2 className="mr-2 h-4 w-4" />{advanceLabel[next]}</Button>}
-            {order.status === "open" && order.confirmation !== "pending" && order.items.length > 0 && canManage && <Button variant="outline" onClick={() => window.location.assign(`/checkout?order=${order.id}`)}><CreditCard className="mr-2 h-4 w-4" />Cobrar</Button>}
+            {order.status === "open" && order.confirmation !== "pending" && order.items.length > 0 && canManage && <Button variant="outline" onClick={onCharge}><CreditCard className="mr-2 h-4 w-4" />Cobrar</Button>}
             {order.items.length > 0 && <Button variant="outline" onClick={() => window.open(order.saleId ? `/receipt/sale/${order.saleId}` : `/receipt/bill/${order.id}`, "_blank")}><Printer className="mr-2 h-4 w-4" />{order.saleId ? "Comprobante" : "Precuenta"}</Button>}
             {order.status === "open" && canManage && <Button variant="outline" onClick={onCancel} className="border-red-200 text-red-700"><XCircle className="mr-2 h-4 w-4" />Cancelar</Button>}
           </div>
