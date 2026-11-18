@@ -128,7 +128,17 @@ El panel corre cada sitio en un contenedor Node 22: clona el repositorio, ejecut
    | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | Cuenta central (contraseña de 14+ caracteres). Solo se crea si no existe. |
 
    Después del primer arranque podés borrar las variables de contraseña: las cuentas ya quedan en la base.
-4. **Despliegue:** URL `https://github.com/diclar747/cnid-pos.git` (sin credenciales), rama `main`. Como el repositorio es privado, cargá en el campo **token** un *fine-grained token* de GitHub con acceso solo a `cnid-pos` y permiso **Contents: Read-only**. **Guardar y desplegar.**
+4. **Despliegue:** URL `https://github.com/diclar747/cnid-pos` (sin credenciales), rama **`panel`**. El panel compila con 1 vCPU y corta a los 10 minutos, y `next build` no entra; por eso se despliega la rama `panel`, que ya trae `.next` compilado: el panel solo instala dependencias (~3 min) y `scripts/build.mjs` omite la compilación al ver `.next/PREBUILT`. El repositorio es público; si vuelve a ser privado, el panel necesita un token cargado desde el botón **Git** de la tarjeta del sitio.
+
+   **Actualizar la rama `panel`:** cada push a `main` la regenera con GitHub Actions (`.github/workflows/panel-build.yml`). Si Actions no está disponible, compilala a mano y publicala, y después tocá **Volver a desplegar**:
+
+   ```bash
+   git clone --depth 1 https://github.com/diclar747/cnid-pos.git /tmp/cnid-panel && cd /tmp/cnid-panel
+   npm ci && npm run build
+   rm -rf .next/cache && git rev-parse HEAD > .next/PREBUILT
+   git checkout --orphan panel && git add -A && git add -f .next
+   git commit -m "Build para el panel" && git push -f origin panel
+   ```
 5. **Carta de De la Casa:** con **Administrador de archivos**, en la carpeta del sitio creá `data/` y subí `de-la-casa-export.json` (está en la PC, en `.legacy-export/`). Reiniciá el sitio (no vuelvas a desplegar, porque un despliegue reemplaza la carpeta): al arrancar se importa una sola vez. Las actualizaciones posteriores no la vuelven a importar ni pisan los cambios hechos desde la administración.
 6. **Probar:** `https://restopos.cd.com.py/login` con el administrador inicial; crear una cuenta, enviar a cocina, imprimir la precuenta y cobrar.
 
