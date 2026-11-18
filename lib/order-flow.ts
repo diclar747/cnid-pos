@@ -9,7 +9,8 @@ import { notifyOrder } from "./web-push"
 // Flujo de estados de las comandas y avisos al cliente (push y WhatsApp) con mensajes únicos para todo el sistema.
 
 export class FlowError extends Error {
-  constructor(message: string, public status = 409) { super(message) }
+  status: number
+  constructor(message: string, status = 409) { super(message); this.status = status }
 }
 
 export const nextTicketStatus = (status: KitchenStatus, type: ServiceOrderType): KitchenStatus | null => {

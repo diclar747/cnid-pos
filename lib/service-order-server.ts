@@ -5,7 +5,8 @@ import type { PoolClient } from "pg"
 import type { KitchenTicket, OrderLine, OrderModifier, ServiceOrder, ServiceOrderType } from "./service-order-types"
 
 export class ServiceOrderError extends Error {
-  constructor(message: string, public status = 400) { super(message) }
+  status: number
+  constructor(message: string, status = 400) { super(message); this.status = status }
 }
 
 export const cleanText = (value: unknown, max = 120) => typeof value === "string" ? value.trim().slice(0, max) : ""

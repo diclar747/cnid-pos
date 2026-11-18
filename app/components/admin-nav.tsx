@@ -25,6 +25,7 @@ import {
   Truck,
   UserRound,
   Banknote,
+  MessageCircle,
 } from "lucide-react"
 import { useAuth } from "../context/auth-context"
 import { cn } from "@/lib/utils"
@@ -124,6 +125,13 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
       href: "/admin/dining",
       badge: null,
       permission: "manage_company",
+    },
+    {
+      title: "WhatsApp e IA",
+      icon: MessageCircle,
+      href: "/admin/whatsapp",
+      badge: null,
+      permission: "access_pos",
     },
     {
       title: "Delivery",

@@ -7,7 +7,8 @@ import type { QueryResult, QueryResultRow } from "pg"
 type Queryable = { query: <T extends QueryResultRow = any>(sql: string, values?: unknown[]) => Promise<QueryResult<T>> }
 
 export class CashError extends Error {
-  constructor(message: string, public status = 400) { super(message) }
+  status: number
+  constructor(message: string, status = 400) { super(message); this.status = status }
 }
 
 export type PaymentKind = "cash" | "card" | "transfer" | "qr" | "other"
