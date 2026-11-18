@@ -15,10 +15,17 @@ import { TableCallsListener } from "./components/table-calls-listener"
 import { WorkspaceFrame } from "./components/workspace-shell"
 
 export const metadata: Metadata = {
-  title: "RestoPOS",
-  description: "Sistema de punto de venta completo para restaurantes y comercios",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://restopos.cd.com.py"),
+  title: "RestoPOS · Tu restaurante en línea",
+  description: "Pedidos desde el teléfono, mesas con QR, cocina en vivo, caja y delivery para tu restaurante.",
+  openGraph: {
+    type: "website", siteName: "RestoPOS", locale: "es_PY", title: "RestoPOS · Tu restaurante en línea",
+    description: "Pedidos desde el teléfono, mesas con QR, cocina en vivo, caja y delivery en un solo lugar.",
+    images: [{ url: "/brand/restopos-og.jpg", width: 1200, height: 630, alt: "RestoPOS · Tu restaurante en línea" }],
+  },
+  twitter: { card: "summary_large_image", title: "RestoPOS · Tu restaurante en línea", images: ["/brand/restopos-og.jpg"] },
   appleWebApp: { capable: true, title: "RestoPOS", statusBarStyle: "default" },
-  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/favicon-48.png", sizes: "48x48" }], apple: "/apple-touch-icon.png" },
+  icons: { icon: [{ url: "/brand/restopos-icon.svg", type: "image/svg+xml" }, { url: "/brand/restopos-48.png", sizes: "48x48" }], apple: "/brand/restopos-apple-180.png" },
 }
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f172a" }

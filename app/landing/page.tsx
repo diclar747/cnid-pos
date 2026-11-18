@@ -11,6 +11,7 @@ import DemoPlayer, { type DemoChapter } from "../components/landing/demo-player"
 import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
 import HeroScreens from "../components/landing/hero-screens"
 import { InstallAppButton } from "../components/install-app"
+import { BrandLogo } from "../components/brand-logo"
 
 const WHATSAPP = "https://wa.me/595994854167?text=Hola%2C%20quiero%20conocer%20RestoPOS."
 
@@ -109,8 +110,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5" aria-label="RestoPOS, inicio">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30"><Sparkles className="h-5 w-5" /></span>
-            <span className="text-xl font-black tracking-tight">Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></span>
+            <BrandLogo size="sm" tagline />
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex dark:text-slate-300" aria-label="Secciones">
             {nav.map(([href, label]) => <a key={href} href={href} className="hover:text-indigo-600 dark:hover:text-indigo-300">{label}</a>)}

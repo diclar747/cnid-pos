@@ -69,7 +69,7 @@ export default function LoginPage() {
         {/* Left Side - Login Form */}
         <Card className="w-full max-w-md mx-auto shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="text-center space-y-4">
-            <img src="/pwa-192.png" alt="RestoPOS" className="mx-auto h-16 w-16 rounded-2xl shadow-lg shadow-violet-500/30" />
+            <img src="/brand/restopos-icon.svg" alt="RestoPOS" className="mx-auto h-16 w-16 rounded-2xl shadow-lg shadow-violet-500/30" />
             <div>
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 RestoPOS

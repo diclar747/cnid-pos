@@ -96,7 +96,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795043015",
+    "outputFileTracingRoot": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795044438",
     "experimental": {
       "allowedDevOrigins": [],
       "nodeMiddleware": false,
@@ -175,7 +175,7 @@
       "forceSwcTransforms": false,
       "largePageDataBytes": 128000,
       "turbo": {
-        "root": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795043015"
+        "root": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795044438"
       },
       "typedRoutes": false,
       "typedEnv": false,
@@ -284,7 +284,7 @@
       "@whiskeysockets/baileys"
     ]
   },
-  "appDir": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795043015",
+  "appDir": "C:\\Users\\claud\\AppData\\Local\\Temp\\claude\\cb6f619cd29f46e4\\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\\scratchpad\\build-1795044438",
   "relativeAppDir": "",
   "files": [
     ".next\\routes-manifest.json",
