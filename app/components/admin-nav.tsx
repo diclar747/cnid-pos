@@ -84,6 +84,13 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
       permission: "manage_sales",
     },
     {
+      title: "Estadísticas",
+      icon: TrendingUp,
+      href: "/admin/stats",
+      badge: null,
+      permission: "view_reports",
+    },
+    {
       title: "Reportes de Ventas",
       icon: BarChart3,
       href: "/admin/sales-reports",

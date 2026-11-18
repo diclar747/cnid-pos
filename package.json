@@ -15,7 +15,7 @@
     "db:demo": "node scripts/seed-demo.mjs",
     "test:smoke": "node scripts/smoke-local.mjs",
     "test:push": "node --experimental-strip-types --no-warnings scripts/test-web-push.mjs",
-    "test:smoke:all": "node scripts/smoke-local.mjs && node scripts/smoke-service-orders.mjs && node scripts/smoke-restaurants.mjs && node scripts/smoke-customers-delivery.mjs && node scripts/smoke-table-qr.mjs && node scripts/smoke-cash.mjs && node scripts/smoke-legacy.mjs"
+    "test:smoke:all": "node scripts/smoke-local.mjs && node scripts/smoke-service-orders.mjs && node scripts/smoke-restaurants.mjs && node scripts/smoke-customers-delivery.mjs && node scripts/smoke-table-qr.mjs && node scripts/smoke-cash.mjs && node scripts/smoke-stats.mjs && node scripts/smoke-legacy.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",
