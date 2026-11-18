@@ -161,7 +161,20 @@ try {
   check(seen.length === calls3, "Ráfaga de mensajes: no se llama a la IA")
   await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '2 minutes' WHERE conversation_id = $1", [conversation.id])
 
-  // 11) Respuesta no JSON: no se envía texto sin validar.
+  // 10b) JSON con saltos de línea sin escapar dentro del texto: se interpreta igual.
+  script = () => ({ content: '{"reply": "Tenemos:\n- Hamburguesas\n- Bebidas", "actions": []}' })
+  await incoming("¿Qué tienen?")
+  check(sent.at(-1)?.text.includes("- Hamburguesas"), `JSON con saltos de línea: ${sent.at(-1)?.text}`)
+
+  // 10c) Primera respuesta inválida, el reintento la corrige.
+  script = (last) => last.includes("no era un JSON válido")
+    ? { content: JSON.stringify({ reply: "Perdón, acá va: tenemos hamburguesas.", actions: [] }) }
+    : { content: "Tenemos hamburguesas (sin formato)" }
+  await incoming("¿Y hamburguesas?")
+  check(sent.at(-1)?.text === "Perdón, acá va: tenemos hamburguesas.", `Reintento de formato: ${sent.at(-1)?.text}`)
+  await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '2 minutes' WHERE conversation_id = $1", [conversation.id])
+
+  // 11) Respuesta no JSON aun después del reintento: no se envía texto sin validar.
   script = () => ({ content: "Claro, la hamburguesa sale Gs 5.000" })
   await incoming("¿Cuánto sale?")
   check(sent.at(-1)?.text.includes("no te entendí bien") && !sent.at(-1)?.text.includes("5.000"), "Una respuesta inválida de la IA no se reenvía")
