@@ -24,6 +24,7 @@ import {
   Armchair,
   Truck,
   UserRound,
+  Banknote,
 } from "lucide-react"
 import { useAuth } from "../context/auth-context"
 import { cn } from "@/lib/utils"
@@ -74,6 +75,20 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
       href: "/admin/users",
       badge: null,
       permission: "manage_users",
+    },
+    {
+      title: "Caja",
+      icon: Banknote,
+      href: "/cash",
+      badge: null,
+      permission: "manage_sales",
+    },
+    {
+      title: "Estadísticas",
+      icon: TrendingUp,
+      href: "/admin/stats",
+      badge: null,
+      permission: "view_reports",
     },
     {
       title: "Reportes de Ventas",

@@ -21,6 +21,7 @@ interface SaleData {
   }>
   total: number
   paymentMethod: string
+  paymentMethodName?: string
   customerName: string
   customerRuc: string
   cashReceived: number
@@ -115,7 +116,7 @@ export default function SuccessPage() {
               <p>Fecha: {formatDate(saleData.date)}</p>
               <p>Cliente: {saleData.customerName}</p>
               {saleData.customerRuc && <p>RUC: {saleData.customerRuc}</p>}
-              <p>Método de Pago: {saleData.paymentMethod === "cash" ? "Efectivo" : saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</p>
+              <p>Método de Pago: {saleData.paymentMethodName || (saleData.paymentMethod === "cash" ? "Efectivo" : saleData.paymentMethod === "card" ? "Tarjeta" : "Digital")}</p>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

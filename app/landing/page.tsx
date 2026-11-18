@@ -10,6 +10,7 @@ import {
 import DemoPlayer, { type DemoChapter } from "../components/landing/demo-player"
 import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
 import HeroScreens from "../components/landing/hero-screens"
+import { InstallAppButton } from "../components/install-app"
 
 const WHATSAPP = "https://wa.me/595994854167?text=Hola%2C%20quiero%20conocer%20RestoPOS."
 
@@ -115,6 +116,7 @@ export default function LandingPage() {
             {nav.map(([href, label]) => <a key={href} href={href} className="hover:text-indigo-600 dark:hover:text-indigo-300">{label}</a>)}
           </nav>
           <div className="flex items-center gap-2">
+            <InstallAppButton className="hidden items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 md:inline-flex dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" label="Instalar app" />
             <Link href="/login" className="hidden rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700 sm:inline-flex dark:bg-white dark:text-slate-900">Ingresar</Link>
             <button onClick={() => setMenuOpen((v) => !v)} className="rounded-lg p-2 md:hidden" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen}>
               {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

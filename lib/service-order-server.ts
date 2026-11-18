@@ -129,7 +129,8 @@ export function mapTicket(row: OrderRow): KitchenTicket {
     orderType: row.order_type, tableLabel: row.table_label,
     customerName: row.customer_name, cardCode: row.card_code ?? null, waiterName: row.waiter_name ?? "",
     courierName: row.courier_name ?? "", deliveryAddress: row.delivery_address ?? "",
-    items: row.items ?? [], notes: row.notes,
+    items: row.items ?? [], notes: row.notes, priority: row.priority === "high" ? "high" : "normal",
+    delayMinutes: row.delay_minutes == null ? null : Number(row.delay_minutes),
     createdAt: iso(row.created_at)!, updatedAt: iso(row.updated_at)!,
   }
 }

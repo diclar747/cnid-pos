@@ -78,3 +78,6 @@
 .card-dark {
   @apply bg-card border border-border;
 }
+
+/* Flotación suave para tarjetas y dispositivos de la portada y la bienvenida. */
+@keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }

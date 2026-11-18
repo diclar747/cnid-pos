@@ -31,6 +31,14 @@
       "namedRegex": "^/api/card\\-lookup/(?<nxtPcode>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/cash/[id]",
+      "regex": "^/api/cash/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/cash/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/customers/[id]",
       "regex": "^/api/customers/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -78,6 +86,22 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/kitchen\\-tickets/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/payment-methods/[code]",
+      "regex": "^/api/payment\\-methods/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPcode": "nxtPcode"
+      },
+      "namedRegex": "^/api/payment\\-methods/(?<nxtPcode>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/payments/[id]",
+      "regex": "^/api/payments/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/payments/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/api/purchase-orders/[id]",
@@ -174,6 +198,14 @@
         "nxtPcode": "nxtPcode"
       },
       "namedRegex": "^/card/(?<nxtPcode>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/cash/report/[id]",
+      "regex": "^/cash/report/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/cash/report/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/kitchen/print/[id]",
@@ -281,6 +313,12 @@
       "namedRegex": "^/admin/sales\\-reports(?:/)?$"
     },
     {
+      "page": "/admin/stats",
+      "regex": "^/admin/stats(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/stats(?:/)?$"
+    },
+    {
       "page": "/admin/supplier-transactions",
       "regex": "^/admin/supplier\\-transactions(?:/)?$",
       "routeKeys": {},
@@ -299,10 +337,22 @@
       "namedRegex": "^/admin/users(?:/)?$"
     },
     {
+      "page": "/cash",
+      "regex": "^/cash(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cash(?:/)?$"
+    },
+    {
       "page": "/checkout",
       "regex": "^/checkout(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/checkout(?:/)?$"
+    },
+    {
+      "page": "/crm",
+      "regex": "^/crm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm(?:/)?$"
     },
     {
       "page": "/kitchen",
@@ -369,6 +419,12 @@
       "regex": "^/superadmin(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/superadmin(?:/)?$"
+    },
+    {
+      "page": "/welcome",
+      "regex": "^/welcome(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/welcome(?:/)?$"
     }
   ],
   "dataRoutes": [],

@@ -1,5 +1,5 @@
-const CACHE = "restopos-static-v3"
-const STATIC = ["/offline.html", "/pwa-192.png", "/pwa-512.png"]
+const CACHE = "restopos-static-v4"
+const STATIC = ["/offline.html", "/pwa-192.png", "/pwa-512.png", "/landing/panel.webp", "/landing/pos.webp", "/landing/cocina.webp", "/landing/mesa-qr.webp", "/landing/ordenes.webp"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC)))

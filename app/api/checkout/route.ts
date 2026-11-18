@@ -3,6 +3,7 @@ import { getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { loadOrder, logOrderEvent, recordCustomerPurchase, ServiceOrderError, upsertCustomer, validOrderType } from "@/lib/service-order-server"
 import type { OrderLine } from "@/lib/service-order-types"
+import { findPaymentMethod, recordSalePayment } from "@/lib/cash"
 
 export const runtime = "nodejs"
 
@@ -16,9 +17,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => null)
-  const paymentMethod = body?.paymentMethod
+  const paymentMethod = typeof body?.paymentMethod === "string" ? body.paymentMethod : ""
+  const paymentReference = typeof body?.paymentReference === "string" ? body.paymentReference.trim().slice(0, 80) : ""
   const serviceOrderId = body?.serviceOrderId == null ? null : Number(body.serviceOrderId)
-  if (!["cash", "card", "transfer"].includes(paymentMethod) ||
+  if (!paymentMethod ||
     (serviceOrderId !== null && (!Number.isSafeInteger(serviceOrderId) || serviceOrderId <= 0))) {
     return NextResponse.json({ error: "Venta incompleta." }, { status: 400 })
   }
@@ -26,6 +28,8 @@ export async function POST(request: NextRequest) {
   const client = await db.connect()
   try {
     await client.query("BEGIN")
+    const method = await findPaymentMethod(client, paymentMethod)
+    if (!method) throw new CheckoutError("Elegí un medio de pago válido.")
     const serviceOrder = serviceOrderId ? await loadOrder(client, serviceOrderId, true) : null
     if (serviceOrder && serviceOrder.status !== "open") throw new CheckoutError("La orden ya fue cobrada o cancelada.")
     const rawItems = serviceOrder
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
     const subtotal = total
     const deliveryFee = serviceOrder?.orderType === "delivery" ? serviceOrder.deliveryFee : 0
     const grandTotal = subtotal + deliveryFee
-    const cashReceived = paymentMethod === "cash" ? Number(body.cashReceived) : grandTotal
+    const cashReceived = method.kind === "cash" ? Number(body.cashReceived) : grandTotal
     if (!Number.isSafeInteger(cashReceived) || cashReceived < grandTotal) {
       throw new CheckoutError("El monto recibido es insuficiente.")
     }
@@ -139,6 +143,9 @@ export async function POST(request: NextRequest) {
       deliveryFee,
       items,
       paymentMethod,
+      paymentMethodName: method.name,
+      paymentStatus: method.needsVerification ? "pending" : "confirmed",
+      paymentReference,
       orderType,
       customerName,
       customerRuc,
@@ -154,6 +161,8 @@ export async function POST(request: NextRequest) {
     }
     const saved = await client.query(`INSERT INTO sales (data) VALUES ($1::jsonb) RETURNING id`, [JSON.stringify(sale)])
     await recordCustomerPurchase(client, customerId, grandTotal)
+    const payment = await recordSalePayment(client, { saleId: Number(saved.rows[0].id), orderId: serviceOrder?.id ?? null, method, amount: grandTotal,
+      reference: paymentReference, user })
     if (serviceOrder) {
       await client.query(`UPDATE service_orders SET status = 'paid', sale_id = $1, customer_id = COALESCE(customer_id, $3),
         closed_at = NOW(), updated_at = NOW() WHERE id = $2`, [saved.rows[0].id, serviceOrder.id, customerId])
@@ -163,7 +172,7 @@ export async function POST(request: NextRequest) {
         WHERE table_id = $1 AND status = 'open'`, [serviceOrder.tableId, Number(user.id), user.name])
     }
     await client.query("COMMIT")
-    return NextResponse.json({ sale: { ...sale, id: Number(saved.rows[0].id) } }, { status: 201 })
+    return NextResponse.json({ sale: { ...sale, id: Number(saved.rows[0].id), cashSessionId: payment.sessionId } }, { status: 201 })
   } catch (error) {
     await client.query("ROLLBACK")
     if (error instanceof CheckoutError || error instanceof ServiceOrderError) return NextResponse.json({ error: error.message }, { status: 400 })

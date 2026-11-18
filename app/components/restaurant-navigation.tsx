@@ -1,10 +1,20 @@
 "use client"
 
 import Link from "next/link"
-import { ChefHat, ClipboardList, QrCode, Armchair } from "lucide-react"
+import { ChefHat, ClipboardList, QrCode, Armchair, Banknote, KanbanSquare } from "lucide-react"
 import { useAuth } from "@/app/context/auth-context"
 
-const destinations = [
+type Destination = { href: string; label: string; detail: string; icon: typeof ChefHat; color: string; iconColor: string; permission?: string }
+
+const destinations: Destination[] = [
+  {
+    href: "/crm",
+    label: "Pedidos",
+    detail: "Tablero en vivo",
+    icon: KanbanSquare,
+    color: "border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200",
+    iconColor: "bg-indigo-600 text-white",
+  },
   {
     href: "/orders",
     label: "Órdenes",
@@ -36,8 +46,18 @@ const destinations = [
     icon: Armchair,
     color: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200",
     iconColor: "bg-sky-600 text-white",
+    permission: "manage_company",
   },
-] as const
+  {
+    href: "/cash",
+    label: "Caja",
+    detail: "Apertura y arqueo",
+    icon: Banknote,
+    color: "border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-200",
+    iconColor: "bg-teal-600 text-white",
+    permission: "manage_sales",
+  },
+]
 
 export default function RestaurantNavigation({ variant = "toolbar" }: { variant?: "toolbar" | "sidebar" | "rail" }) {
   const { hasPermission } = useAuth()
@@ -45,8 +65,8 @@ export default function RestaurantNavigation({ variant = "toolbar" }: { variant?
   const isRail = variant === "rail"
 
   return (
-    <nav aria-label="Opciones del restaurante" className={isRail ? "grid justify-items-center gap-2" : isSidebar ? "grid gap-2" : "grid w-full grid-cols-2 gap-2 sm:grid-cols-4 2xl:max-w-[760px]"}>
-      {destinations.filter((item) => item.href !== "/admin/dining" || hasPermission("manage_company")).map(({ href, label, detail, icon: Icon, color, iconColor }) => (
+    <nav aria-label="Opciones del restaurante" className={isRail ? "grid justify-items-center gap-2" : isSidebar ? "grid gap-2" : "grid w-full grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6 2xl:max-w-[1100px]"}>
+      {destinations.filter((item) => !item.permission || hasPermission(item.permission)).map(({ href, label, detail, icon: Icon, color, iconColor }) => (
         <Link
           key={href}
           href={href}

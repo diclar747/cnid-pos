@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/api-client"
 import type { ServiceOrder } from "@/lib/service-order-types"
 
 type SaleRecord = {
-  id: number; date: string; total: number; orderType?: TicketData["orderType"]; paymentMethod: string
+  id: number; date: string; total: number; orderType?: TicketData["orderType"]; paymentMethod: string; paymentMethodName?: string; paymentStatus?: string
   cashReceived?: number; change?: number; customerName?: string; customerRuc?: string; userName?: string
   serviceOrderId?: number; tableLabel?: string; waiterName?: string; notes?: string
   subtotal?: number; deliveryFee?: number; deliveryAddress?: string; deliveryZoneName?: string; courierName?: string
@@ -34,7 +34,7 @@ function fromSale(sale: SaleRecord): TicketData {
     kind: "sale", orderId: sale.serviceOrderId ?? null, saleId: sale.id, date: sale.date, orderType: sale.orderType ?? "dineIn",
     tableLabel: sale.tableLabel ?? "", waiterName: sale.waiterName ?? "", customerName: sale.customerName ?? "",
     customerRuc: sale.customerRuc ?? "", notes: sale.notes ?? "", cashierName: sale.userName ?? "", total: sale.total,
-    paymentMethod: sale.paymentMethod, cashReceived: sale.cashReceived, change: sale.change,
+    paymentMethod: sale.paymentMethod, paymentMethodName: sale.paymentMethodName, paymentStatus: sale.paymentStatus, cashReceived: sale.cashReceived, change: sale.change,
     subtotal: sale.subtotal, deliveryFee: sale.deliveryFee, deliveryAddress: sale.deliveryAddress, deliveryZone: sale.deliveryZoneName, courierName: sale.courierName,
     lines: sale.items.map((item) => ({ quantity: item.quantity, name: item.productName ?? item.product?.name ?? "Producto",
       price: item.price, subtotal: item.subtotal ?? item.price * item.quantity,

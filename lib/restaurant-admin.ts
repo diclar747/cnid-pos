@@ -36,7 +36,7 @@ export async function createRestaurant(body: unknown) {
   const input = restaurantInput(body, true)
   const sql = await readFile(resolve(process.cwd(), "scripts/03-local-postgres.sql"), "utf8")
   const diningSql = await readFile(resolve(process.cwd(), "scripts/05-dining.sql"), "utf8")
-  const tenantSql = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql"]
+  const tenantSql = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql", "09-cash-payments.sql", "10-realtime.sql"]
     .map((file) => readFile(resolve(process.cwd(), "scripts", file), "utf8")))
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS products")
   if (start < 0) throw new Error("No se encontró el esquema de datos.")

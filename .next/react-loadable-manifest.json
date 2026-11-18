@@ -1,9 +1,9 @@
 {
   "app\\admin\\page.tsx -> ../components/dashboard-charts": {
-    "id": 7291,
+    "id": 75281,
     "files": [
       "static/chunks/8499-ead6a7924c941d5c.js",
-      "static/chunks/4462.27fb97cd25ad0b3b.js"
+      "static/chunks/3700.82815e881a3520d9.js"
     ]
   },
   "app\\components\\bulk-qr-generator.tsx -> qrcode": {
