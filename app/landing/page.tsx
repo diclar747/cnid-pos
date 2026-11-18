@@ -8,7 +8,8 @@ import {
   Smartphone, Sparkles, Truck, UserRound, Wallet, X,
 } from "lucide-react"
 import DemoPlayer, { type DemoChapter } from "../components/landing/demo-player"
-import { LaptopFrame, PhoneFrame } from "../components/landing/device-frame"
+import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
+import HeroScreens from "../components/landing/hero-screens"
 
 const WHATSAPP = "https://wa.me/595994854167?text=Hola%2C%20quiero%20conocer%20RestoPOS."
 
@@ -16,42 +17,42 @@ const chapters: DemoChapter[] = [
   {
     id: "pos", title: "Tomar el pedido", summary: "Carta con fotos, variantes, agregados y precios por tipo de pedido.",
     frames: [
-      { src: "/landing/pos.webp", alt: "Punto de venta de RestoPOS con la categoría Pastas y el carrito con tres platos", caption: "Elegís la categoría, tocás «Agregar» y el carrito suma al instante.", focus: { x: 92, y: 40, zoom: 1.32 }, highlight: { x: 78.5, y: 15.5, w: 20.5, h: 55 } },
-      { src: "/landing/pos-agregados.webp", alt: "Cuadro para elegir agregados de un plato con su precio", caption: "Agregados y opciones obligatorias con su precio: el total se calcula solo.", focus: { x: 50, y: 50, zoom: 1.18 }, highlight: { x: 32.5, y: 7.5, w: 35.5, h: 85 } },
+      { src: "/landing/pos.webp", alt: "Punto de venta de RestoPOS con la categoría Pastas y el carrito con tres platos", caption: "Elegís la categoría, tocás «Agregar» y el carrito suma al instante.", highlight: { x: 78.5, y: 15.5, w: 20.5, h: 55 } },
+      { src: "/landing/pos-agregados.webp", alt: "Cuadro para elegir agregados de un plato con su precio", caption: "Agregados y opciones obligatorias con su precio: el total se calcula solo.", highlight: { x: 32.5, y: 7.5, w: 35.5, h: 85 } },
     ],
   },
   {
     id: "cocina", title: "Cocina en tiempo real", summary: "Cada comanda avanza de Pendiente a Entregado.",
     frames: [
-      { src: "/landing/cocina.webp", alt: "Tablero de cocina con columnas Pendiente, Preparando, Listo, En reparto y Entregado", caption: "Las comandas llegan solas al tablero, con mesa, cliente y notas para cocina.", focus: { x: 30, y: 45, zoom: 1.28 }, highlight: { x: 21.2, y: 27.5, w: 18.5, h: 47 } },
-      { src: "/landing/cocina.webp", alt: "Pedido de delivery en la columna En reparto", caption: "Delivery y retiro siguen su propio recorrido hasta la entrega.", focus: { x: 70, y: 45, zoom: 1.28 }, highlight: { x: 60.5, y: 27.5, w: 18.5, h: 47 } },
+      { src: "/landing/cocina.webp", alt: "Tablero de cocina con columnas Pendiente, Preparando, Listo, En reparto y Entregado", caption: "Las comandas llegan solas al tablero, con mesa, cliente y notas para cocina.", highlight: { x: 21.2, y: 27.5, w: 18.5, h: 47 } },
+      { src: "/landing/cocina.webp", alt: "Pedido de delivery en la columna En reparto", caption: "Delivery y retiro siguen su propio recorrido hasta la entrega.", highlight: { x: 60.5, y: 27.5, w: 18.5, h: 47 } },
     ],
   },
   {
     id: "cuentas", title: "Mesas, mesero y precuenta", summary: "Cuentas abiertas por mesa o tarjeta QR, con mesero asignado.",
     frames: [
-      { src: "/landing/ordenes.webp", alt: "Órdenes abiertas por mesa con mesero y estado de precuenta", caption: "Cada mesa tiene su cuenta: se suman consumos, se sigue la comanda y se imprime la precuenta.", focus: { x: 35, y: 55, zoom: 1.2 } },
+      { src: "/landing/ordenes.webp", alt: "Órdenes abiertas por mesa con mesero y estado de precuenta", caption: "Cada mesa tiene su cuenta: se suman consumos, se sigue la comanda y se imprime la precuenta." },
       { src: "/landing/precuenta.webp", alt: "Precuenta impresa de 75 mm con mesa, mesero, detalle y total", caption: "Precuenta de 75 mm para el cliente; al cobrar, el comprobante con vuelto.", device: "ticket" },
     ],
   },
   {
     id: "qr", title: "El cliente pide desde su mesa", summary: "Escanea el QR, elige y el pedido llega a cocina.",
     frames: [
-      { src: "/landing/mesa-qr.webp", alt: "Menú en el teléfono del cliente para pedir desde la mesa", caption: "Sin instalar nada: el cliente escanea el QR de la mesa, arma su pedido y consulta su cuenta.", device: "phone", focus: { x: 50, y: 30, zoom: 1.08 } },
-      { src: "/landing/salones.webp", alt: "Administración de salones y mesas con códigos QR", caption: "Salones y mesas con QR propio, listos para imprimir.", focus: { x: 50, y: 45, zoom: 1.15 } },
+      { src: "/landing/mesa-qr.webp", alt: "Menú en el teléfono del cliente para pedir desde la mesa", caption: "Sin instalar nada: el cliente escanea el QR de la mesa, arma su pedido y consulta su cuenta.", device: "phone" },
+      { src: "/landing/salones.webp", alt: "Administración de salones y mesas con códigos QR", caption: "Salones y mesas con QR propio, listos para imprimir." },
     ],
   },
   {
     id: "control", title: "Ventas y control", summary: "Panel con ingresos, ticket promedio y productos.",
     frames: [
-      { src: "/landing/panel.webp", alt: "Panel de control con ventas de hoy, ingresos, operaciones y ticket promedio", caption: "Ventas del día, ingresos, ticket promedio y compras en un solo lugar.", focus: { x: 60, y: 60, zoom: 1.2 }, highlight: { x: 19.5, y: 54, w: 78.5, h: 25 } },
-      { src: "/landing/productos.webp", alt: "Administración de productos con precios y categorías", caption: "Productos, precios, stock y proveedores administrados desde el panel.", focus: { x: 55, y: 40, zoom: 1.15 } },
+      { src: "/landing/panel.webp", alt: "Panel de control con ventas de hoy, ingresos, operaciones y ticket promedio", caption: "Ventas del día, ingresos, ticket promedio y compras en un solo lugar.", highlight: { x: 19.5, y: 54, w: 78.5, h: 25 } },
+      { src: "/landing/productos.webp", alt: "Administración de productos con precios y categorías", caption: "Productos, precios, stock y proveedores administrados desde el panel." },
     ],
   },
   {
     id: "multi", title: "Varios restaurantes", summary: "Cada restaurante con sus datos, usuarios y carta separados.",
     frames: [
-      { src: "/landing/superadmin.webp", alt: "Superadministración con la lista de restaurantes", caption: "Desde la superadministración creás restaurantes, cada uno con su propio administrador y datos aislados.", focus: { x: 50, y: 45, zoom: 1.15 } },
+      { src: "/landing/superadmin.webp", alt: "Superadministración con la lista de restaurantes", caption: "Desde la superadministración creás restaurantes, cada uno con su propio administrador y datos aislados." },
     ],
   },
 ]
@@ -157,16 +158,17 @@ export default function LandingPage() {
                 ))}
               </ul>
             </div>
-            <div className="relative">
-              <LaptopFrame className="lg:translate-x-6">
-                <img src="/landing/pos.webp" alt="Punto de venta de RestoPOS" className="h-full w-full object-cover object-top" />
-              </LaptopFrame>
-              <div className="absolute -bottom-12 -left-2 hidden w-32 motion-safe:animate-[float_6s_ease-in-out_infinite] sm:block lg:-left-10 lg:w-40">
+            <div className="relative flex items-end">
+              <div className="min-w-0 flex-1">
+                <LaptopFrame>
+                  <HeroScreens />
+                </LaptopFrame>
+              </div>
+              <div className="relative z-10 -mb-3 -ml-[3%] w-[21%] shrink-0 motion-safe:animate-[float_6s_ease-in-out_infinite] sm:-mb-5">
                 <PhoneFrame>
-                  <img src="/landing/mesa-qr.webp" alt="Pedido desde el QR de la mesa en el teléfono" className="h-full w-full object-cover object-top" />
+                  <Screen src="/landing/mesa-qr.webp" alt="Pedido desde el QR de la mesa en el teléfono" />
                 </PhoneFrame>
               </div>
-              <img src="/landing/precuenta.webp" alt="Precuenta impresa" className="absolute -right-2 -top-8 hidden w-28 rotate-3 rounded-md shadow-2xl shadow-black/50 motion-safe:animate-[float_7s_ease-in-out_infinite_1s] md:block lg:w-32" />
             </div>
           </div>
         </section>
@@ -235,7 +237,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <LaptopFrame>
-              <img src="/landing/superadmin.webp" alt="Superadministración de restaurantes en RestoPOS" loading="lazy" className="h-full w-full object-cover object-top" />
+              <Screen src="/landing/superadmin.webp" alt="Superadministración de restaurantes en RestoPOS" lazy />
             </LaptopFrame>
           </div>
         </section>
