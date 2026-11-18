@@ -10,15 +10,17 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { useCart } from "../context/cart-context"
-import { useCompany } from "../context/company-context"
+import { useAuth } from "../context/auth-context"
 import { useSales } from "../context/sales-context"
 import { consultarRuc, formatRuc, type RucResponse } from "@/lib/ruc-service"
 import toast from "react-hot-toast"
+import { apiRequest } from "@/lib/api-client"
+import type { ServiceOrder } from "@/lib/service-order-types"
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { cart, clearCart, getCartTotal } = useCart()
-  const { companyConfig } = useCompany()
+  const { cart, clearCart, getCartTotal, orderType } = useCart()
+  const { user } = useAuth()
   const { addSale } = useSales()
   const [paymentMethod, setPaymentMethod] = useState("cash")
   const [cashReceived, setCashReceived] = useState("")
@@ -28,16 +30,31 @@ export default function CheckoutPage() {
   const [isConsultingRuc, setIsConsultingRuc] = useState(false)
   const [rucData, setRucData] = useState<RucResponse | null>(null)
   const [rucValidated, setRucValidated] = useState(false)
+  const [serviceOrder, setServiceOrder] = useState<ServiceOrder | null>(null)
+  const [orderLoading, setOrderLoading] = useState(true)
 
-  const total = getCartTotal()
+  const total = serviceOrder?.total ?? getCartTotal()
   const cashAmount = Number.parseFloat(cashReceived) || 0
   const change = cashAmount - total
 
   useEffect(() => {
-    if (!cart || cart.length === 0) {
-      router.push("/pos")
+    const value = new URLSearchParams(window.location.search).get("order")
+    if (value) {
+      const id = Number(value)
+      if (!Number.isSafeInteger(id) || id <= 0) { router.replace("/orders"); return }
+      apiRequest<{ order: ServiceOrder }>(`/api/service-orders/${id}`)
+        .then(({ order }) => {
+          if (order.status !== "open" || order.items.length === 0) { router.replace("/orders"); return }
+          setServiceOrder(order)
+          setCustomerName(order.customerName)
+        })
+        .catch((error) => { toast.error(error.message); router.replace("/orders") })
+        .finally(() => setOrderLoading(false))
+    } else {
+      setOrderLoading(false)
+      if (!cart?.length) router.replace("/pos")
     }
-  }, [cart, router])
+  }, [router])
 
   const handleRucConsultation = async () => {
     if (!customerRuc.trim()) {
@@ -61,7 +78,7 @@ export default function CheckoutPage() {
         toast.success(`RUC válido: ${result.data.name}`)
         
         if (result.data.status !== "ACTIVO") {
-          toast.warning(`Atención: El RUC está ${result.data.status}`)
+          toast(`Atención: El RUC está ${result.data.status}`)
         }
       } else {
         toast.error(result.error || "RUC no encontrado")
@@ -103,35 +120,61 @@ export default function CheckoutPage() {
     }
 
     setIsProcessing(true)
+    // Se abre antes de esperar al servidor para que el navegador no bloquee la ventana.
+    const printWindow = window.open("", "_blank")
 
     try {
       // Create sale record
       const saleData = {
         id: Date.now().toString(),
         date: new Date().toISOString(),
-        items: cart || [],
+        items: serviceOrder ? [] : cart || [],
+        ...(serviceOrder ? { serviceOrderId: serviceOrder.id } : {}),
         total,
         paymentMethod,
+        orderType: serviceOrder?.orderType ?? orderType,
         customerName: customerName || "Cliente General",
         customerRuc: customerRuc || "",
         cashReceived: paymentMethod === "cash" ? cashAmount : total,
         change: paymentMethod === "cash" ? change : 0,
       }
 
-      addSale(saleData)
+      const savedSale = await addSale(saleData)
+      const receiptSale = {
+        ...saleData,
+        id: String(savedSale.id),
+        date: savedSale.date,
+        total: savedSale.total,
+        cashReceived: savedSale.cashReceived,
+        change: savedSale.change,
+        items: savedSale.items.map((item: any) => ({
+          name: item.productName, quantity: item.quantity, price: item.price,
+          selectedModifiers: item.modifiers ?? [],
+        })),
+      }
 
       // Save sale data for success page
-      localStorage.setItem("lastSale", JSON.stringify(saleData))
+      localStorage.setItem("lastSale", JSON.stringify(receiptSale))
 
       // Generate and print receipt
-      await generateReceipt(saleData)
+      try {
+        openReceipt(printWindow, savedSale.id)
+      } catch (printError) {
+        console.error("Receipt print failed", printError)
+        toast.error("Venta guardada; no se pudo imprimir el comprobante")
+      }
 
       // Clear cart and redirect
-      clearCart()
+      if (!serviceOrder) clearCart()
+      else {
+        if (user) sessionStorage.removeItem(`pos:activeOrder:${user.id}`)
+        window.dispatchEvent(new Event("orders:changed"))
+      }
       router.push("/success")
 
       toast.success("Venta procesada exitosamente")
     } catch (error) {
+      printWindow?.close()
       toast.error("Error al procesar la venta")
       console.error("Payment error:", error)
     } finally {
@@ -139,188 +182,21 @@ export default function CheckoutPage() {
     }
   }
 
-  const generateReceipt = async (saleData: any, autoClose = false) => {
-    const receiptContent = `
-      <div style="width: 300px; font-family: monospace; font-size: 12px; line-height: 1.4;">
-        <!-- Header -->
-        <div style="text-center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-          <img src="${companyConfig.logo || "/placeholder.svg?height=60&width=150&text=LOGO"}" 
-               alt="Logo" style="max-height: 60px; max-width: 150px; margin-bottom: 5px;" />
-          <div style="font-weight: bold; font-size: 14px;">${companyConfig.name}</div>
-          <div style="font-size: 10px; color: #666;">${companyConfig.slogan}</div>
-          <div style="font-size: 10px; margin-top: 5px;">
-            <div>RUC: ${companyConfig.ruc}</div>
-            <div>${companyConfig.address}</div>
-            <div>Tel: ${companyConfig.phone}</div>
-            ${companyConfig.email ? `<div>Email: ${companyConfig.email}</div>` : ""}
-            ${companyConfig.website ? `<div>Web: ${companyConfig.website}</div>` : ""}
-          </div>
-        </div>
-
-        <!-- Sale Info -->
-        <div style="margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between;">
-            <span>FACTURA #${saleData.id}</span>
-            <span>${new Date(saleData.date).toLocaleDateString("es-PY")}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span>Hora:</span>
-            <span>${new Date(saleData.date).toLocaleTimeString("es-PY")}</span>
-          </div>
-          ${
-            saleData.customerName !== "Cliente General"
-              ? `
-            <div style="margin-top: 5px;">
-              <div>Cliente: ${saleData.customerName}</div>
-              ${saleData.customerRuc ? `<div>RUC: ${saleData.customerRuc}</div>` : ""}
-            </div>
-          `
-              : ""
-          }
-        </div>
-
-        <!-- Items -->
-        <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0;">
-          ${saleData.items
-            .map(
-              (item: any) => `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <div style="flex: 1;">
-                <div style="font-weight: bold;">${item.name}</div>
-                <div style="font-size: 10px; color: #666;">
-                  ${item.quantity} x Gs ${item.price.toLocaleString("es-PY")}
-                </div>
-              </div>
-              <div style="text-align: right; font-weight: bold;">
-                Gs ${(item.price * item.quantity).toLocaleString("es-PY")}
-              </div>
-            </div>
-          `,
-            )
-            .join("")}
-        </div>
-
-        <!-- Totals -->
-        <div style="margin: 10px 0;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-            <span>TOTAL:</span>
-            <span>Gs ${saleData.total.toLocaleString("es-PY")}</span>
-          </div>
-          ${
-            saleData.paymentMethod === "cash"
-              ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span>Efectivo:</span>
-              <span>Gs ${saleData.cashReceived.toLocaleString("es-PY")}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Cambio:</span>
-              <span>Gs ${saleData.change.toLocaleString("es-PY")}</span>
-            </div>
-          `
-              : `
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span>Método:</span>
-              <span>${saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</span>
-            </div>
-          `
-          }
-        </div>
-
-        <!-- Footer -->
-        <div style="text-center; font-size: 10px; color: #666; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
-          <div>¡Gracias por su compra!</div>
-          <div>Conserve este comprobante</div>
-          <div style="margin-top: 5px;">
-            Sistema HeroUI POS
-          </div>
-        </div>
-      </div>
-    `
-
-    // Create a new window for printing
-    const printWindow = window.open("", "_blank", "width=450,height=700")
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Factura #${saleData.id}</title>
-            <style>
-              body { 
-                margin: 0; 
-                padding: 20px;
-                font-family: monospace;
-              }
-              .no-print {
-                display: block;
-                text-align: center;
-                margin: 20px 0;
-                padding: 10px;
-                background: #f0f0f0;
-                border: 1px solid #ccc;
-                border-radius: 5px;
-              }
-              .print-button {
-                background: #007bff;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                margin: 5px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-              }
-              .print-button:hover {
-                background: #0056b3;
-              }
-              .close-button {
-                background: #6c757d;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                margin: 5px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-              }
-              .close-button:hover {
-                background: #545b62;
-              }
-              @media print {
-                body { margin: 0; padding: 0; }
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="no-print">
-              <h3>Vista Previa del Ticket</h3>
-              <button class="print-button" onclick="window.print()">🖨️ Imprimir Ticket</button>
-              <button class="close-button" onclick="window.close()">❌ Cerrar</button>
-              <p style="font-size: 12px; color: #666;">
-                El ticket se imprimirá cuando hagas clic en "Imprimir Ticket"
-              </p>
-            </div>
-            ${receiptContent}
-            ${autoClose ? `
-            <script>
-              window.onload = function() {
-                setTimeout(function() {
-                  window.print();
-                }, 500);
-              }
-            </script>
-            ` : ''}
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-    }
+  // El comprobante usa la página de impresión de 75 mm (mismo formato que la precuenta).
+  const openReceipt = (printWindow: Window | null, saleId: number | string) => {
+    const url = `/receipt/sale/${saleId}?auto=1`
+    if (printWindow) printWindow.location.href = url
+    else window.open(url, "_blank")
   }
 
-  if (!cart || cart.length === 0) {
+  if (orderLoading || (!serviceOrder && (!cart || cart.length === 0))) {
     return null
   }
+
+  const checkoutItems = serviceOrder
+    ? serviceOrder.items.map((item) => ({ cartKey: item.lineId, name: item.productName, quantity: item.quantity,
+      price: item.price, selectedModifiers: item.modifiers }))
+    : cart
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -331,7 +207,7 @@ export default function CheckoutPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>
-          <h1 className="text-2xl font-bold">Checkout</h1>
+          <h1 className="text-2xl font-bold">{serviceOrder ? `Cobrar orden #${serviceOrder.id}` : "Checkout"}</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -341,10 +217,11 @@ export default function CheckoutPage() {
               <CardTitle>Resumen del Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center">
+              {checkoutItems.map((item) => (
+                <div key={item.cartKey} className="flex justify-between items-center">
                   <div className="flex-1">
                     <h3 className="font-medium">{item.name}</h3>
+                    {item.selectedModifiers?.length > 0 && <p className="text-xs text-muted-foreground">{item.selectedModifiers.map((modifier) => modifier.name).join(", ")}</p>}
                     <p className="text-sm text-muted-foreground">
                       {item.quantity} x Gs {item.price.toLocaleString("es-PY")}
                     </p>
@@ -449,8 +326,8 @@ export default function CheckoutPage() {
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="digital" id="digital" />
-                    <Label htmlFor="digital" className="flex items-center cursor-pointer">
+                    <RadioGroupItem value="transfer" id="transfer" />
+                    <Label htmlFor="transfer" className="flex items-center cursor-pointer">
                       <Smartphone className="h-4 w-4 mr-2" />
                       Pago Digital
                     </Label>

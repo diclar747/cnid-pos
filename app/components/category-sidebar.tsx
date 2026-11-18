@@ -6,27 +6,56 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
   LayoutGrid,
-  Utensils,
-  Coffee,
-  IceCream,
-  Beef,
-  Salad,
+  UtensilsCrossed,
+  CupSoda,
+  Sandwich,
+  Leaf,
+  CookingPot,
+  Truck,
+  Citrus,
+  CakeSlice,
+  Pizza,
+  Croissant,
   TrendingUp,
-  Star,
   Tag,
-  Sparkles,
   Package,
   AlertTriangle,
   CheckCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  type LucideIcon,
 } from "lucide-react"
 import { useCart } from "../context/cart-context"
-import { products } from "../data/products"
+import RestaurantNavigation from "./restaurant-navigation"
 
 interface CategorySidebarProps {
   selectedCategory: string
   onCategoryChange: (category: string) => void
   selectedFilter: string
   onFilterChange: (filter: string) => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}
+
+type CategoryStyle = { icon: LucideIcon; color: string }
+
+const categoryStyles: Record<string, CategoryStyle> = {
+  "menu diario": { icon: UtensilsCrossed, color: "from-amber-400 to-orange-600" },
+  comidas: { icon: UtensilsCrossed, color: "from-amber-400 to-orange-600" },
+  bebidas: { icon: CupSoda, color: "from-sky-400 to-blue-600" },
+  sandwich: { icon: Sandwich, color: "from-yellow-400 to-amber-600" },
+  "especiales dietas": { icon: Leaf, color: "from-emerald-400 to-green-600" },
+  pastas: { icon: CookingPot, color: "from-violet-400 to-purple-600" },
+  delivery: { icon: Truck, color: "from-indigo-400 to-blue-700" },
+  "jugos naturales": { icon: Citrus, color: "from-lime-400 to-emerald-600" },
+  postres: { icon: CakeSlice, color: "from-pink-400 to-rose-600" },
+  pizza: { icon: Pizza, color: "from-red-400 to-orange-600" },
+  empanadas: { icon: Croissant, color: "from-orange-400 to-amber-600" },
+}
+
+function getCategoryStyle(category: string): CategoryStyle {
+  const key = category.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es")
+  return categoryStyles[key] ?? { icon: Tag, color: "from-slate-400 to-slate-600" }
 }
 
 export default function CategorySidebar({
@@ -34,23 +63,27 @@ export default function CategorySidebar({
   onCategoryChange,
   selectedFilter,
   onFilterChange,
+  collapsed = false,
+  onToggleCollapse,
 }: CategorySidebarProps) {
-  const { products: cartProducts } = useCart()
+  const { products: allProducts } = useCart()
+  // Igual que la grilla del POS: los productos inactivos no se cuentan ni generan categorías.
+  const products = allProducts.filter((product) => product.isActive !== false)
 
   const categories = [
-    { id: "all", name: "Todos", icon: LayoutGrid, color: "bg-blue-500" },
-    { id: "food", name: "Comida", icon: Utensils, color: "bg-orange-500" },
-    { id: "drinks", name: "Bebidas", icon: Coffee, color: "bg-cyan-500" },
-    { id: "desserts", name: "Postres", icon: IceCream, color: "bg-pink-500" },
-    { id: "meat", name: "Carnes", icon: Beef, color: "bg-red-500" },
-    { id: "salads", name: "Ensaladas", icon: Salad, color: "bg-green-500" },
+    { id: "all", name: "Todos", icon: LayoutGrid, color: "from-blue-500 to-indigo-600" },
+    ...Array.from(new Set(products.map((product) => product.category))).map((id) => ({
+      id,
+      name: id,
+      ...getCategoryStyle(id),
+    })),
   ]
 
   const filters = [
-    { id: "bestsellers", name: "Más Vendidos", icon: TrendingUp },
-    { id: "top-rated", name: "Mejor Valorados", icon: Star },
-    { id: "offers", name: "Ofertas", icon: Tag },
-    { id: "new", name: "Nuevos", icon: Sparkles },
+    { id: "popular", name: "Más Vendidos", icon: TrendingUp },
+    { id: "low-stock", name: "Stock Bajo", icon: AlertTriangle },
+    { id: "out-of-stock", name: "Sin Stock", icon: Package },
+    { id: "high-price", name: "Precio Alto", icon: Tag },
   ]
 
   const getCategoryCount = (categoryId: string) => {
@@ -59,16 +92,66 @@ export default function CategorySidebar({
   }
 
   const getStockStats = () => {
-    const inStock = products.filter((p) => p.stock > 5).length
-    const lowStock = products.filter((p) => p.stock > 0 && p.stock <= 5).length
-    const outOfStock = products.filter((p) => p.stock === 0).length
+    const inStock = products.filter((p) => p.trackStock === false || p.stock > 5).length
+    const lowStock = products.filter((p) => p.trackStock !== false && p.stock > 0 && p.stock <= 5).length
+    const outOfStock = products.filter((p) => p.trackStock !== false && p.stock === 0).length
     return { inStock, lowStock, outOfStock }
   }
 
   const stockStats = getStockStats()
 
+  if (collapsed) {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center bg-background">
+        <div className="flex w-full flex-col items-center gap-2 border-b px-2 py-3">
+          <Button variant="ghost" size="icon" onClick={onToggleCollapse} aria-label="Expandir categorías" title="Expandir categorías">
+            <PanelLeftOpen className="h-5 w-5" />
+          </Button>
+          <RestaurantNavigation variant="rail" />
+        </div>
+        <ScrollArea className="min-h-0 w-full flex-1">
+          <div className="flex flex-col items-center gap-2 py-3">
+            {categories.map((category) => {
+              const Icon = category.icon
+              const isSelected = selectedCategory === category.id
+              return (
+                <Button key={category.id} variant="ghost" onClick={() => onCategoryChange(category.id)}
+                  aria-label={`${category.name}: ${getCategoryCount(category.id)} productos`} aria-pressed={isSelected}
+                  title={`${category.name} (${getCategoryCount(category.id)})`}
+                  className={`h-11 w-11 rounded-xl p-1 ${isSelected ? "bg-primary/10 ring-2 ring-primary" : "hover:bg-muted"}`}>
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br ${category.color} text-white`}>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                </Button>
+              )
+            })}
+            <Separator className="my-1 w-9" />
+            {filters.map((filter) => {
+              const Icon = filter.icon
+              const isSelected = selectedFilter === filter.id
+              return <Button key={filter.id} variant="ghost" onClick={() => onFilterChange(isSelected ? "" : filter.id)}
+                aria-label={filter.name} aria-pressed={isSelected} title={filter.name}
+                className={`h-11 w-11 rounded-xl ${isSelected ? "bg-primary/10 text-primary ring-2 ring-primary" : "text-muted-foreground"}`}>
+                <Icon className="h-5 w-5" aria-hidden="true" />
+              </Button>
+            })}
+          </div>
+        </ScrollArea>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col">
+      <div className="border-b p-3">
+        <div className="mb-2 flex items-center justify-between pl-1">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Opciones</h2>
+          {onToggleCollapse && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleCollapse} aria-label="Minimizar categorías" title="Minimizar categorías">
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>}
+        </div>
+        <RestaurantNavigation variant="sidebar" />
+      </div>
       <div className="p-4 border-b">
         <h2 className="font-semibold text-lg mb-2">Categorías</h2>
         <div className="text-sm text-muted-foreground">{products.length} productos disponibles</div>
@@ -89,16 +172,17 @@ export default function CategorySidebar({
                   variant={isSelected ? "default" : "ghost"}
                   className={`w-full justify-start h-auto p-3 ${isSelected ? "" : "hover:bg-muted/50"}`}
                   onClick={() => onCategoryChange(category.id)}
+                  aria-pressed={isSelected}
                 >
-                  <div className="flex items-center gap-3 w-full">
-                    <div className={`p-2 rounded-lg ${category.color} text-white`}>
-                      <Icon className="h-4 w-4" />
+                  <div className="flex w-full min-w-0 items-center gap-3">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${category.color} text-white shadow-sm`}>
+                      <Icon className="h-5 w-5" aria-hidden="true" strokeWidth={2.1} />
                     </div>
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">{category.name}</div>
-                      <div className="text-xs text-muted-foreground">{count} productos</div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="truncate font-semibold">{category.name}</div>
+                      <div className={`text-xs ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>{count} productos</div>
                     </div>
-                    <Badge variant="secondary" className="ml-auto">
+                    <Badge variant="secondary" className={`ml-auto shrink-0 ${isSelected ? "bg-white/20 text-white hover:bg-white/25" : ""}`}>
                       {count}
                     </Badge>
                   </div>

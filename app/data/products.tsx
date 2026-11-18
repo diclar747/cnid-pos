@@ -5,9 +5,14 @@ export interface Product {
   category: string
   image: string
   stock: number
-  barcode?: string
-  description?: string
+  trackStock?: boolean
+  barcode: string
+  description: string
   isActive: boolean
+  supplierId?: number
+  menuName?: string
+  pricesByOrderType?: { dineIn: number; delivery: number; pickup: number }
+  modifierGroups?: Array<{ legacyId: number; name: string; required: boolean; multiple: boolean; options: Array<{ legacyId: number; name: string; price: number }> }>
 }
 
 export const products: Product[] = [

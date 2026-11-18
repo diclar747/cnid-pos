@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,13 +15,14 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Edit, Trash2, Search, UserPlus, Shield, User, Eye, EyeOff, AlertCircle } from "lucide-react"
 import toast from "react-hot-toast"
+import { apiRequest } from "@/lib/api-client"
 
 interface UserData {
   id: string
   name: string
   email: string
   username: string
-  role: "admin" | "cashier" | "manager"
+  role: "admin" | "cashier" | "manager" | "waiter"
   permissions: string[]
   status: "active" | "inactive"
   lastLogin: string
@@ -39,50 +40,24 @@ const availablePermissions = [
   { id: "manage_suppliers", label: "Gestionar Proveedores", description: "Administrar proveedores" },
   { id: "access_pos", label: "Acceso POS", description: "Usar el punto de venta" },
   { id: "manage_sales", label: "Gestionar Ventas", description: "Procesar ventas y transacciones" },
+  { id: "take_orders", label: "Tomar Pedidos", description: "Abrir cuentas, enviar a cocina e imprimir precuentas (sin cobrar)" },
 ]
 
 const rolePermissions = {
   admin: availablePermissions.map((p) => p.id),
   manager: ["view_dashboard", "view_reports", "access_pos", "manage_sales", "view_expenses"],
   cashier: ["access_pos", "manage_sales"],
+  waiter: ["access_pos", "take_orders"],
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<UserData[]>([
-    {
-      id: "1",
-      name: "Administrador Principal",
-      email: "admin@heroui.com",
-      username: "admin",
-      role: "admin",
-      permissions: rolePermissions.admin,
-      status: "active",
-      lastLogin: "2024-01-15T10:30:00Z",
-      createdAt: "2024-01-01T00:00:00Z",
-    },
-    {
-      id: "2",
-      name: "Cajero Principal",
-      email: "user@heroui.com",
-      username: "cajero",
-      role: "cashier",
-      permissions: rolePermissions.cashier,
-      status: "active",
-      lastLogin: "2024-01-15T09:15:00Z",
-      createdAt: "2024-01-05T00:00:00Z",
-    },
-    {
-      id: "3",
-      name: "Gerente de Ventas",
-      email: "manager@heroui.com",
-      username: "gerente",
-      role: "manager",
-      permissions: rolePermissions.manager,
-      status: "active",
-      lastLogin: "2024-01-10T14:20:00Z",
-      createdAt: "2024-01-08T00:00:00Z",
-    },
-  ])
+  const [users, setUsers] = useState<UserData[]>([])
+
+  useEffect(() => {
+    apiRequest<{ users: UserData[] }>("/api/users")
+      .then((result) => setUsers(result.users))
+      .catch((error) => toast.error(error.message))
+  }, [])
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -93,7 +68,7 @@ export default function UsersPage() {
     email: "",
     username: "",
     password: "",
-    role: "cashier" as "admin" | "cashier" | "manager",
+    role: "cashier" as "admin" | "cashier" | "manager" | "waiter",
     permissions: [] as string[],
     status: "active" as "active" | "inactive",
   })
@@ -105,7 +80,7 @@ export default function UsersPage() {
       user.username.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const handleRoleChange = (role: "admin" | "cashier" | "manager") => {
+  const handleRoleChange = (role: "admin" | "cashier" | "manager" | "waiter") => {
     setFormData({
       ...formData,
       role,
@@ -127,7 +102,7 @@ export default function UsersPage() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validation
@@ -151,29 +126,23 @@ export default function UsersPage() {
       return
     }
 
-    if (editingUser) {
-      setUsers(
-        users.map((user) =>
-          user.id === editingUser.id
-            ? {
-                ...user,
-                ...formData,
-                // Don't update password if it's empty during edit
-                ...(formData.password ? {} : { password: undefined }),
-              }
-            : user,
-        ),
-      )
-      toast.success("Usuario actualizado exitosamente")
-    } else {
-      const newUser: UserData = {
-        id: Date.now().toString(),
-        ...formData,
-        lastLogin: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
+    try {
+      if (editingUser) {
+        const result = await apiRequest<{ user: UserData }>(`/api/users/${editingUser.id}`, {
+          method: "PUT", body: JSON.stringify(formData),
+        })
+        setUsers((current) => current.map((item) => item.id === editingUser.id ? result.user : item))
+        toast.success("Usuario actualizado exitosamente")
+      } else {
+        const result = await apiRequest<{ user: UserData }>("/api/users", {
+          method: "POST", body: JSON.stringify(formData),
+        })
+        setUsers((current) => [...current, result.user])
+        toast.success("Usuario creado exitosamente")
       }
-      setUsers([...users, newUser])
-      toast.success("Usuario creado exitosamente")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar el usuario")
+      return
     }
 
     setIsDialogOpen(false)
@@ -203,17 +172,18 @@ export default function UsersPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (userId: string) => {
-    if (userId === "1") {
-      toast.error("No se puede eliminar el administrador principal")
-      return
+  const handleDelete = async (userId: string) => {
+    try {
+      await apiRequest(`/api/users/${userId}`, { method: "DELETE" })
+      setUsers((current) => current.filter((item) => item.id !== userId))
+      toast.success("Usuario eliminado exitosamente")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo eliminar el usuario")
     }
-
-    setUsers(users.filter((user) => user.id !== userId))
-    toast.success("Usuario eliminado exitosamente")
   }
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return "Nunca"
     return new Date(dateString).toLocaleDateString("es-PY", {
       year: "numeric",
       month: "short",
@@ -231,6 +201,8 @@ export default function UsersPage() {
         return { label: "Gerente", color: "bg-blue-100 text-blue-700 border-blue-200", icon: UserPlus }
       case "cashier":
         return { label: "Cajero", color: "bg-green-100 text-green-700 border-green-200", icon: User }
+      case "waiter":
+        return { label: "Mesero", color: "bg-amber-100 text-amber-800 border-amber-200", icon: User }
       default:
         return { label: "Usuario", color: "bg-gray-100 text-gray-700 border-gray-200", icon: User }
     }
@@ -320,6 +292,7 @@ export default function UsersPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="waiter">Mesero - Pedidos y precuenta</SelectItem>
                     <SelectItem value="cashier">Cajero - Solo POS</SelectItem>
                     <SelectItem value="manager">Gerente - POS + Reportes</SelectItem>
                     <SelectItem value="admin">Administrador - Acceso Completo</SelectItem>
@@ -369,7 +342,7 @@ export default function UsersPage() {
                       <Checkbox
                         id={permission.id}
                         checked={formData.permissions.includes(permission.id)}
-                        onCheckedChange={(checked) => handlePermissionChange(permission.id, checked as boolean)}
+                        onCheckedChange={(checked: boolean) => handlePermissionChange(permission.id, checked)}
                       />
                       <div className="grid gap-1.5 leading-none">
                         <Label
@@ -445,11 +418,11 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cajeros</CardTitle>
+            <CardTitle className="text-sm font-medium">Cajeros y meseros</CardTitle>
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter((u) => u.role === "cashier").length}</div>
+            <div className="text-2xl font-bold">{users.filter((u) => u.role === "cashier").length} / {users.filter((u) => u.role === "waiter").length}</div>
           </CardContent>
         </Card>
       </div>

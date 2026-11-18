@@ -55,7 +55,13 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
+}
+
+@media (max-width: 767px) {
+  button, input, select { touch-action: manipulation; }
+  input, select, textarea { font-size: 16px; }
 }
 
 .btn-gradient {

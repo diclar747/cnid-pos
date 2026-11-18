@@ -9,12 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { usePurchases } from "../../context/purchases-context"
 import { useCart } from "../../context/cart-context"
+import { businessDateKey } from "@/lib/business-date"
 
 export default function PurchasesPage() {
   const { purchases, getPurchasesByDate, getTotalPurchases } = usePurchases()
   const { products } = useCart()
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
-  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
+  const [startDate, setStartDate] = useState(businessDateKey(new Date()))
+  const [endDate, setEndDate] = useState(businessDateKey(new Date()))
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-PY", {
@@ -101,8 +102,8 @@ ${reportData.dailyPurchases
     const start = new Date()
     start.setDate(start.getDate() - days)
 
-    setStartDate(start.toISOString().split("T")[0])
-    setEndDate(end.toISOString().split("T")[0])
+    setStartDate(businessDateKey(start))
+    setEndDate(businessDateKey(end))
   }
 
   return (

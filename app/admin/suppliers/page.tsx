@@ -74,9 +74,13 @@ export default function SuppliersPage() {
     setDialogType("autoOrders")
   }
 
-  const handleDelete = (supplierId: number) => {
+  const handleDelete = async (supplierId: number) => {
     if (confirm("¿Estás seguro de que deseas eliminar este proveedor?")) {
-      deleteSupplier(supplierId)
+      try {
+        await deleteSupplier(supplierId)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo eliminar el proveedor")
+      }
     }
   }
 

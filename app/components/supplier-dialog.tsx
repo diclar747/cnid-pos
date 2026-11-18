@@ -22,6 +22,7 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
   const { suppliers, addSupplier, updateSupplier, getSupplierById } = useSuppliers()
   const [formData, setFormData] = useState({
     name: "",
+    contact: "",
     ruc: "",
     address: "",
     phone: "",
@@ -42,6 +43,7 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
     if (supplier) {
       setFormData({
         name: supplier.name,
+        contact: supplier.contact || "",
         ruc: supplier.ruc,
         address: supplier.address,
         phone: supplier.phone,
@@ -57,6 +59,7 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
     } else {
       setFormData({
         name: "",
+        contact: "",
         ruc: "",
         address: "",
         phone: "",
@@ -72,7 +75,7 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
     }
   }, [supplier])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const supplierData = {
@@ -80,10 +83,15 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
       contacts: supplier?.contacts || [],
     }
 
-    if (isEditing && supplierId) {
-      updateSupplier(supplierId, supplierData)
-    } else {
-      addSupplier(supplierData)
+    try {
+      if (isEditing && supplierId) {
+        await updateSupplier(supplierId, supplierData)
+      } else {
+        await addSupplier(supplierData)
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el proveedor")
+      return
     }
 
     onClose()
@@ -145,6 +153,11 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
                 placeholder="+595 21 123456"
                 required
               />
+            </div>
+
+            <div>
+              <Label htmlFor="contact">Persona de contacto</Label>
+              <Input id="contact" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} placeholder="Nombre del responsable" />
             </div>
 
             <div>
@@ -245,7 +258,7 @@ export function SupplierDialog({ supplierId, open, onClose }: SupplierDialogProp
                 <Switch
                   id="isActive"
                   checked={formData.isActive}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                  onCheckedChange={(checked: boolean) => setFormData({ ...formData, isActive: checked })}
                 />
                 <Label htmlFor="isActive">Proveedor Activo</Label>
               </div>

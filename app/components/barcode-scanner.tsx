@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Camera, Scan, Search, Package, ShoppingCart, X } from "lucide-react"
 import { useCart } from "../context/cart-context"
-import { products } from "../data/products"
 import toast from "react-hot-toast"
 
 interface BarcodeScannerProps {
@@ -21,12 +20,12 @@ export default function BarcodeScanner({ onClose }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [foundProduct, setFoundProduct] = useState<any>(null)
   const [error, setError] = useState("")
-  const { addToCart } = useCart()
+  const { products, addToCart } = useCart()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
 
   // Frequent products for quick access
-  const frequentProducts = products.filter((p) => p.isPopular).slice(0, 6)
+  const frequentProducts = products.filter((p) => p.isActive !== false && p.stock > 0).slice(0, 6)
 
   const searchProduct = (barcode: string) => {
     const product = products.find((p) => p.barcode === barcode)

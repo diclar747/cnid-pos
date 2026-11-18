@@ -73,7 +73,7 @@ export function NotificationsPanel() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
+        <Button variant="outline" size="icon" className="relative rounded-xl" aria-label="Notificaciones" title="Notificaciones">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <Badge
@@ -110,7 +110,7 @@ export function NotificationsPanel() {
                     <Switch
                       id="enabled"
                       checked={settings.enabled}
-                      onCheckedChange={(checked) => updateSettings({ enabled: checked })}
+                      onCheckedChange={(checked: boolean) => updateSettings({ enabled: checked })}
                     />
                   </div>
 
@@ -139,7 +139,7 @@ export function NotificationsPanel() {
                     <Switch
                       id="playSound"
                       checked={settings.playSound}
-                      onCheckedChange={(checked) => updateSettings({ playSound: checked })}
+                      onCheckedChange={(checked: boolean) => updateSettings({ playSound: checked })}
                     />
                   </div>
 
@@ -148,7 +148,7 @@ export function NotificationsPanel() {
                     <Switch
                       id="autoRead"
                       checked={settings.autoMarkAsRead}
-                      onCheckedChange={(checked) => updateSettings({ autoMarkAsRead: checked })}
+                      onCheckedChange={(checked: boolean) => updateSettings({ autoMarkAsRead: checked })}
                     />
                   </div>
 
@@ -157,7 +157,7 @@ export function NotificationsPanel() {
                     <Switch
                       id="showDashboard"
                       checked={settings.showInDashboard}
-                      onCheckedChange={(checked) => updateSettings({ showInDashboard: checked })}
+                      onCheckedChange={(checked: boolean) => updateSettings({ showInDashboard: checked })}
                     />
                   </div>
                 </div>

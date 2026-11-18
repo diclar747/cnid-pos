@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { useAuth } from "./auth-context"
+import { apiRequest } from "@/lib/api-client"
 
 export interface CompanyConfig {
   name: string
@@ -35,7 +37,7 @@ export interface CompanyConfig {
 
 interface CompanyContextType {
   companyConfig: CompanyConfig
-  updateCompanyConfig: (config: Partial<CompanyConfig>) => void
+  updateCompanyConfig: (config: Partial<CompanyConfig>) => Promise<void>
   isLoading: boolean
 }
 
@@ -73,34 +75,29 @@ const defaultCompanyConfig: CompanyConfig = {
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(defaultCompanyConfig)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("companyConfig")
-        if (saved) {
-          const parsedConfig = JSON.parse(saved)
-          setCompanyConfig({ ...defaultCompanyConfig, ...parsedConfig })
-        }
-      } catch (error) {
-        console.error("Error loading company config:", error)
-      }
-    }
-    setIsLoading(false)
-  }, [])
+    if (!user) { setCompanyConfig(defaultCompanyConfig); setIsLoading(false); return }
+    setIsLoading(true)
+    apiRequest<{ item: Partial<CompanyConfig> }>("/api/data/company")
+      .then(({ item }) => setCompanyConfig({
+        ...defaultCompanyConfig, ...item,
+        colors: { ...defaultCompanyConfig.colors, ...item.colors },
+        socialMedia: { ...defaultCompanyConfig.socialMedia, ...item.socialMedia },
+      }))
+      .catch((error) => console.error("No se pudo cargar la empresa", error))
+      .finally(() => setIsLoading(false))
+  }, [user])
 
-  const updateCompanyConfig = (updates: Partial<CompanyConfig>) => {
+  const updateCompanyConfig = async (updates: Partial<CompanyConfig>) => {
     const newConfig = { ...companyConfig, ...updates }
-    setCompanyConfig(newConfig)
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("companyConfig", JSON.stringify(newConfig))
-      } catch (error) {
-        console.error("Error saving company config:", error)
-      }
-    }
+    const result = await apiRequest<{ item: CompanyConfig }>("/api/data/company", {
+      method: "PUT", body: JSON.stringify(newConfig),
+    })
+    setCompanyConfig(result.item)
   }
 
   return (

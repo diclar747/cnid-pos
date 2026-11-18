@@ -54,14 +54,19 @@ export function ContactsDialog({ supplierId, open, onClose }: ContactsDialogProp
     }
   }, [editingContact])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (editingContact) {
-      updateContact(supplierId, editingContact.id, formData)
-      setEditingContact(null)
-    } else {
-      addContact(supplierId, formData)
+    try {
+      if (editingContact) {
+        await updateContact(supplierId, editingContact.id, formData)
+        setEditingContact(null)
+      } else {
+        await addContact(supplierId, formData)
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el contacto")
+      return
     }
 
     setShowForm(false)
@@ -78,9 +83,13 @@ export function ContactsDialog({ supplierId, open, onClose }: ContactsDialogProp
     setEditingContact(contact)
   }
 
-  const handleDelete = (contactId: number) => {
+  const handleDelete = async (contactId: number) => {
     if (confirm("¿Estás seguro de que deseas eliminar este contacto?")) {
-      deleteContact(supplierId, contactId)
+      try {
+        await deleteContact(supplierId, contactId)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo eliminar el contacto")
+      }
     }
   }
 
@@ -171,7 +180,7 @@ export function ContactsDialog({ supplierId, open, onClose }: ContactsDialogProp
                     <Switch
                       id="isPrimary"
                       checked={formData.isPrimary}
-                      onCheckedChange={(checked) => setFormData({ ...formData, isPrimary: checked })}
+                      onCheckedChange={(checked: boolean) => setFormData({ ...formData, isPrimary: checked })}
                     />
                     <Label htmlFor="isPrimary">Contacto Principal</Label>
                   </div>

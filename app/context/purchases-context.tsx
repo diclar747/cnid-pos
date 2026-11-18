@@ -1,10 +1,13 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
+import { useAuth } from "./auth-context"
+import { apiRequest } from "@/lib/api-client"
+import { businessDateKey } from "@/lib/business-date"
 
-interface Purchase {
-  id: string
-  productId: string
+export interface Purchase {
+  id: number
+  productId: number
   productName: string
   quantity: number
   unitPrice: number
@@ -12,11 +15,12 @@ interface Purchase {
   supplier: string
   date: string
   notes?: string
+  createdBy?: string
 }
 
 interface PurchasesContextType {
   purchases: Purchase[]
-  addPurchase: (purchase: Omit<Purchase, "id">) => void
+  addPurchase: (purchase: Omit<Purchase, "id">) => Promise<void>
   getPurchasesByDate: (startDate: string, endDate: string) => Purchase[]
   getTotalPurchases: (startDate?: string, endDate?: string) => number
 }
@@ -24,51 +28,42 @@ interface PurchasesContextType {
 const PurchasesContext = createContext<PurchasesContextType | undefined>(undefined)
 
 export function PurchasesProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [purchases, setPurchases] = useState<Purchase[]>([])
 
-  const addPurchase = (purchase: Omit<Purchase, "id">) => {
-    const newPurchase: Purchase = {
-      ...purchase,
-      id: Date.now().toString(),
-    }
-    setPurchases((prev) => [...prev, newPurchase])
-  }
+  const refresh = useCallback(async () => {
+    if (!user?.permissions.includes("manage_purchases")) { setPurchases([]); return }
+    const result = await apiRequest<{ items: Purchase[] }>("/api/data/purchases")
+    setPurchases(result.items)
+  }, [user])
 
-  const getPurchasesByDate = (startDate: string, endDate: string): Purchase[] => {
-    return purchases.filter((purchase) => {
-      const purchaseDate = new Date(purchase.date).toISOString().split("T")[0]
-      return purchaseDate >= startDate && purchaseDate <= endDate
+  useEffect(() => {
+    refresh().catch((error) => console.error("No se pudieron cargar las compras", error))
+    const onChange = () => { refresh().catch(console.error) }
+    window.addEventListener("purchases:changed", onChange)
+    return () => window.removeEventListener("purchases:changed", onChange)
+  }, [refresh])
+
+  const addPurchase = async (purchase: Omit<Purchase, "id">) => {
+    const result = await apiRequest<{ purchase: Purchase }>("/api/purchases", {
+      method: "POST", body: JSON.stringify(purchase),
     })
+    setPurchases((current) => [result.purchase, ...current])
+    window.dispatchEvent(new Event("products:changed"))
   }
 
-  const getTotalPurchases = (startDate?: string, endDate?: string): number => {
-    let filteredPurchases = purchases
+  const getPurchasesByDate = (startDate: string, endDate: string) =>
+    purchases.filter((item) => businessDateKey(item.date) >= startDate && businessDateKey(item.date) <= endDate)
+  const getTotalPurchases = (startDate?: string, endDate?: string) =>
+    (startDate && endDate ? getPurchasesByDate(startDate, endDate) : purchases).reduce((sum, item) => sum + item.total, 0)
 
-    if (startDate && endDate) {
-      filteredPurchases = getPurchasesByDate(startDate, endDate)
-    }
-
-    return filteredPurchases.reduce((total, purchase) => total + purchase.total, 0)
-  }
-
-  return (
-    <PurchasesContext.Provider
-      value={{
-        purchases,
-        addPurchase,
-        getPurchasesByDate,
-        getTotalPurchases,
-      }}
-    >
-      {children}
-    </PurchasesContext.Provider>
-  )
+  return <PurchasesContext.Provider value={{ purchases, addPurchase, getPurchasesByDate, getTotalPurchases }}>
+    {children}
+  </PurchasesContext.Provider>
 }
 
 export function usePurchases() {
   const context = useContext(PurchasesContext)
-  if (context === undefined) {
-    throw new Error("usePurchases must be used within a PurchasesProvider")
-  }
+  if (!context) throw new Error("usePurchases must be used within a PurchasesProvider")
   return context
 }

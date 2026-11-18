@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Eye, EyeOff, ShoppingCart, AlertCircle, User, Shield, UserCheck } from "lucide-react"
+import { Eye, EyeOff, ShoppingCart, AlertCircle, UtensilsCrossed, BarChart3, PackageCheck } from "lucide-react"
 import { useAuth } from "../context/auth-context"
 import toast from "react-hot-toast"
 
@@ -27,7 +26,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (user) {
       // Redirect based on user role and permissions
-      if (user.role === "admin") {
+      if (user.role === "superadmin") {
+        router.push("/superadmin")
+      } else if (user.role === "admin") {
         router.push("/admin")
       } else if (user.role === "manager") {
         router.push("/admin") // Managers get limited admin access
@@ -59,41 +60,6 @@ export default function LoginPage() {
     }
   }
 
-  const demoAccounts = [
-    {
-      role: "Administrador",
-      email: "admin@heroui.com",
-      password: "admin123",
-      description: "Acceso completo al sistema",
-      icon: Shield,
-      color: "bg-red-100 text-red-700 border-red-200",
-      permissions: ["Dashboard", "Productos", "Usuarios", "Reportes", "Configuración"],
-    },
-    {
-      role: "Gerente",
-      email: "manager@heroui.com",
-      password: "manager123",
-      description: "Acceso a reportes y POS",
-      icon: UserCheck,
-      color: "bg-blue-100 text-blue-700 border-blue-200",
-      permissions: ["Dashboard", "POS", "Reportes", "Ver Productos"],
-    },
-    {
-      role: "Cajero",
-      email: "user@heroui.com",
-      password: "user123",
-      description: "Solo acceso al POS",
-      icon: User,
-      color: "bg-green-100 text-green-700 border-green-200",
-      permissions: ["POS", "Ventas"],
-    },
-  ]
-
-  const fillCredentials = (email: string, password: string) => {
-    setEmail(email)
-    setPassword(password)
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
@@ -105,7 +71,7 @@ export default function LoginPage() {
             </div>
             <div>
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                HeroUI POS
+                CNID POS
               </CardTitle>
               <CardDescription className="text-gray-600 mt-2">Inicia sesión para acceder al sistema</CardDescription>
             </div>
@@ -183,80 +149,14 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        {/* Right Side - Demo Accounts */}
-        <div className="space-y-6">
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Cuentas de Demostración</h2>
-            <p className="text-gray-600">Prueba el sistema con diferentes roles y permisos</p>
-          </div>
-
-          <div className="space-y-4">
-            {demoAccounts.map((account, index) => {
-              const Icon = account.icon
-              return (
-                <Card
-                  key={index}
-                  className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 hover:border-blue-200 bg-white/60 backdrop-blur-sm"
-                  onClick={() => fillCredentials(account.email, account.password)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-xl ${account.color} border`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-gray-900">{account.role}</h3>
-                          <Badge variant="outline" className="text-xs">
-                            Demo
-                          </Badge>
-                        </div>
-
-                        <p className="text-sm text-gray-600 mb-2">{account.description}</p>
-
-                        <div className="space-y-1 text-xs">
-                          <p className="font-mono text-gray-500">
-                            <span className="font-medium">Email:</span> {account.email}
-                          </p>
-                          <p className="font-mono text-gray-500">
-                            <span className="font-medium">Contraseña:</span> {account.password}
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {account.permissions.map((permission, idx) => (
-                            <Badge key={idx} variant="secondary" className="text-xs">
-                              {permission}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">Información importante:</p>
-                <ul className="space-y-1 text-blue-700">
-                  <li>
-                    • <strong>Administrador:</strong> Acceso completo al sistema
-                  </li>
-                  <li>
-                    • <strong>Gerente:</strong> Dashboard y reportes limitados
-                  </li>
-                  <li>
-                    • <strong>Cajero:</strong> Solo punto de venta
-                  </li>
-                </ul>
-              </div>
-            </div>
+        <div className="rounded-3xl bg-slate-950 p-8 text-white shadow-2xl sm:p-10">
+          <div className="mb-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10"><UtensilsCrossed className="h-7 w-7" /></div>
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">Tu restaurante</p>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight">Todo bajo control</h2>
+          <p className="mb-10 max-w-md text-slate-300">Menús, ventas y operaciones de cada restaurante en un solo lugar.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><PackageCheck className="mb-3 h-5 w-5 text-blue-300" /><p className="font-medium">Menú completo</p><p className="mt-1 text-sm text-slate-400">Artículos, variantes y agregados.</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><BarChart3 className="mb-3 h-5 w-5 text-blue-300" /><p className="font-medium">Historial de ventas</p><p className="mt-1 text-sm text-slate-400">Movimientos y reportes en PostgreSQL local.</p></div>
           </div>
         </div>
       </div>

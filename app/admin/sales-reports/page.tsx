@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSales } from "../../context/sales-context"
+import { businessDateKey } from "@/lib/business-date"
 
 export default function SalesReportsPage() {
   const { sales, expenses, getTotalSales, getTotalExpenses, getSalesByDate, getExpensesByDate } = useSales()
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0])
-  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
+  const [startDate, setStartDate] = useState(businessDateKey(new Date()))
+  const [endDate, setEndDate] = useState(businessDateKey(new Date()))
   const [reportType, setReportType] = useState("daily")
+  const [visibleSales, setVisibleSales] = useState(100)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-PY", {
@@ -82,7 +84,7 @@ Período: ${startDate} al ${endDate}
 RESUMEN FINANCIERO:
 - Ventas Totales: ${formatCurrency(reportData.totalSales)}
 - Gastos Totales: ${formatCurrency(reportData.totalExpenses)}
-- Ganancia Neta: ${formatCurrency(reportData.profit)}
+- Ventas menos gastos registrados: ${formatCurrency(reportData.profit)}
 - Número de Ventas: ${reportData.salesCount}
 
 PRODUCTOS MÁS VENDIDOS:
@@ -114,8 +116,8 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
     const start = new Date()
     start.setDate(start.getDate() - days)
 
-    setStartDate(start.toISOString().split("T")[0])
-    setEndDate(end.toISOString().split("T")[0])
+    setStartDate(businessDateKey(start))
+    setEndDate(businessDateKey(end))
   }
 
   return (
@@ -123,7 +125,7 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Reportes de Ventas</h1>
-          <p className="text-muted-foreground">Análisis detallado de ventas y ganancias</p>
+          <p className="text-muted-foreground">Análisis de ventas y gastos registrados</p>
         </div>
         <Button onClick={handleExportReport}>
           <Download className="mr-2 h-4 w-4" />
@@ -186,7 +188,7 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ganancia Neta</CardTitle>
+            <CardTitle className="text-sm font-medium">Balance registrado</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -194,7 +196,7 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
               {formatCurrency(reportData.profit)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Margen: {reportData.totalSales > 0 ? ((reportData.profit / reportData.totalSales) * 100).toFixed(1) : 0}%
+              Ventas menos gastos cargados
             </p>
           </CardContent>
         </Card>
@@ -274,19 +276,20 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
       <Card>
         <CardHeader>
           <CardTitle>Detalle de Ventas</CardTitle>
-          <CardDescription>Listado completo de transacciones</CardDescription>
+          <CardDescription>Mostrando {Math.min(visibleSales, reportData.dailySales.length)} de {reportData.dailySales.length} transacciones</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {reportData.dailySales
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, visibleSales)
               .map((sale) => (
                 <div key={sale.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-medium">Ticket #{sale.receiptNumber}</p>
+                      <p className="font-medium">Ticket #{sale.id}</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(sale.date).toLocaleString("es-PY")} - {sale.cashier}
+                        {new Date(sale.date).toLocaleString("es-PY")} - {sale.userName}
                       </p>
                     </div>
                     <div className="text-right">
@@ -299,6 +302,7 @@ ${reportData.expensesByCategory.map(([category, amount]) => `- ${category}: ${fo
                   </div>
                 </div>
               ))}
+            {reportData.dailySales.length > visibleSales && <Button variant="outline" className="w-full" onClick={() => setVisibleSales((count) => count + 100)}>Ver 100 ventas más</Button>}
             {reportData.dailySales.length === 0 && (
               <p className="text-muted-foreground text-center py-8">No hay ventas en el período seleccionado</p>
             )}

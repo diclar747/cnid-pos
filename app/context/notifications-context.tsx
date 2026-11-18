@@ -1,25 +1,42 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
 import type { Product } from "../data/products"
 
 export interface Notification {
   id: string
-  type: "info" | "warning" | "error" | "success"
+  type: "info" | "warning" | "error" | "success" | "stock-out" | "stock-critical" | "stock-low"
   title: string
   message: string
   timestamp: Date
   read: boolean
-  action?: {
-    label: string
-    onClick: () => void
-  }
+  currentStock?: number
+  action?: { label: string; onClick: () => void }
+}
+
+interface NotificationSettings {
+  enabled: boolean
+  lowStockThreshold: number
+  criticalStockThreshold: number
+  playSound: boolean
+  autoMarkAsRead: boolean
+  showInDashboard: boolean
+}
+
+const defaultSettings: NotificationSettings = {
+  enabled: true,
+  lowStockThreshold: 10,
+  criticalStockThreshold: 5,
+  playSound: false,
+  autoMarkAsRead: false,
+  showInDashboard: true,
 }
 
 interface NotificationsContextType {
   notifications: Notification[]
   unreadCount: number
+  settings: NotificationSettings
+  updateSettings: (changes: Partial<NotificationSettings>) => void
   addNotification: (notification: Omit<Notification, "id" | "timestamp" | "read">) => void
   markAsRead: (id: string) => void
   markAllAsRead: () => void
@@ -33,151 +50,75 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined)
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
+export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [settings, setSettings] = useState<NotificationSettings>(defaultSettings)
 
-  const addNotification = (notification: Omit<Notification, "id" | "timestamp" | "read">) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now().toString(),
-      timestamp: new Date(),
-      read: false,
-    }
-
-    setNotifications((prev) => [newNotification, ...prev])
-  }
-
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((notification) => (notification.id === id ? { ...notification, read: true } : notification)),
-    )
-  }
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notification) => ({ ...notification, read: true })))
-  }
-
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id))
-  }
-
-  const clearAll = () => {
-    setNotifications([])
-  }
-
-  const checkStockLevels = (currentProducts: Product[]) => {
-    setProducts(currentProducts)
-
-    const lowStockProducts = currentProducts.filter((product) => product.stock > 0 && product.stock <= 5)
-
-    const outOfStockProducts = currentProducts.filter((product) => product.stock === 0)
-
-    const criticalStockProducts = currentProducts.filter((product) => product.stock > 0 && product.stock <= 2)
-
-    // Agregar notificaciones de stock crítico
-    criticalStockProducts.forEach((product) => {
-      const existingNotification = notifications.find((n) => n.message.includes(product.name) && n.type === "error")
-
-      if (!existingNotification) {
-        addNotification({
-          type: "error",
-          title: "Stock crítico",
-          message: `${product.name} tiene solo ${product.stock} unidades disponibles`,
-          action: {
-            label: "Reabastecer",
-            onClick: () => {
-              window.location.href = "/admin/products"
-            },
-          },
-        })
-      }
-    })
-
-    // Agregar notificaciones de productos agotados
-    outOfStockProducts.forEach((product) => {
-      const existingNotification = notifications.find(
-        (n) => n.message.includes(product.name) && n.message.includes("agotado"),
-      )
-
-      if (!existingNotification) {
-        addNotification({
-          type: "warning",
-          title: "Producto agotado",
-          message: `${product.name} está agotado`,
-          action: {
-            label: "Gestionar",
-            onClick: () => {
-              window.location.href = "/admin/products"
-            },
-          },
-        })
-      }
-    })
-  }
-
-  const getLowStockProducts = () => {
-    return products.filter((product) => product.stock > 0 && product.stock <= 5)
-  }
-
-  const getCriticalStockProducts = () => {
-    return products.filter((product) => product.stock > 0 && product.stock <= 2)
-  }
-
-  const getOutOfStockProducts = () => {
-    return products.filter((product) => product.stock === 0)
-  }
-
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  // Inicializar con algunas notificaciones de ejemplo
   useEffect(() => {
-    const initialNotifications: Notification[] = [
-      {
-        id: "1",
-        type: "success",
-        title: "Sistema iniciado",
-        message: "El sistema POS se ha iniciado correctamente",
-        timestamp: new Date(),
-        read: false,
-      },
-      {
-        id: "2",
-        type: "info",
-        title: "Venta completada",
-        message: "Se ha procesado una venta por ₲45.000",
-        timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 minutos atrás
-        read: false,
-      },
-    ]
-    setNotifications(initialNotifications)
+    try {
+      const saved = localStorage.getItem("notificationSettings")
+      if (saved) setSettings({ ...defaultSettings, ...JSON.parse(saved) })
+    } catch { /* conservar valores predeterminados */ }
   }, [])
 
-  return (
-    <NotificationsContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        addNotification,
-        markAsRead,
-        markAllAsRead,
-        removeNotification,
-        clearAll,
-        checkStockLevels,
-        getLowStockProducts,
-        getCriticalStockProducts,
-        getOutOfStockProducts,
-      }}
-    >
-      {children}
-    </NotificationsContext.Provider>
-  )
+  const updateSettings = useCallback((changes: Partial<NotificationSettings>) => {
+    setSettings((current) => {
+      const next = { ...current, ...changes }
+      localStorage.setItem("notificationSettings", JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  const addNotification = useCallback((notification: Omit<Notification, "id" | "timestamp" | "read">) => {
+    setNotifications((current) => [{ ...notification, id: crypto.randomUUID(), timestamp: new Date(), read: false }, ...current])
+  }, [])
+  const markAsRead = (id: string) => setNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item))
+  const markAllAsRead = () => setNotifications((current) => current.map((item) => ({ ...item, read: true })))
+  const removeNotification = (id: string) => setNotifications((current) => current.filter((item) => item.id !== id))
+  const clearAll = () => setNotifications([])
+
+  const checkStockLevels = useCallback((currentProducts: Product[]) => {
+    setProducts(currentProducts)
+    setNotifications((current) => {
+      const other = current.filter((item) => !item.type.startsWith("stock-"))
+      if (!settings.enabled) return other
+      const stockAlerts = currentProducts.flatMap((product): Notification[] => {
+        let type: Notification["type"] | null = null
+        if (product.stock === 0) type = "stock-out"
+        else if (product.stock <= settings.criticalStockThreshold) type = "stock-critical"
+        else if (product.stock <= settings.lowStockThreshold) type = "stock-low"
+        if (!type) return []
+        const id = `stock-${product.id}`
+        const previous = current.find((item) => item.id === id)
+        return [{
+          id,
+          type,
+          title: type === "stock-out" ? "Producto agotado" : type === "stock-critical" ? "Stock crítico" : "Stock bajo",
+          message: `${product.name}: ${product.stock} unidades disponibles`,
+          currentStock: product.stock,
+          timestamp: previous?.timestamp ?? new Date(),
+          read: previous?.type === type && previous.currentStock === product.stock ? previous.read : false,
+        }]
+      })
+      return [...stockAlerts, ...other]
+    })
+  }, [settings.enabled, settings.criticalStockThreshold, settings.lowStockThreshold])
+
+  const getLowStockProducts = () => products.filter((product) => product.stock > settings.criticalStockThreshold && product.stock <= settings.lowStockThreshold)
+  const getCriticalStockProducts = () => products.filter((product) => product.stock > 0 && product.stock <= settings.criticalStockThreshold)
+  const getOutOfStockProducts = () => products.filter((product) => product.stock === 0)
+  const unreadCount = notifications.filter((item) => !item.read).length
+
+  return <NotificationsContext.Provider value={{ notifications, unreadCount, settings, updateSettings,
+    addNotification, markAsRead, markAllAsRead, removeNotification, clearAll, checkStockLevels,
+    getLowStockProducts, getCriticalStockProducts, getOutOfStockProducts }}>
+    {children}
+  </NotificationsContext.Provider>
 }
 
 export function useNotifications() {
   const context = useContext(NotificationsContext)
-  if (context === undefined) {
-    throw new Error("useNotifications debe usarse dentro de un NotificationsProvider")
-  }
+  if (!context) throw new Error("useNotifications debe usarse dentro de un NotificationsProvider")
   return context
 }

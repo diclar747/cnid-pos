@@ -4,9 +4,15 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start --hostname 127.0.0.1",
+    "phone:https": "node scripts/start-phone-https.mjs",
+    "db:setup": "node scripts/setup-local-db.mjs",
+    "db:superadmin": "node scripts/create-superadmin.mjs",
+    "db:demo": "node scripts/seed-demo.mjs",
+    "test:smoke": "node scripts/smoke-local.mjs",
+    "test:smoke:all": "node scripts/smoke-local.mjs && node scripts/smoke-service-orders.mjs && node scripts/smoke-restaurants.mjs && node scripts/smoke-legacy.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",
@@ -23,11 +29,13 @@
     "@radix-ui/react-switch": "latest",
     "@radix-ui/react-tabs": "latest",
     "@radix-ui/react-toast": "^1.2.2",
-    "@supabase/supabase-js": "latest",
+    "@types/pg": "^8.23.1",
+    "@zxing/browser": "0.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
+    "pg": "^8.23.1",
     "qrcode": "latest",
     "react": "^19",
     "react-dom": "^19",

@@ -35,94 +35,49 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { TrendingUp, DollarSign, Package, Users, Calendar, Download, Eye, Filter, Search } from "lucide-react"
-
-// Datos simulados de transacciones
-const mockTransactions = [
-  {
-    id: "TXN-001",
-    date: "2024-01-15",
-    supplierId: "SUP-001",
-    supplierName: "Distribuidora Central",
-    amount: 2500000,
-    type: "purchase",
-    status: "completed",
-    items: 15,
-    category: "Alimentos",
-    paymentMethod: "transfer",
-    rating: 4.5,
-  },
-  {
-    id: "TXN-002",
-    date: "2024-01-18",
-    supplierId: "SUP-002",
-    supplierName: "Bebidas Premium",
-    amount: 1800000,
-    type: "purchase",
-    status: "completed",
-    items: 12,
-    category: "Bebidas",
-    paymentMethod: "credit",
-    rating: 4.8,
-  },
-  {
-    id: "TXN-003",
-    date: "2024-01-22",
-    supplierId: "SUP-003",
-    supplierName: "Postres Artesanales",
-    amount: 950000,
-    type: "purchase",
-    status: "pending",
-    items: 8,
-    category: "Postres",
-    paymentMethod: "cash",
-    rating: 4.2,
-  },
-  {
-    id: "TXN-004",
-    date: "2024-01-25",
-    supplierId: "SUP-001",
-    supplierName: "Distribuidora Central",
-    amount: 3200000,
-    type: "purchase",
-    status: "completed",
-    items: 20,
-    category: "Alimentos",
-    paymentMethod: "transfer",
-    rating: 4.5,
-  },
-  {
-    id: "TXN-005",
-    date: "2024-01-28",
-    supplierId: "SUP-004",
-    supplierName: "Carnes Selectas",
-    amount: 2100000,
-    type: "purchase",
-    status: "completed",
-    items: 10,
-    category: "Carnes",
-    paymentMethod: "transfer",
-    rating: 4.7,
-  },
-]
+import { usePurchases } from "../../context/purchases-context"
+import { useSuppliers } from "../../context/suppliers-context"
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
 
 export default function SupplierTransactionsPage() {
+  const { purchases } = usePurchases()
+  const { suppliers } = useSuppliers()
   const [selectedPeriod, setSelectedPeriod] = useState("30")
   const [selectedSupplier, setSelectedSupplier] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
 
+  const transactions = useMemo(() => purchases.map((purchase) => {
+    const supplier = suppliers.find((item) => item.name === purchase.supplier)
+    return {
+      id: `COMP-${purchase.id}`,
+      date: purchase.date,
+      supplierId: purchase.supplier || "Sin proveedor",
+      supplierName: purchase.supplier || "Sin proveedor",
+      amount: purchase.total,
+      type: "purchase",
+      status: "completed",
+      items: purchase.quantity,
+      category: supplier?.category || "Sin categoría",
+      paymentMethod: "No registrado",
+      rating: supplier?.rating || 0,
+    }
+  }), [purchases, suppliers])
+
   // Filtrar transacciones
   const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter((transaction) => {
+    const start = new Date()
+    start.setDate(start.getDate() - Number(selectedPeriod))
+    return transactions.filter((transaction) => {
+      const matchesPeriod = new Date(transaction.date) >= start
       const matchesSupplier = selectedSupplier === "all" || transaction.supplierId === selectedSupplier
       const matchesSearch =
         transaction.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.id.toLowerCase().includes(searchTerm.toLowerCase())
-      return matchesSupplier && matchesSearch
+      return matchesPeriod && matchesSupplier && matchesSearch
     })
-  }, [selectedSupplier, searchTerm])
+  }, [transactions, selectedPeriod, selectedSupplier, searchTerm])
 
   // Calcular métricas
   const metrics = useMemo(() => {
@@ -138,7 +93,6 @@ export default function SupplierTransactionsPage() {
       transactionCount: count,
       averageAmount: average,
       topSupplier: topSupplier?.supplierName || "N/A",
-      growth: 12.5, // Simulado
     }
   }, [filteredTransactions])
 
@@ -269,10 +223,9 @@ export default function SupplierTransactionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los proveedores</SelectItem>
-                  <SelectItem value="SUP-001">Distribuidora Central</SelectItem>
-                  <SelectItem value="SUP-002">Bebidas Premium</SelectItem>
-                  <SelectItem value="SUP-003">Postres Artesanales</SelectItem>
-                  <SelectItem value="SUP-004">Carnes Selectas</SelectItem>
+                  {Array.from(new Set(transactions.map((item) => item.supplierName))).map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -303,7 +256,7 @@ export default function SupplierTransactionsPage() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(metrics.totalAmount)}</div>
             <div className="flex items-center text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 mr-1 text-green-500" />+{metrics.growth}% vs mes anterior
+              Según las compras registradas
             </div>
           </CardContent>
         </Card>
@@ -393,7 +346,7 @@ export default function SupplierTransactionsPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -433,7 +386,7 @@ export default function SupplierTransactionsPage() {
         <CardHeader>
           <CardTitle>Transacciones Recientes</CardTitle>
           <CardDescription>
-            Mostrando {filteredTransactions.length} de {mockTransactions.length} transacciones
+            Mostrando {filteredTransactions.length} de {transactions.length} transacciones
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -19,7 +19,9 @@ import {
   Printer,
   ShoppingCart,
   QrCode,
+  Camera,
 } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,10 +43,15 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { QRGenerator } from "../../components/qr-generator"
 import { BulkQRGenerator } from "../../components/bulk-qr-generator"
+import { CodeCamera } from "../../components/code-camera"
+import { useSuppliers } from "../../context/suppliers-context"
+import { parseScannedCode } from "@/lib/scan-code"
 
 export default function ProductsPage() {
   const { products, addProduct, updateProduct, deleteProduct, addPurchase } = useCart()
   const { user } = useAuth()
+  const { suppliers } = useSuppliers()
+  const [showCodeCamera, setShowCodeCamera] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isStockDialogOpen, setIsStockDialogOpen] = useState(false)
   const [isPurchaseDialogOpen, setIsPurchaseDialogOpen] = useState(false)
@@ -69,7 +76,9 @@ export default function ProductsPage() {
     barcode: "",
     description: "",
     stock: "",
+    trackStock: true,
     image: "",
+    supplierId: "",
   })
 
   const formatCurrency = (amount: number) => {
@@ -80,11 +89,8 @@ export default function ProductsPage() {
     }).format(amount)
   }
 
-  const categories = [
-    { value: "comida", label: "Comida" },
-    { value: "bebidas", label: "Bebidas" },
-    { value: "postres", label: "Postres" },
-  ]
+  const categories = Array.from(new Set(["comidas", "bebidas", "postres", ...products.map((product) => product.category).filter(Boolean)]))
+    .map((value) => ({ value, label: value.charAt(0).toLocaleUpperCase() + value.slice(1) }))
 
   const exampleProducts = [
     {
@@ -232,12 +238,14 @@ export default function ProductsPage() {
       barcode: "",
       description: "",
       stock: "",
+      trackStock: true,
       image: "",
+      supplierId: "",
     })
     setEditingProduct(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const productData = {
@@ -247,13 +255,20 @@ export default function ProductsPage() {
       barcode: formData.barcode,
       description: formData.description,
       stock: Number.parseInt(formData.stock),
+      trackStock: formData.trackStock,
       image: formData.image || "/placeholder.svg",
+      supplierId: formData.supplierId ? Number(formData.supplierId) : undefined,
     }
 
-    if (editingProduct) {
-      updateProduct({ ...productData, id: editingProduct.id })
-    } else {
-      addProduct(productData)
+    try {
+      if (editingProduct) {
+        await updateProduct({ ...editingProduct, ...productData })
+      } else {
+        await addProduct(productData)
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el producto")
+      return
     }
 
     resetForm()
@@ -269,7 +284,9 @@ export default function ProductsPage() {
       barcode: product.barcode,
       description: product.description,
       stock: product.stock.toString(),
+      trackStock: product.trackStock !== false,
       image: product.image,
+      supplierId: product.supplierId ? String(product.supplierId) : "",
     })
     setIsDialogOpen(true)
   }
@@ -280,9 +297,14 @@ export default function ProductsPage() {
     setIsStockDialogOpen(true)
   }
 
-  const handleUpdateStock = () => {
+  const handleUpdateStock = async () => {
     if (editingStock && newStock) {
-      updateProduct({ ...editingStock, stock: Number.parseInt(newStock) })
+      try {
+        await updateProduct({ ...editingStock, stock: Number.parseInt(newStock), trackStock: true })
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo actualizar el stock")
+        return
+      }
       setIsStockDialogOpen(false)
       setEditingStock(null)
       setNewStock("")
@@ -297,25 +319,25 @@ export default function ProductsPage() {
     setIsPurchaseDialogOpen(true)
   }
 
-  const handlePurchaseSubmit = () => {
+  const handlePurchaseSubmit = async () => {
     if (editingStock && purchaseQuantity) {
       const quantity = Number.parseInt(purchaseQuantity)
       const unitPrice = Number.parseInt(purchasePrice) || editingStock.price
-      const total = unitPrice * quantity
-      const newStock = editingStock.stock + quantity
-
-      updateProduct({ ...editingStock, stock: newStock })
-
-      addPurchase({
+      try {
+        await addPurchase({
         productId: editingStock.id,
         productName: editingStock.name,
         quantity: quantity,
         unitPrice: unitPrice,
-        total: total,
+        total: unitPrice * quantity,
         date: new Date().toISOString(),
         supplier: supplier || undefined,
         createdBy: user?.name || "Usuario",
-      })
+        })
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo registrar la compra")
+        return
+      }
 
       setIsPurchaseDialogOpen(false)
       setEditingStock(null)
@@ -331,9 +353,13 @@ export default function ProductsPage() {
     setIsQRDialogOpen(true)
   }
 
-  const handleDelete = (productId: number) => {
+  const handleDelete = async (productId: number) => {
     if (confirm("¿Estás seguro de que quieres eliminar este producto?")) {
-      deleteProduct(productId)
+      try {
+        await deleteProduct(productId)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo eliminar el producto")
+      }
     }
   }
 
@@ -343,7 +369,7 @@ export default function ProductsPage() {
       for (const product of exampleProducts) {
         const existingProduct = products.find((p) => p.barcode === product.barcode)
         if (!existingProduct) {
-          addProduct(product)
+          await addProduct(product)
         }
       }
       alert("Productos ejemplo cargados exitosamente!")
@@ -443,20 +469,20 @@ export default function ProductsPage() {
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode.includes(searchQuery) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (product.barcode ?? "").includes(searchQuery) ||
+      (product.description ?? "").toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
     return matchesSearch && matchesCategory
   })
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Gestión de Productos</h1>
           <p className="text-muted-foreground">Administra el inventario de productos</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={loadExampleProducts}
@@ -470,6 +496,7 @@ export default function ProductsPage() {
             )}
             Cargar Productos Ejemplo
           </Button>
+          <Button variant="outline" asChild><Link href="/admin/purchase-orders"><ShoppingCart className="mr-2 h-4 w-4" /> Órdenes de compra</Link></Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
@@ -477,7 +504,7 @@ export default function ProductsPage() {
                 Nuevo Producto
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingProduct ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
                 <DialogDescription>
@@ -485,7 +512,7 @@ export default function ProductsPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="name">Nombre del Producto</Label>
                     <Input
@@ -507,24 +534,13 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="category">Categoría</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) => setFormData({ ...formData, category: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.value} value={category.value}>
-                            {category.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input id="category" list="product-categories" value={formData.category}
+                      onChange={(event) => setFormData({ ...formData, category: event.target.value })}
+                      placeholder="Elegí o escribí una categoría" required />
+                    <datalist id="product-categories">{categories.map((category) => <option key={category.value} value={category.value} />)}</datalist>
                   </div>
                   <div>
                     <Label htmlFor="stock">Stock</Label>
@@ -533,21 +549,30 @@ export default function ProductsPage() {
                       type="number"
                       value={formData.stock}
                       onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                      required
+                      required={formData.trackStock}
+                      disabled={!formData.trackStock}
                     />
+                    <label className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                      <input type="checkbox" checked={formData.trackStock}
+                        onChange={(event) => setFormData({ ...formData, trackStock: event.target.checked, stock: event.target.checked ? formData.stock : "0" })} />
+                      Controlar cantidad en stock
+                    </label>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="barcode">Código de Barras</Label>
-                  <Input
+                  <Label htmlFor="barcode">Código QR o de barras</Label>
+                  <div className="flex gap-2"><Input
                     id="barcode"
                     value={formData.barcode}
                     onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    placeholder="Ej: 7501234567890"
+                    placeholder="Escribí o escaneá el código"
                     required
-                  />
+                  /><Button type="button" variant="outline" size="icon" onClick={() => setShowCodeCamera(true)} title="Escanear con cámara" aria-label="Escanear código del producto"><Camera className="h-4 w-4" /></Button></div>
+                  <p className="mt-1 text-xs text-muted-foreground">Al escanear se completa el código; un QR generado por este sistema también puede completar nombre y precio.</p>
                 </div>
+
+                <div><Label>Proveedor principal</Label><Select value={formData.supplierId || "none"} onValueChange={(value) => setFormData({ ...formData, supplierId: value === "none" ? "" : value })}><SelectTrigger><SelectValue placeholder="Seleccioná un proveedor" /></SelectTrigger><SelectContent><SelectItem value="none">Sin proveedor asignado</SelectItem>{suppliers.filter((item) => item.isActive).map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.name} · {item.ruc}</SelectItem>)}</SelectContent></Select></div>
 
                 <div>
                   <Label htmlFor="description">Descripción</Label>
@@ -585,7 +610,7 @@ export default function ProductsPage() {
         <Database className="h-4 w-4" />
         <AlertDescription>
           <strong>Integración con Base de Datos:</strong> Los productos se guardan automáticamente en la base de datos.
-          Puedes cargar productos ejemplo o crear nuevos productos que se sincronizarán con Supabase.
+          Puedes cargar productos de ejemplo o crear nuevos productos en la base local.
         </AlertDescription>
       </Alert>
 
@@ -702,16 +727,17 @@ export default function ProductsPage() {
                   <div className="flex justify-between items-center">
                     <span>Stock:</span>
                     <div className="flex items-center gap-2">
-                      <span className={product.stock < 10 ? "text-red-600 font-bold" : ""}>
-                        {product.stock} unidades
+                      <span className={product.trackStock !== false && product.stock < 10 ? "text-red-600 font-bold" : ""}>
+                        {product.trackStock === false ? "Sin control de cantidad" : `${product.stock} unidades`}
                       </span>
-                      {product.stock < 10 && <Badge variant="destructive">Stock Bajo</Badge>}
+                      {product.trackStock !== false && product.stock < 10 && <Badge variant="destructive">Stock Bajo</Badge>}
                     </div>
                   </div>
                   <div className="flex justify-between">
                     <span>Código:</span>
                     <span className="text-sm font-mono">{product.barcode}</span>
                   </div>
+                  <div className="flex justify-between gap-3 text-sm"><span>Proveedor:</span><span className="truncate text-right text-muted-foreground">{suppliers.find((supplier) => supplier.id === product.supplierId)?.name || "Sin asignar"}</span></div>
                   {product.description && <p className="text-sm text-muted-foreground mt-2">{product.description}</p>}
                 </div>
               </CardContent>
@@ -732,6 +758,7 @@ export default function ProductsPage() {
                   <TableHead>Precio</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead>Código</TableHead>
+                  <TableHead>Proveedor</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -743,8 +770,8 @@ export default function ProductsPage() {
                     <TableCell>{formatCurrency(product.price)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className={product.stock < 10 ? "text-red-600 font-bold" : ""}>{product.stock}</span>
-                        {product.stock < 10 && (
+                        <span className={product.trackStock !== false && product.stock < 10 ? "text-red-600 font-bold" : ""}>{product.trackStock === false ? "Sin control" : product.stock}</span>
+                        {product.trackStock !== false && product.stock < 10 && (
                           <Badge variant="destructive" className="text-xs">
                             Bajo
                           </Badge>
@@ -752,6 +779,7 @@ export default function ProductsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
+                    <TableCell>{suppliers.find((supplier) => supplier.id === product.supplierId)?.name || "—"}</TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
                         <Button
@@ -851,6 +879,15 @@ export default function ProductsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CodeCamera open={showCodeCamera} onClose={() => setShowCodeCamera(false)} onResult={(value) => {
+        const scanned = parseScannedCode(value)
+        setFormData((current) => ({ ...current, barcode: scanned.code,
+          name: current.name || scanned.name || "",
+          price: current.price || (scanned.price !== undefined ? String(scanned.price) : ""),
+          category: current.category || scanned.category || "",
+        }))
+      }} />
 
       <Dialog open={isPurchaseDialogOpen} onOpenChange={setIsPurchaseDialogOpen}>
         <DialogContent>

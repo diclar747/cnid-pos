@@ -9,6 +9,8 @@
 
 # production
 /build
+/.local-cert/
+/.backups/
 
 # debug
 npm-debug.log*
@@ -18,10 +20,13 @@ yarn-error.log*
 
 # env files
 .env*
-
-# vercel
-.vercel
+!.env.example
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.legacy-export/
+
+# trabajo local
+/artifacts/
+/.claude/

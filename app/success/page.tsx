@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { CheckCircle, ArrowLeft, Receipt, Share2, Printer } from "lucide-react"
-import { useCompany } from "../context/company-context"
 import toast from "react-hot-toast"
 
 interface SaleData {
@@ -31,7 +30,6 @@ interface SaleData {
 export default function SuccessPage() {
   const [saleData, setSaleData] = useState<SaleData | null>(null)
   const router = useRouter()
-  const { companyConfig } = useCompany()
 
   useEffect(() => {
     const savedSale = localStorage.getItem("lastSale")
@@ -60,181 +58,10 @@ export default function SuccessPage() {
     })
   }
 
+  // Reimpresión con la página de ticket de 75 mm (mismo formato que en caja).
   const reprintTicket = () => {
     if (!saleData) return
-
-    // Función igual a la del checkout
-    const receiptContent = `
-      <div style="width: 300px; font-family: monospace; font-size: 12px; line-height: 1.4;">
-        <!-- Header -->
-        <div style="text-center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-          <img src="${companyConfig.logo || "/placeholder.svg?height=60&width=150&text=LOGO"}" 
-               alt="Logo" style="max-height: 60px; max-width: 150px; margin-bottom: 5px;" />
-          <div style="font-weight: bold; font-size: 14px;">${companyConfig.name}</div>
-          <div style="font-size: 10px; color: #666;">${companyConfig.slogan}</div>
-          <div style="font-size: 10px; margin-top: 5px;">
-            <div>RUC: ${companyConfig.ruc}</div>
-            <div>${companyConfig.address}</div>
-            <div>Tel: ${companyConfig.phone}</div>
-            ${companyConfig.email ? `<div>Email: ${companyConfig.email}</div>` : ""}
-            ${companyConfig.website ? `<div>Web: ${companyConfig.website}</div>` : ""}
-          </div>
-        </div>
-
-        <!-- Sale Info -->
-        <div style="margin-bottom: 10px;">
-          <div style="display: flex; justify-content: space-between;">
-            <span>FACTURA #${saleData.id}</span>
-            <span>${new Date(saleData.date).toLocaleDateString("es-PY")}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span>Hora:</span>
-            <span>${new Date(saleData.date).toLocaleTimeString("es-PY")}</span>
-          </div>
-          ${
-            saleData.customerName !== "Cliente General"
-              ? `
-            <div style="margin-top: 5px;">
-              <div>Cliente: ${saleData.customerName}</div>
-              ${saleData.customerRuc ? `<div>RUC: ${saleData.customerRuc}</div>` : ""}
-            </div>
-          `
-              : ""
-          }
-        </div>
-
-        <!-- Items -->
-        <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0;">
-          ${saleData.items
-            .map(
-              (item) => `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <div style="flex: 1;">
-                <div style="font-weight: bold;">${item.name}</div>
-                <div style="font-size: 10px; color: #666;">
-                  ${item.quantity} x Gs ${item.price.toLocaleString("es-PY")}
-                </div>
-              </div>
-              <div style="text-align: right; font-weight: bold;">
-                Gs ${(item.price * item.quantity).toLocaleString("es-PY")}
-              </div>
-            </div>
-          `,
-            )
-            .join("")}
-        </div>
-
-        <!-- Totals -->
-        <div style="margin: 10px 0;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-            <span>TOTAL:</span>
-            <span>Gs ${saleData.total.toLocaleString("es-PY")}</span>
-          </div>
-          ${
-            saleData.paymentMethod === "cash"
-              ? `
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span>Efectivo:</span>
-              <span>Gs ${saleData.cashReceived.toLocaleString("es-PY")}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-              <span>Cambio:</span>
-              <span>Gs ${saleData.change.toLocaleString("es-PY")}</span>
-            </div>
-          `
-              : `
-            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span>Método:</span>
-              <span>${saleData.paymentMethod === "card" ? "Tarjeta" : "Digital"}</span>
-            </div>
-          `
-          }
-        </div>
-
-        <!-- Footer -->
-        <div style="text-center; font-size: 10px; color: #666; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px;">
-          <div>¡Gracias por su compra!</div>
-          <div>Conserve este comprobante</div>
-          <div style="margin-top: 5px;">
-            <strong>*** REIMPRESIÓN ***</strong>
-          </div>
-          <div style="margin-top: 5px;">
-            Sistema HeroUI POS
-          </div>
-        </div>
-      </div>
-    `
-
-    // Create a new window for printing
-    const printWindow = window.open("", "_blank", "width=450,height=700")
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Reimpresión Factura #${saleData.id}</title>
-            <style>
-              body { 
-                margin: 0; 
-                padding: 20px;
-                font-family: monospace;
-              }
-              .no-print {
-                display: block;
-                text-align: center;
-                margin: 20px 0;
-                padding: 10px;
-                background: #fff3cd;
-                border: 1px solid #ffeaa7;
-                border-radius: 5px;
-              }
-              .print-button {
-                background: #007bff;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                margin: 5px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-              }
-              .print-button:hover {
-                background: #0056b3;
-              }
-              .close-button {
-                background: #6c757d;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                margin: 5px;
-                border-radius: 5px;
-                cursor: pointer;
-                font-size: 14px;
-              }
-              .close-button:hover {
-                background: #545b62;
-              }
-              @media print {
-                body { margin: 0; padding: 0; }
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="no-print">
-              <h3>🔄 Reimpresión de Ticket</h3>
-              <p style="font-size: 14px; color: #856404; margin: 10px 0;">
-                Esta es una reimpresión del ticket original
-              </p>
-              <button class="print-button" onclick="window.print()">🖨️ Reimprimir Ticket</button>
-              <button class="close-button" onclick="window.close()">❌ Cerrar</button>
-            </div>
-            ${receiptContent}
-          </body>
-        </html>
-      `)
-      printWindow.document.close()
-      toast.success("Ticket abierto para reimpresión")
-    }
+    window.open(`/receipt/sale/${saleData.id}`, "_blank")
   }
 
   const handleShare = async () => {

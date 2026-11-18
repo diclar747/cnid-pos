@@ -63,7 +63,7 @@ export default function ExpensesPage() {
     setEditingExpense(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const expenseData = {
@@ -74,10 +74,15 @@ export default function ExpensesPage() {
       createdBy: user?.name || "Usuario",
     }
 
-    if (editingExpense) {
-      updateExpense(editingExpense.id, expenseData)
-    } else {
-      addExpense(expenseData)
+    try {
+      if (editingExpense) {
+        await updateExpense(editingExpense.id, expenseData)
+      } else {
+        await addExpense(expenseData)
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el gasto")
+      return
     }
 
     resetForm()
@@ -95,9 +100,13 @@ export default function ExpensesPage() {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = (expenseId: number) => {
+  const handleDelete = async (expenseId: number) => {
     if (confirm("¿Estás seguro de que quieres eliminar este gasto?")) {
-      deleteExpense(expenseId)
+      try {
+        await deleteExpense(expenseId)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo eliminar el gasto")
+      }
     }
   }
 

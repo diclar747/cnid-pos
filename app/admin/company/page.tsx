@@ -34,15 +34,19 @@ export default function CompanyConfigPage() {
     setFormData((prev) => ({
       ...prev,
       [parent]: {
-        ...prev[parent as keyof typeof prev],
+        ...(prev[parent as keyof typeof prev] as Record<string, string>),
         [field]: value,
       },
     }))
   }
 
-  const handleSave = () => {
-    updateCompanyConfig(formData)
-    toast.success("Configuración guardada exitosamente")
+  const handleSave = async () => {
+    try {
+      await updateCompanyConfig(formData)
+      toast.success("Configuración guardada exitosamente")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo guardar la configuración")
+    }
   }
 
   if (isLoading) {

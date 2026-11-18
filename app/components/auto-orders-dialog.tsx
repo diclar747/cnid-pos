@@ -55,7 +55,7 @@ export function AutoOrdersDialog({ supplierId, open, onClose }: AutoOrdersDialog
     }
   }, [editingOrder])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const selectedProduct = products.find((p) => p.id === formData.productId)
@@ -67,11 +67,16 @@ export function AutoOrdersDialog({ supplierId, open, onClose }: AutoOrdersDialog
       productName: selectedProduct.name,
     }
 
-    if (editingOrder) {
-      updateAutoOrder(editingOrder.id, orderData)
-      setEditingOrder(null)
-    } else {
-      addAutoOrder(orderData)
+    try {
+      if (editingOrder) {
+        await updateAutoOrder(editingOrder.id, orderData)
+        setEditingOrder(null)
+      } else {
+        await addAutoOrder(orderData)
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "No se pudo guardar el pedido automático")
+      return
     }
 
     setShowForm(false)
@@ -87,9 +92,13 @@ export function AutoOrdersDialog({ supplierId, open, onClose }: AutoOrdersDialog
     setEditingOrder(order)
   }
 
-  const handleDelete = (orderId: number) => {
+  const handleDelete = async (orderId: number) => {
     if (confirm("¿Estás seguro de que deseas eliminar este pedido automático?")) {
-      deleteAutoOrder(orderId)
+      try {
+        await deleteAutoOrder(orderId)
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "No se pudo eliminar el pedido automático")
+      }
     }
   }
 
@@ -194,7 +203,7 @@ export function AutoOrdersDialog({ supplierId, open, onClose }: AutoOrdersDialog
                       <Switch
                         id="isActive"
                         checked={formData.isActive}
-                        onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                        onCheckedChange={(checked: boolean) => setFormData({ ...formData, isActive: checked })}
                       />
                       <Label htmlFor="isActive">Pedido Activo</Label>
                     </div>
