@@ -4,6 +4,9 @@ export interface RucResponse {
   name: string;
   status: string;
   biller: string;
+  /** RUC con dígito verificador (3626142-4) y razón social tal como figura en la SET. */
+  ruc?: string;
+  legalName?: string;
 }
 
 export interface RucValidationResult {
@@ -18,11 +21,11 @@ export interface RucValidationResult {
  * @returns Información del RUC o error
  */
 export async function consultarRuc(ruc: string): Promise<RucValidationResult> {
-  // Limpiar el RUC (remover espacios, guiones, etc.)
-  const cleanRuc = ruc.replace(/\D/g, '');
+  // Cédula o RUC, con o sin dígito verificador: se consulta la base (antes del guion).
+  const cleanRuc = ruc.trim().split('-')[0].replace(/\D/g, '');
   
   // Validar formato básico de RUC paraguayo
-  if (!cleanRuc || cleanRuc.length < 6 || cleanRuc.length > 9) {
+  if (!cleanRuc || cleanRuc.length < 5 || cleanRuc.length > 9) {
     return {
       isValid: false,
       error: 'Formato de RUC inválido'
