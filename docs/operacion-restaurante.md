@@ -35,7 +35,19 @@ En **Administración → Salones y mesas** creá los espacios del local. Cada sa
 
 El personal escanea el QR de mesa desde el buscador superior del POS o abre la mesa desde esta pantalla. Si ya existe una cuenta, se recupera; si está libre, se abre una nueva. También se puede elegir la mesa al guardar o enviar una cuenta desde el carrito y cambiarla desde **Órdenes → Datos**.
 
-El cliente abre el mismo QR en su teléfono, busca productos, elige agregados y envía el carrito. El sistema crea una comanda, la coloca en el tablero **Cocina** y descuenta el stock de los productos controlados. Los reintentos del mismo envío no duplican la comanda. La cuenta acumulada se puede consultar desde la página de la mesa. Por ahora el cobro se realiza en el POS; el QR no procesa pagos en línea. El teléfono y el servidor deben estar en la misma red local.
+El cliente abre el mismo QR en su teléfono, busca productos, elige agregados y envía el carrito. El sistema crea una comanda, la coloca en el tablero **Cocina** y descuenta el stock de los productos controlados. Los reintentos del mismo envío no duplican la comanda. La cuenta acumulada se puede consultar desde la página de la mesa. Por ahora el cobro se realiza en el POS; el QR no procesa pagos en línea.
+
+## Atención en la mesa y avisos
+
+Después de pedir, la página de la mesa muestra **Estado de tu pedido** en vivo: *Recibido → En cocina → Listo → Servido*. Se actualiza sola cada pocos segundos y, cuando la cocina cambia el estado, el teléfono muestra un aviso, vibra y suena.
+
+- **Llamar al mozo** y **Pedir la cuenta** avisan al personal. Tocar varias veces no duplica el llamado, y hay un límite por minuto para evitar abusos.
+- En cualquier pantalla del personal con acceso al POS aparece un aviso con la mesa y el salón, suena y el título de la pestaña parpadea. **Atender** lo cierra. Al cobrar la cuenta se cierran los llamados pendientes de esa mesa.
+- **Activar avisos** (en la mesa, después de pedir) envía notificaciones push al teléfono del cliente aunque cierre la página: pedido aceptado, listo, servido, cuenta lista o cancelado. En iPhone primero hay que agregar la carta a la pantalla de inicio (Safari → Compartir → Agregar a inicio) y abrirla desde ese ícono.
+- **Instalar la carta**: cada mesa se instala como una app propia con el nombre del local y de la mesa.
+- El personal activa sus propios avisos con **Activar avisos** en **Órdenes** o **Cocina**: recibe los pedidos nuevos del QR y los llamados de mesa como notificación del teléfono o la PC.
+
+Las notificaciones usan Web Push estándar implementado con Node (sin servicios de terceros). Las claves VAPID se generan solas la primera vez y se guardan en la base (`public.system_settings`); opcionalmente se puede definir `VAPID_SUBJECT` (por ejemplo `mailto:soporte@tudominio.com`). Los avisos push necesitan HTTPS. El servidor solo envía a los servicios push de los navegadores (Google, Mozilla, Apple y Microsoft). `pnpm test:push` verifica el cifrado contra el RFC 8291 y `scripts/smoke-table-qr.mjs` prueba el flujo completo.
 
 ## Clientes
 

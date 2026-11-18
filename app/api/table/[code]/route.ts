@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authDb } from "@/lib/db"
+import { authDb, schemaQuery } from "@/lib/db"
+import { notifyStaff } from "@/lib/web-push"
 import { cleanText, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
 
 export const runtime = "nodejs"
@@ -33,10 +34,15 @@ export async function GET(_request: NextRequest, { params }: Context) {
         image: p.image, price: p.pricesByOrderType?.dineIn ?? p.price, stock: p.stock, trackStock: p.trackStock,
         modifierGroups: p.modifierGroups ?? [] }))
     const order = table.order_id ? await loadOrder(client, Number(table.order_id)) : null
+    const tickets = order ? (await client.query("SELECT id, status, created_at, updated_at FROM kitchen_tickets WHERE order_id = $1 ORDER BY id", [order.id])).rows : []
+    const calls = (await client.query("SELECT kind, created_at FROM table_calls WHERE table_id = $1 AND status = 'open'", [table.id])).rows
     await client.query("COMMIT")
     return NextResponse.json({ restaurant: place.name, table: { id: Number(table.id), label: table.label,
       seats: Number(table.seats), roomName: table.room_name, imageData: table.image_data }, products,
-      order: order ? { id: order.id, total: order.total, items: order.items.map((line) => ({ lineId: line.lineId,
+      calls: calls.map((call) => ({ kind: call.kind, createdAt: new Date(call.created_at).toISOString() })),
+      order: order ? { id: order.id, total: order.total, billedAt: order.billedAt,
+        tickets: tickets.map((ticket) => ({ id: Number(ticket.id), status: ticket.status, updatedAt: new Date(ticket.updated_at).toISOString() })),
+        items: order.items.map((line) => ({ lineId: line.lineId, ticketId: line.ticketId,
         productName: line.productName, quantity: line.quantity, subtotal: line.subtotal, modifiers: line.modifiers })) } : null })
   } catch (error) { await client.query("ROLLBACK").catch(() => undefined); throw error }
   finally { client.release() }
@@ -93,6 +99,7 @@ export async function POST(request: NextRequest, { params }: Context) {
     if (requestId) await client.query("UPDATE guest_order_requests SET order_id=$1, ticket_id=$2 WHERE request_id=$3",
       [sent.order.id, sent.ticket.id, requestId])
     await client.query("COMMIT")
+    void schemaQuery(place.schema_name).then((query) => notifyStaff(query, { title: `Nuevo pedido · ${table.label}`, body: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", ").slice(0, 160), url: "/kitchen", tag: `table-order-${table.id}` }))
     return NextResponse.json({ orderId: sent.order.id, ticketId: sent.ticket.id, total: sent.order.total }, { status: 201 })
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined)

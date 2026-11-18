@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { canTakeOrders, getSessionUser, hasPermission } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { db, schemaQuery } from "@/lib/db"
+import { notifyOrder } from "@/lib/web-push"
 import { cleanText, deliveryFeeFor, loadOrder, logOrderEvent, refreshDeliveryFee, resolveWaiter, sendDraftToKitchen, ServiceOrderError, upsertCustomer } from "@/lib/service-order-server"
 
 export const runtime = "nodejs"
@@ -141,6 +142,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     }
     order = await loadOrder(client, id)
     await client.query("COMMIT")
+    // Avisa al cliente que pidió por QR (si activó las notificaciones) de la cuenta o la cancelación.
+    const guestMessage = body.action === "bill" ? { title: "Tu cuenta está lista", body: "En un momento te la acercan a la mesa.", tag: "order-bill" }
+      : body.action === "cancel" || body.action === "reject" ? { title: "Pedido cancelado", body: "El local canceló tu pedido. Consultá con el personal.", tag: "order-status" } : null
+    if (guestMessage) void schemaQuery().then((query) => notifyOrder(query, id, guestMessage)).catch(() => undefined)
     return NextResponse.json({ order, ticket })
   } catch (error) {
     await client.query("ROLLBACK")
