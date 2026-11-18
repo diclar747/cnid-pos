@@ -24,7 +24,7 @@ export default async function RestaurantPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <MarketplaceHeader />
-      <RestaurantMenu restaurant={found.restaurant} products={found.products} />
+      <RestaurantMenu restaurant={found.restaurant} products={found.products} zones={found.zones} />
     </div>
   )
 }

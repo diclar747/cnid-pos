@@ -47,6 +47,14 @@
       "namedRegex": "^/api/cash/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/customer/orders/[ref]",
+      "regex": "^/api/customer/orders/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPref": "nxtPref"
+      },
+      "namedRegex": "^/api/customer/orders/(?<nxtPref>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/customers/[id]",
       "regex": "^/api/customers/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -281,6 +289,14 @@
       "namedRegex": "^/cash/report/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/cuenta/pedidos/[ref]",
+      "regex": "^/cuenta/pedidos/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPref": "nxtPref"
+      },
+      "namedRegex": "^/cuenta/pedidos/(?<nxtPref>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/kitchen/print/[id]",
       "regex": "^/kitchen/print/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -440,6 +456,12 @@
       "regex": "^/crm(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/crm(?:/)?$"
+    },
+    {
+      "page": "/cuenta",
+      "regex": "^/cuenta(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/cuenta(?:/)?$"
     },
     {
       "page": "/kitchen",

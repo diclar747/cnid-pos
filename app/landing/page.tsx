@@ -102,7 +102,7 @@ const faqs = [
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(0)
-  const nav = [["/marketplace", "Marketplace"], ["#demo", "Demo"], ["#funciones", "Funciones"], ["#restaurantes", "Multi-restaurante"], ["#proximamente", "Próximamente"], ["#preguntas", "Preguntas"]]
+  const nav = [["/marketplace", "Marketplace"], ["/cuenta", "Mi cuenta"], ["#demo", "Demo"], ["#funciones", "Funciones"], ["#restaurantes", "Multi-restaurante"], ["#proximamente", "Próximamente"], ["#preguntas", "Preguntas"]]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
