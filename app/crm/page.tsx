@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import ProtectedRoute from "../components/protected-route"
 import PaymentDialog, { type PaymentTarget } from "../components/payment-dialog"
 import { StaffPushButton } from "../components/table-calls-listener"
-import { OrderFlowGuide } from "../components/order-flow-guide"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
 import { eventLabel, sourceLabel, ticketLabel, typeLabel } from "@/lib/order-labels"
@@ -143,7 +142,6 @@ export default function CrmPage() {
           <Kpi label="En delivery" value={String(totals.delivery)} tone="text-violet-700" />
           <Kpi label="Cobrado en el día" value={money(totals.sales)} tone="text-emerald-700" />
         </div>
-        <div className="mt-3"><OrderFlowGuide /></div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-x-auto p-3 sm:p-4">
