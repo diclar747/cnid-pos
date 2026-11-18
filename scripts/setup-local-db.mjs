@@ -53,8 +53,25 @@ try {
     }
   }
 
+  // En un servidor público: SEED_SAMPLE_DATA=false evita las cuentas y productos de ejemplo
+  // (con contraseñas conocidas) e INITIAL_ADMIN_* crea solo el administrador de «De la Casa».
+  const seedSamples = process.env.SEED_SAMPLE_DATA !== "false"
+  const initialAdminEmail = process.env.INITIAL_ADMIN_EMAIL?.trim().toLowerCase()
+  const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? ""
   const userCount = Number((await pool.query("SELECT COUNT(*) AS total FROM app_users")).rows[0].total)
-  if (userCount === 0) {
+  if (userCount === 0 && initialAdminEmail) {
+    if (!initialAdminEmail.includes("@") || initialAdminPassword.length < 10) {
+      throw new Error("INITIAL_ADMIN_EMAIL debe ser un email e INITIAL_ADMIN_PASSWORD tener al menos 10 caracteres.")
+    }
+    await pool.query(
+      `INSERT INTO app_users (email, username, name, role, permissions, password_hash, restaurant_id)
+       VALUES ($1, $2, $3, 'admin', $4, $5, 1)`,
+      [initialAdminEmail, initialAdminEmail.split("@")[0].slice(0, 40), process.env.INITIAL_ADMIN_NAME?.trim() || "Administrador",
+        ["view_dashboard", "manage_products", "manage_users", "view_reports", "manage_expenses", "manage_company", "manage_purchases", "manage_suppliers", "access_pos", "manage_sales"],
+        hashPassword(initialAdminPassword)],
+    )
+    console.log(`Administrador inicial creado: ${initialAdminEmail}`)
+  } else if (userCount === 0 && seedSamples) {
     const permissions = {
       admin: ["view_dashboard", "manage_products", "manage_users", "view_reports", "manage_expenses", "manage_company", "manage_purchases", "manage_suppliers", "access_pos", "manage_sales"],
       manager: ["view_dashboard", "view_reports", "view_products", "view_expenses", "access_pos", "manage_sales"],
@@ -75,7 +92,7 @@ try {
   }
 
   const productCount = Number((await pool.query("SELECT COUNT(*) AS total FROM products")).rows[0].total)
-  if (productCount === 0) {
+  if (productCount === 0 && seedSamples) {
     const products = JSON.parse(await readFile(resolve("scripts/seed-products.json"), "utf8"))
     for (const { id: _id, ...data } of products) {
       await pool.query("INSERT INTO products (data) VALUES ($1::jsonb)", [JSON.stringify(data)])

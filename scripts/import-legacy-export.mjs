@@ -121,6 +121,16 @@ const connectionString = process.env.DATABASE_URL || env.match(/^DATABASE_URL=(.
 if (!connectionString) throw new Error('Falta DATABASE_URL en .env.local')
 const client = new pg.Client({ connectionString })
 await client.connect()
+// --if-empty (arranque automático en el panel): solo importa si la carta todavía no está,
+// para no pisar precios o cambios hechos después desde la administración.
+if (process.argv.includes('--if-empty')) {
+  const loaded = await client.query(`SELECT COUNT(*)::int AS n FROM products WHERE data->'legacy'->>'source' = $1`, [source])
+  if (loaded.rows[0].n > 0) {
+    console.log(`Carta de De la Casa ya cargada (${loaded.rows[0].n} productos); no se reimporta.`)
+    await client.end()
+    process.exit(0)
+  }
+}
 try {
   await client.query('BEGIN')
   await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS products_legacy_key_unique ON products ((data->'legacy'->>'key')) WHERE data->'legacy'->>'key' IS NOT NULL`)

@@ -24,6 +24,9 @@ try {
        VALUES ($1,$2,$3,'superadmin',ARRAY['manage_restaurants']::text[],$4,NULL)`,
       [email, username, name, hash],
     )
-    console.log(`Superadministrador creado. Usuario: ${email} Contraseña inicial: ${password}`)
+    // Si la contraseña vino de SUPERADMIN_PASSWORD no se repite en el log.
+    console.log(process.env.SUPERADMIN_PASSWORD
+      ? `Superadministrador creado. Usuario: ${email} (contraseña: la de SUPERADMIN_PASSWORD)`
+      : `Superadministrador creado. Usuario: ${email} Contraseña inicial: ${password}`)
   }
 } finally { await pool.end() }

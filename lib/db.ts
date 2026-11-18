@@ -18,11 +18,20 @@ function createPool() {
   return new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 })
 }
 
-export const authDb = globalThis.cnidPosPool ?? createPool()
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.cnidPosPool = authDb
+// El pool se crea en la primera consulta, no al importar el módulo: así `next build`
+// funciona sin DATABASE_URL (en el panel de hosting el build no recibe las variables).
+function getPool(): Pool {
+  if (!globalThis.cnidPosPool) globalThis.cnidPosPool = createPool()
+  return globalThis.cnidPosPool
 }
+
+export const authDb: Pool = new Proxy({} as Pool, {
+  get(_target, property) {
+    const pool = getPool()
+    const value = Reflect.get(pool, property, pool)
+    return typeof value === "function" ? value.bind(pool) : value
+  },
+})
 
 // Las cuentas y sesiones viven en public. Cada restaurante usa su propio esquema.
 async function currentSchema(): Promise<string> {

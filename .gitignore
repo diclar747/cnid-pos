@@ -30,3 +30,4 @@ next-env.d.ts
 # trabajo local
 /artifacts/
 /.claude/
+/data/

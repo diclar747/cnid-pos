@@ -66,12 +66,12 @@ Las fotos de los platos ya están en el repositorio (`public/menu-legacy`, `publ
 Con PM2:
 
 ```bash
-pm2 start "pnpm start" --name cnid-pos --cwd /var/www/apps/cnid-pos
+pm2 start "pnpm start:local" --name cnid-pos --cwd /var/www/apps/cnid-pos
 pm2 save
 pm2 startup   # seguir la instrucción que imprime para arrancar con el servidor
 ```
 
-`pnpm start` escucha en `127.0.0.1` y en el puerto de `PORT`; no queda expuesto directamente a internet.
+`pnpm start:local` escucha en `127.0.0.1` y en el puerto de `PORT`; no queda expuesto directamente a internet. (`pnpm start` escucha en todas las interfaces: es para contenedores como el del panel.)
 
 ## 6. Nginx
 
@@ -109,6 +109,30 @@ pm2 restart cnid-pos
 ```
 
 Antes de actualizar, respaldá la base: `pg_dump -Fc cnidpos > ~/respaldos/cnidpos-$(date +%F).dump`.
+
+## Panel cdpanel (cd.com.py)
+
+El panel corre cada sitio en un contenedor Node 22: clona el repositorio, ejecuta `npm ci`, `npm run build` y `npm prune --omit=dev`, y arranca la app con `PORT=8080`. El plan básico no tiene SSH, así que `scripts/panel-start.mjs` hace en cada arranque lo que en un servidor propio se corre a mano: migraciones, cuentas iniciales y carga de la carta. El build no necesita la base.
+
+1. **Sitio:** en **Sitios y aplicaciones**, el sitio tiene que ser de tipo **Node.js**. Si se creó como estático, no se puede cambiar: borralo y crealo de nuevo como Node.js con el mismo dominio.
+2. **Base de datos:** en **Bases de datos → PostgreSQL**, creá una base (por ejemplo `cnidpos`). El panel le agrega un prefijo (`cd_usr…_cnidpos`), el usuario es ese nombre con `_u` y la contraseña **se muestra una sola vez**: copiala. El host es `postgres`, puerto `5432`.
+3. **Variables del sitio** (pestaña Variables; al guardar se recrea el contenedor):
+
+   | Variable | Valor |
+   | --- | --- |
+   | `APP_ENTRY` | `scripts/panel-start.mjs` |
+   | `DATABASE_URL` | `postgresql://USUARIO:CONTRASEÑA@postgres:5432/BASE` |
+   | `SESSION_COOKIE_SECURE` | `true` |
+   | `SEED_SAMPLE_DATA` | `false` (no crea cuentas ni productos de ejemplo) |
+   | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` / `INITIAL_ADMIN_NAME` | Administrador de «De la Casa» (contraseña de 10+ caracteres). Solo se usa si la base no tiene usuarios. |
+   | `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` | Cuenta central (contraseña de 14+ caracteres). Solo se crea si no existe. |
+
+   Después del primer arranque podés borrar las variables de contraseña: las cuentas ya quedan en la base.
+4. **Despliegue:** URL `https://github.com/diclar747/cnid-pos.git` (sin credenciales), rama `main`. Como el repositorio es privado, cargá en el campo **token** un *fine-grained token* de GitHub con acceso solo a `cnid-pos` y permiso **Contents: Read-only**. **Guardar y desplegar.**
+5. **Carta de De la Casa:** con **Administrador de archivos**, en la carpeta del sitio creá `data/` y subí `de-la-casa-export.json` (está en la PC, en `.legacy-export/`). Reiniciá el sitio (no vuelvas a desplegar, porque un despliegue reemplaza la carpeta): al arrancar se importa una sola vez. Las actualizaciones posteriores no la vuelven a importar ni pisan los cambios hechos desde la administración.
+6. **Probar:** `https://restopos.cd.com.py/login` con el administrador inicial; crear una cuenta, enviar a cocina, imprimir la precuenta y cobrar.
+
+En ejecución el plan básico da 512 MB de RAM y 0,25 vCPU: alcanza, pero va justo. El contenedor tiene el disco de solo lectura; la app guarda todo (incluidas fotos de salones y avatares) en PostgreSQL.
 
 ## Variante: cPanel «Setup Node.js App»
 
