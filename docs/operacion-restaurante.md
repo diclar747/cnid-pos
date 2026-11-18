@@ -149,3 +149,14 @@ En **Empresa → Apariencia** el dueño sube su **logo** y una **foto de portada
 ## App instalable
 
 En el teléfono aparece un aviso **Instalá RestoPOS** (si se descarta, vuelve a los 5 días). En Android instala con un toque; en iPhone muestra los dos pasos (Compartir → Agregar a inicio). La bienvenida muestra platos reales y «Bienvenido a RestoPOS · Tu restaurante en línea».
+
+## Cuenta del cliente
+
+El consumidor entra en **Mi cuenta** (`/cuenta`, también desde el marketplace, la portada y el QR de la mesa) con su teléfono y una contraseña. Una sola cuenta sirve para todos los restaurantes.
+
+- **Pedir desde el teléfono**: en la página del restaurante elige los platos (con sus opciones: guarnición, tamaño…), toca **Hacer pedido**, elige **retiro** o **delivery** (zona, dirección o **Usar mi ubicación**) y confirma. El servidor calcula precios, opciones y envío.
+- El pedido entra en **Pedidos** como **Nuevo** (origen web) y suena el aviso del personal; el local lo confirma o rechaza como cualquier pedido remoto.
+- **Seguimiento en vivo**: Recibido → Confirmado → En cocina → Listo → En camino → Entregado. Con **Activar avisos** recibe una notificación en el teléfono en cada cambio, y además el mensaje por WhatsApp si el restaurante tiene WhatsApp conectado.
+- **Historial**: pedidos en curso y anteriores, con detalle, total y botones para llamar o escribir al restaurante.
+- **Escanear mesa**: abre la cámara, lee el QR de la mesa y lleva a su carta; con la sesión iniciada, ese pedido también queda en su historial y recibe los avisos.
+- **Mis datos**: nombre, dirección para delivery, email y cambio de contraseña.

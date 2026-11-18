@@ -23,7 +23,10 @@ export type MarketplaceRestaurant = {
 export type MarketplaceProduct = {
   id: number; name: string; description: string; category: string; image: string; price: number; regularPrice: number
   prepMinutes: number | null; hasOptions: boolean
+  /** Opciones para elegir al pedir (guarnición, tamaño…). */
+  groups: { id: number; name: string; required: boolean; multiple: boolean; options: { id: number; name: string; price: number }[] }[]
 }
+export type MarketplaceZone = { id: number; name: string; areas: string; fee: number; freeOver: number | null; etaMinutes: number | null }
 
 const text = (value: unknown, max = 300) => typeof value === "string" ? value.trim().slice(0, max) : ""
 const coordinate = (value: unknown) => { const n = Number(value); return Number.isFinite(n) && n !== 0 ? n : null }
@@ -105,6 +108,10 @@ function catalog(slug: string, rows: any[]): MarketplaceProduct[] {
       image: imageUrl(p.image, `/api/marketplace/${slug}/image/${p.id}`),
       price: effectivePrice(p, "pickup"), regularPrice: basePrice(p, "pickup"),
       prepMinutes: Number.isSafeInteger(p.prepMinutes) ? p.prepMinutes : null, hasOptions: Array.isArray(p.modifierGroups) && p.modifierGroups.length > 0,
+      groups: (Array.isArray(p.modifierGroups) ? p.modifierGroups : []).filter((g: any) => Number.isSafeInteger(g?.legacyId) && Array.isArray(g?.options))
+        .map((g: any) => ({ id: g.legacyId, name: text(g.name, 80), required: Boolean(g.required), multiple: Boolean(g.multiple),
+          options: g.options.filter((o: any) => Number.isSafeInteger(o?.legacyId) && Number.isSafeInteger(o?.price) && o.price >= 0).map((o: any) => ({ id: o.legacyId, name: text(o.name, 80), price: o.price })) }))
+        .filter((g: any) => g.options.length > 0),
     }))
     .filter((p) => p.name && Number.isFinite(p.price))
 }
@@ -132,7 +139,10 @@ export async function getRestaurant(slug: string) {
   const data = await readSchema(row.schema_name)
   if (data.config.showInMarketplace === false) return null
   const products = catalog(row.slug, data.products)
-  return { restaurant: profile(row, data.config, data.session, products), products }
+  const zones = (await authDb.query(`SELECT id, name, areas, fee, free_over, eta_minutes FROM "${row.schema_name}".delivery_zones WHERE is_active ORDER BY sort_order, id`)
+    .catch(() => ({ rows: [] as any[] }))).rows.map((zone): MarketplaceZone => ({ id: Number(zone.id), name: zone.name, areas: zone.areas ?? "", fee: Number(zone.fee),
+      freeOver: zone.free_over == null ? null : Number(zone.free_over), etaMinutes: zone.eta_minutes == null ? null : Number(zone.eta_minutes) }))
+  return { restaurant: profile(row, data.config, data.session, products), products, zones }
 }
 
 /** Logo o foto subida en base64: se sirve como archivo para no inflar el listado. */

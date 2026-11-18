@@ -3,6 +3,8 @@ import { authDb, schemaQuery } from "@/lib/db"
 import { notifyStaff } from "@/lib/web-push"
 import { cleanText, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
 import { effectivePrice } from "@/lib/product-price"
+import { getCustomer } from "@/lib/customer-account"
+import { linkTableOrder } from "@/lib/customer-orders"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ code: string }> }
@@ -97,6 +99,13 @@ export async function POST(request: NextRequest, { params }: Context) {
     if (!existing.rows[0]) await logOrderEvent(client, sent.order.id, "created", { status: "dineIn", note: "Pedido desde el QR de la mesa", actor: guest })
     await logOrderEvent(client, sent.order.id, "items_added", { note: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor: guest })
     await logOrderEvent(client, sent.order.id, "sent_to_kitchen", { status: "pending", ticketId: sent.ticket.id, actor: guest })
+    // Si el cliente ingresó a su cuenta, el pedido de la mesa queda en su historial y recibe los avisos.
+    const account = await getCustomer(request)
+    if (account) {
+      await linkTableOrder(client, Number(place.id), sent.order.id, account.id)
+      await client.query("UPDATE service_orders SET customer_phone = CASE WHEN customer_phone = '' THEN $2 ELSE customer_phone END, customer_name = CASE WHEN customer_name = '' THEN $3 ELSE customer_name END WHERE id = $1",
+        [sent.order.id, account.phone, account.name])
+    }
     if (requestId) await client.query("UPDATE guest_order_requests SET order_id=$1, ticket_id=$2 WHERE request_id=$3",
       [sent.order.id, sent.ticket.id, requestId])
     await client.query("COMMIT")

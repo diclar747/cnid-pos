@@ -4,7 +4,7 @@ import type { PoolClient } from "pg"
 import { authDb, schemaQuery } from "./db"
 import { logOrderEvent, type OrderActor } from "./service-order-server"
 import type { KitchenStatus, ServiceOrderType } from "./service-order-types"
-import { notifyOrder } from "./web-push"
+import { notifyOrder, sendPush } from "./web-push"
 
 // Flujo de estados de las comandas y avisos al cliente (push y WhatsApp) con mensajes únicos para todo el sistema.
 
@@ -69,15 +69,25 @@ export function registerWhatsAppNotifier(notifier: WhatsAppNotifier) { globalThi
 export async function notifyCustomer(schema: string, orderId: number, event: CustomerEvent, extra: { minutes?: number; note?: string } = {}) {
   try {
     const query = await schemaQuery(schema)
-    const row = (await query(`SELECT o.id, o.order_type, o.source, o.customer_phone, o.delivery_address, o.courier_name, t.code AS table_code
+    const row = (await query(`SELECT o.id, o.order_type, o.source, o.customer_phone, o.delivery_address, o.courier_name, o.customer_account_id, t.code AS table_code
       FROM service_orders o LEFT JOIN dining_tables t ON t.id = o.table_id WHERE o.id = $1`, [orderId])).rows[0]
     if (!row) return
-    const restaurant = (await authDb.query("SELECT name FROM public.restaurants WHERE schema_name = $1", [schema])).rows[0]?.name ?? "RestoPOS"
+    const place = (await authDb.query("SELECT id, name FROM public.restaurants WHERE schema_name = $1", [schema])).rows[0]
+    const restaurant = place?.name ?? "RestoPOS"
     const order: OrderInfo = { id: Number(row.id), orderType: row.order_type, tableCode: row.table_code, source: row.source ?? "pos",
       customerPhone: row.customer_phone ?? "", deliveryAddress: row.delivery_address ?? "", courierName: row.courier_name ?? "" }
     const message = customerMessage(event, restaurant, order, extra)
     await notifyOrder(query, orderId, { title: message.title, body: message.body, tag: `order-${orderId}`, url: order.tableCode ? `/table/${order.tableCode}` : undefined })
-    if (order.source === "whatsapp" && order.customerPhone && globalThis.restoposWhatsAppNotifier) {
+    // Cliente con cuenta: aviso en todos los teléfonos donde activó los avisos.
+    if (row.customer_account_id && place) {
+      const url = `/cuenta/pedidos/${place.id}-${orderId}`
+      const subs = (await authDb.query("SELECT id, endpoint, p256dh, auth FROM public.customer_push WHERE account_id = $1", [row.customer_account_id])).rows
+      for (const sub of subs) {
+        const result = await sendPush({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, { title: message.title, body: message.body, tag: `order-${orderId}`, url })
+        if (result.gone) await authDb.query("DELETE FROM public.customer_push WHERE id = $1", [sub.id])
+      }
+    }
+    if ((order.source === "whatsapp" || order.source === "web") && order.customerPhone && globalThis.restoposWhatsAppNotifier) {
       await globalThis.restoposWhatsAppNotifier(schema, order.customerPhone, message.plain, orderId)
     }
   } catch (error) {
