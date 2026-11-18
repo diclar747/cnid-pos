@@ -1,1175 +1,324 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
-  ShoppingCart,
-  BarChart3,
-  Users,
-  Package,
-  CreditCard,
-  FileText,
-  Settings,
-  Shield,
-  TrendingUp,
-  Star,
-  Check,
-  ArrowRight,
-  Phone,
-  Mail,
-  MapPin,
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin,
-  QrCode,
-  Printer,
-  Calculator,
-  Clock,
-  Database,
-  Wifi,
-  Lock,
-  Headphones,
-  Award,
-  Target,
-  DollarSign,
-  PieChart,
-  BarChart,
-  LineChart,
-  Calendar,
-  Bell,
-  Search,
-  Filter,
-  Download,
-  Upload,
-  FolderSyncIcon as Sync,
-  Globe,
-  MessageSquare,
-  ThumbsUp,
-  Eye,
-  Edit,
-  Trash2,
-  Plus,
-  Minus,
-  RefreshCw,
-  Save,
-  Share2,
-  Copy,
-  ExternalLink,
-  Home,
-  Building,
-  Store,
-  Truck,
-  Box,
-  Tag,
-  Percent,
-  Hash,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Info,
-  HelpCircle,
-  Menu,
-  X,
-  MessageCircle,
-  Moon,
-  Sun,
+  ArrowRight, Armchair, BarChart3, Bot, Building2, Camera, ChefHat, ChevronDown, ClipboardList, CreditCard,
+  KanbanSquare, Mail, MapPinned, Menu, MessageCircle, PackageSearch, Printer, QrCode, ReceiptText, ShieldCheck,
+  Smartphone, Sparkles, Truck, UserRound, Wallet, X,
 } from "lucide-react"
+import DemoPlayer, { type DemoChapter } from "../components/landing/demo-player"
+import { LaptopFrame, PhoneFrame } from "../components/landing/device-frame"
+
+const WHATSAPP = "https://wa.me/595994854167?text=Hola%2C%20quiero%20conocer%20RestoPOS."
+
+const chapters: DemoChapter[] = [
+  {
+    id: "pos", title: "Tomar el pedido", summary: "Carta con fotos, variantes, agregados y precios por tipo de pedido.",
+    frames: [
+      { src: "/landing/pos.webp", alt: "Punto de venta de RestoPOS con la categoría Pastas y el carrito con tres platos", caption: "Elegís la categoría, tocás «Agregar» y el carrito suma al instante.", focus: { x: 92, y: 40, zoom: 1.32 }, highlight: { x: 78.5, y: 15.5, w: 20.5, h: 55 } },
+      { src: "/landing/pos-agregados.webp", alt: "Cuadro para elegir agregados de un plato con su precio", caption: "Agregados y opciones obligatorias con su precio: el total se calcula solo.", focus: { x: 50, y: 50, zoom: 1.18 }, highlight: { x: 32.5, y: 7.5, w: 35.5, h: 85 } },
+    ],
+  },
+  {
+    id: "cocina", title: "Cocina en tiempo real", summary: "Cada comanda avanza de Pendiente a Entregado.",
+    frames: [
+      { src: "/landing/cocina.webp", alt: "Tablero de cocina con columnas Pendiente, Preparando, Listo, En reparto y Entregado", caption: "Las comandas llegan solas al tablero, con mesa, cliente y notas para cocina.", focus: { x: 30, y: 45, zoom: 1.28 }, highlight: { x: 21.2, y: 27.5, w: 18.5, h: 47 } },
+      { src: "/landing/cocina.webp", alt: "Pedido de delivery en la columna En reparto", caption: "Delivery y retiro siguen su propio recorrido hasta la entrega.", focus: { x: 70, y: 45, zoom: 1.28 }, highlight: { x: 60.5, y: 27.5, w: 18.5, h: 47 } },
+    ],
+  },
+  {
+    id: "cuentas", title: "Mesas, mesero y precuenta", summary: "Cuentas abiertas por mesa o tarjeta QR, con mesero asignado.",
+    frames: [
+      { src: "/landing/ordenes.webp", alt: "Órdenes abiertas por mesa con mesero y estado de precuenta", caption: "Cada mesa tiene su cuenta: se suman consumos, se sigue la comanda y se imprime la precuenta.", focus: { x: 35, y: 55, zoom: 1.2 } },
+      { src: "/landing/precuenta.webp", alt: "Precuenta impresa de 75 mm con mesa, mesero, detalle y total", caption: "Precuenta de 75 mm para el cliente; al cobrar, el comprobante con vuelto.", device: "ticket" },
+    ],
+  },
+  {
+    id: "qr", title: "El cliente pide desde su mesa", summary: "Escanea el QR, elige y el pedido llega a cocina.",
+    frames: [
+      { src: "/landing/mesa-qr.webp", alt: "Menú en el teléfono del cliente para pedir desde la mesa", caption: "Sin instalar nada: el cliente escanea el QR de la mesa, arma su pedido y consulta su cuenta.", device: "phone", focus: { x: 50, y: 30, zoom: 1.08 } },
+      { src: "/landing/salones.webp", alt: "Administración de salones y mesas con códigos QR", caption: "Salones y mesas con QR propio, listos para imprimir.", focus: { x: 50, y: 45, zoom: 1.15 } },
+    ],
+  },
+  {
+    id: "control", title: "Ventas y control", summary: "Panel con ingresos, ticket promedio y productos.",
+    frames: [
+      { src: "/landing/panel.webp", alt: "Panel de control con ventas de hoy, ingresos, operaciones y ticket promedio", caption: "Ventas del día, ingresos, ticket promedio y compras en un solo lugar.", focus: { x: 60, y: 60, zoom: 1.2 }, highlight: { x: 19.5, y: 54, w: 78.5, h: 25 } },
+      { src: "/landing/productos.webp", alt: "Administración de productos con precios y categorías", caption: "Productos, precios, stock y proveedores administrados desde el panel.", focus: { x: 55, y: 40, zoom: 1.15 } },
+    ],
+  },
+  {
+    id: "multi", title: "Varios restaurantes", summary: "Cada restaurante con sus datos, usuarios y carta separados.",
+    frames: [
+      { src: "/landing/superadmin.webp", alt: "Superadministración con la lista de restaurantes", caption: "Desde la superadministración creás restaurantes, cada uno con su propio administrador y datos aislados.", focus: { x: 50, y: 45, zoom: 1.15 } },
+    ],
+  },
+]
+
+const features = [
+  { icon: Camera, title: "Venta rápida", text: "Buscador, lector de código o cámara del teléfono. Cobro en efectivo, tarjeta o transferencia." },
+  { icon: Sparkles, title: "Variantes y agregados", text: "Tamaños, opciones obligatorias y agregados con precio. Precios distintos para local, delivery y retiro." },
+  { icon: ChefHat, title: "Tablero de cocina", text: "Pendiente, preparando, listo, en reparto y entregado. Comandas impresas de 80 mm." },
+  { icon: Armchair, title: "Salones y mesas", text: "Mesas con QR propio, cuentas abiertas y cambio de mesa sin perder consumos." },
+  { icon: QrCode, title: "Pedido desde la mesa", text: "El cliente pide desde su teléfono y el pedido llega directo a cocina." },
+  { icon: ReceiptText, title: "Precuenta y comprobante", text: "Tickets de 75 mm con mesa, mesero, agregados, vuelto y total." },
+  { icon: UserRound, title: "Meseros y roles", text: "Administrador, gerente, cajero y mesero: cada uno ve y hace solo lo suyo." },
+  { icon: PackageSearch, title: "Compras y stock", text: "Proveedores, órdenes de compra, recepción y descuento de stock en cada venta." },
+  { icon: BarChart3, title: "Reportes", text: "Ventas por período, medios de pago, productos más vendidos y gastos." },
+  { icon: Building2, title: "Multi-restaurante", text: "Cada restaurante con su base de datos separada, sus usuarios y su carta." },
+  { icon: Smartphone, title: "Funciona en el teléfono", text: "Se instala como aplicación desde el navegador, en Android o iPhone." },
+  { icon: ShieldCheck, title: "Datos protegidos", text: "Accesos por usuario, sesiones seguras y respaldos de PostgreSQL." },
+]
+
+const flow = [
+  { icon: Armchair, title: "Mesa", text: "Se abre la cuenta y se asigna el mesero." },
+  { icon: ClipboardList, title: "Comanda", text: "Los platos van a cocina con sus agregados y notas." },
+  { icon: ChefHat, title: "Cocina", text: "Prepara y marca listo; el salón lo ve al instante." },
+  { icon: ReceiptText, title: "Precuenta", text: "El cliente revisa su cuenta impresa." },
+  { icon: CreditCard, title: "Cobro", text: "Comprobante con vuelto y la mesa queda libre." },
+]
+
+const upcoming = [
+  { icon: MessageCircle, title: "WhatsApp por restaurante", text: "Cada restaurante conecta su número con un QR y recibe pedidos por WhatsApp." },
+  { icon: Bot, title: "Asistente con IA", text: "Atiende, arma el pedido con la carta y los precios reales, y avisa cada cambio de estado." },
+  { icon: KanbanSquare, title: "Tablero de pedidos", text: "Todos los pedidos en columnas, en tiempo real, con historial de estados." },
+  { icon: Truck, title: "Delivery por zonas", text: "Tarifas por zona, envío gratis desde un monto y repartidores asignados." },
+  { icon: Wallet, title: "Caja", text: "Apertura y cierre, ingresos, egresos y pagos por QR." },
+  { icon: MapPinned, title: "Ficha del restaurante", text: "Logo, horarios, ubicación, sucursales y datos comerciales." },
+]
+
+const faqs = [
+  { q: "¿Necesito instalar algo?", a: "No. RestoPOS funciona en el navegador de la computadora, la tablet o el teléfono, y se puede instalar como aplicación desde el mismo navegador." },
+  { q: "¿Puedo manejar varios restaurantes?", a: "Sí. Desde la superadministración se crean restaurantes; cada uno tiene su propia carta, ventas, mesas y usuarios, sin mezclarse con los demás." },
+  { q: "¿Imprime comandas y tickets?", a: "Sí. Las comandas de cocina, las precuentas y los comprobantes se imprimen en papel térmico de 75 u 80 mm desde el navegador." },
+  { q: "¿Puedo traer la carta de mi sistema anterior?", a: "Sí. Importamos artículos, variantes, precios por tipo de pedido y agregados; así se cargó la carta completa de De la Casa." },
+  { q: "¿Mis clientes pueden pedir desde el teléfono?", a: "Sí. Cada mesa tiene su QR: el cliente ve la carta, elige y el pedido llega a cocina. El cobro se hace en el local." },
+  { q: "¿Cuándo llega WhatsApp con IA?", a: "Está en desarrollo. Escribinos y te avisamos cuando esté disponible para tu restaurante." },
+]
 
 export default function LandingPage() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  const features = [
-    {
-      icon: ShoppingCart,
-      title: "Punto de Venta Completo",
-      description:
-        "Sistema POS intuitivo con procesamiento rápido de ventas, múltiples métodos de pago, y gestión de descuentos automáticos.",
-      details: ["Interfaz táctil optimizada", "Múltiples formas de pago", "Descuentos y promociones", "Ventas offline"],
-    },
-    {
-      icon: Package,
-      title: "Gestión de Inventario",
-      description:
-        "Control total de stock con alertas automáticas, códigos de barras, y seguimiento en tiempo real de productos.",
-      details: ["Alertas de stock bajo", "Códigos QR y barras", "Categorización avanzada", "Control de lotes"],
-    },
-    {
-      icon: BarChart3,
-      title: "Reportes y Analytics",
-      description:
-        "Dashboards interactivos con métricas de ventas, análisis de tendencias, y reportes personalizables en PDF.",
-      details: ["Reportes en tiempo real", "Gráficos interactivos", "Exportación PDF/Excel", "Análisis predictivo"],
-    },
-    {
-      icon: Users,
-      title: "Gestión de Clientes",
-      description:
-        "Base de datos completa de clientes con historial de compras, programas de fidelidad, y comunicación automatizada.",
-      details: ["Perfiles detallados", "Historial de compras", "Programa de puntos", "Marketing directo"],
-    },
-    {
-      icon: CreditCard,
-      title: "Facturación Electrónica",
-      description:
-        "Generación automática de facturas conformes a normativas paraguayas con numeración correlativa y timbrado fiscal.",
-      details: ["Cumple normativas SET", "Numeración automática", "Timbrado fiscal", "Envío por email"],
-    },
-    {
-      icon: FileText,
-      title: "Gestión Financiera",
-      description:
-        "Control completo de gastos, ingresos, flujo de caja, y conciliación bancaria con reportes financieros detallados.",
-      details: ["Control de gastos", "Flujo de caja", "Conciliación bancaria", "Estados financieros"],
-    },
-    {
-      icon: Truck,
-      title: "Gestión de Proveedores",
-      description:
-        "Administración completa de proveedores con órdenes de compra automáticas, evaluación de desempeño, y comunicación integrada.",
-      details: ["Órdenes automáticas", "Evaluación de proveedores", "Comunicación integrada", "Historial de compras"],
-    },
-    {
-      icon: Shield,
-      title: "Seguridad y Respaldos",
-      description:
-        "Sistema seguro con encriptación de datos, respaldos automáticos en la nube, y control de acceso por roles.",
-      details: ["Encriptación de datos", "Respaldos automáticos", "Control de acceso", "Auditoría completa"],
-    },
-  ]
-
-  const additionalFeatures = [
-    { icon: QrCode, name: "Códigos QR" },
-    { icon: Printer, name: "Impresión Térmica" },
-    { icon: Calculator, name: "Calculadora Integrada" },
-    { icon: Clock, name: "Control de Horarios" },
-    { icon: Database, name: "Base de Datos Robusta" },
-    { icon: Wifi, name: "Sincronización Online" },
-    { icon: Lock, name: "Acceso Seguro" },
-    { icon: Headphones, name: "Soporte 24/7" },
-    { icon: Award, name: "Certificaciones" },
-    { icon: Target, name: "Metas de Ventas" },
-    { icon: DollarSign, name: "Multi-Moneda" },
-    { icon: PieChart, name: "Análisis de Rentabilidad" },
-    { icon: BarChart, name: "Comparativas" },
-    { icon: LineChart, name: "Tendencias" },
-    { icon: Calendar, name: "Programación" },
-    { icon: Bell, name: "Notificaciones" },
-    { icon: Search, name: "Búsqueda Avanzada" },
-    { icon: Filter, name: "Filtros Inteligentes" },
-    { icon: Download, name: "Exportación" },
-    { icon: Upload, name: "Importación" },
-    { icon: Sync, name: "Sincronización" },
-    { icon: Globe, name: "Multi-Idioma" },
-    { icon: MessageSquare, name: "Chat Integrado" },
-    { icon: ThumbsUp, name: "Feedback" },
-    { icon: Eye, name: "Monitoreo" },
-    { icon: Edit, name: "Personalización" },
-    { icon: Trash2, name: "Eliminación Segura" },
-    { icon: Plus, name: "Agregar Rápido" },
-    { icon: Minus, name: "Descuentos" },
-    { icon: RefreshCw, name: "Actualizaciones" },
-    { icon: Save, name: "Guardado Auto" },
-    { icon: Share2, name: "Compartir" },
-    { icon: Copy, name: "Duplicar" },
-    { icon: ExternalLink, name: "Integraciones" },
-    { icon: Home, name: "Dashboard" },
-    { icon: Building, name: "Multi-Sucursal" },
-    { icon: Store, name: "E-commerce" },
-    { icon: Box, name: "Almacenes" },
-    { icon: Tag, name: "Etiquetas" },
-    { icon: Percent, name: "Comisiones" },
-    { icon: Hash, name: "Numeración" },
-    { icon: AlertTriangle, name: "Alertas" },
-    { icon: CheckCircle, name: "Validaciones" },
-    { icon: XCircle, name: "Cancelaciones" },
-    { icon: Info, name: "Información" },
-    { icon: HelpCircle, name: "Ayuda Contextual" },
-  ]
-
-  const businessSolutions = [
-    {
-      icon: Store,
-      title: "Supermercados y Minimarkets",
-      description: "Gestión completa para retail con control de perecederos, promociones, y múltiples cajas.",
-      features: ["Control de vencimientos", "Promociones 2x1", "Múltiples cajas", "Balanzas integradas"],
-    },
-    {
-      icon: Building,
-      title: "Restaurantes y Cafeterías",
-      description: "Sistema especializado para food service con comandas, mesas, y gestión de cocina.",
-      features: ["Gestión de mesas", "Comandas de cocina", "Modificadores", "Delivery integrado"],
-    },
-    {
-      icon: Package,
-      title: "Farmacias",
-      description: "Solución específica para farmacias con control de medicamentos y recetas médicas.",
-      features: ["Control de medicamentos", "Recetas médicas", "Vencimientos críticos", "Trazabilidad"],
-    },
-    {
-      icon: Settings,
-      title: "Talleres y Servicios",
-      description: "Gestión de servicios con órdenes de trabajo, repuestos, y seguimiento de reparaciones.",
-      features: ["Órdenes de trabajo", "Control de repuestos", "Seguimiento", "Garantías"],
-    },
-    {
-      icon: Truck,
-      title: "Distribuidoras",
-      description: "Sistema para distribución con rutas, vendedores, y gestión de territorio.",
-      features: ["Rutas de venta", "Vendedores móviles", "Territorio", "Comisiones"],
-    },
-    {
-      icon: Home,
-      title: "Tiendas Especializadas",
-      description: "Adaptable a cualquier tipo de negocio con configuraciones personalizadas.",
-      features: ["Configuración flexible", "Campos personalizados", "Reportes específicos", "Integraciones"],
-    },
-  ]
-
-  const benefits = [
-    {
-      icon: TrendingUp,
-      title: "Aumenta tus Ventas",
-      description: "Incrementa hasta 35% en ventas con análisis inteligente y estrategias automatizadas.",
-      metric: "+35% ventas",
-    },
-    {
-      icon: Clock,
-      title: "Ahorra Tiempo",
-      description: "Reduce 80% el tiempo en tareas administrativas con automatización completa.",
-      metric: "-80% tiempo",
-    },
-    {
-      icon: DollarSign,
-      title: "Reduce Costos",
-      description: "Disminuye costos operativos hasta 45% optimizando procesos y recursos.",
-      metric: "-45% costos",
-    },
-    {
-      icon: Target,
-      title: "Mejora Precisión",
-      description: "Elimina 99% de errores humanos con validaciones automáticas y controles.",
-      metric: "99% precisión",
-    },
-    {
-      icon: BarChart3,
-      title: "Decisiones Inteligentes",
-      description: "Toma decisiones basadas en datos con reportes en tiempo real y analytics.",
-      metric: "Datos en tiempo real",
-    },
-    {
-      icon: Shield,
-      title: "Seguridad Total",
-      description: "Protege tu información con encriptación bancaria y respaldos automáticos.",
-      metric: "100% seguro",
-    },
-  ]
-
-  const testimonials = [
-    {
-      name: "María González",
-      business: "Supermercado Central",
-      location: "Asunción",
-      rating: 5,
-      comment:
-        "POS CNID transformó completamente nuestro negocio. Las ventas aumentaron 40% en 6 meses y el control de inventario es perfecto.",
-      results: "40% más ventas, 0% faltantes de stock",
-    },
-    {
-      name: "Carlos Mendoza",
-      business: "Restaurante El Fogón",
-      location: "Ciudad del Este",
-      rating: 5,
-      comment:
-        "La gestión de mesas y comandas es increíble. Reducimos 60% el tiempo de atención y los clientes están más satisfechos.",
-      results: "60% menos tiempo de espera, 95% satisfacción",
-    },
-    {
-      name: "Ana Rodríguez",
-      business: "Farmacia San Rafael",
-      location: "Encarnación",
-      rating: 5,
-      comment:
-        "El control de medicamentos y vencimientos nos salvó de pérdidas importantes. Sistema indispensable para farmacias.",
-      results: "0% medicamentos vencidos, 25% más rentabilidad",
-    },
-    {
-      name: "Roberto Silva",
-      business: "Taller Mecánico Silva",
-      location: "San Lorenzo",
-      rating: 5,
-      comment:
-        "Las órdenes de trabajo digitales y el seguimiento de reparaciones profesionalizaron nuestro servicio completamente.",
-      results: "100% órdenes digitales, 50% más clientes",
-    },
-    {
-      name: "Patricia López",
-      business: "Boutique Elegancia",
-      location: "Fernando de la Mora",
-      rating: 5,
-      comment:
-        "Los reportes de ventas y el programa de fidelidad aumentaron significativamente nuestras ventas recurrentes.",
-      results: "70% clientes recurrentes, 30% ticket promedio",
-    },
-    {
-      name: "Luis Benítez",
-      business: "Distribuidora Norte",
-      location: "Pedro Juan Caballero",
-      rating: 5,
-      comment: "La gestión de rutas y vendedores móviles optimizó nuestra operación. Cobertura 100% del territorio.",
-      results: "100% cobertura, 45% más eficiencia",
-    },
-  ]
-
-  const pricingPlans = [
-    {
-      name: "Básico",
-      price: "₲ 120.000",
-      period: "/mes",
-      description: "Todas las características para 1 local",
-      features: [
-        "1 Local / Sucursal",
-        "Punto de venta completo",
-        "Gestión de inventario",
-        "Reportes y analytics",
-        "Gestión de clientes",
-        "Facturación electrónica",
-        "Control de gastos",
-        "Soporte técnico 24/7",
-        "Respaldos automáticos",
-        "Todas las funcionalidades",
-      ],
-      popular: false,
-    },
-    {
-      name: "Profesional",
-      price: "₲ 320.000",
-      period: "/mes",
-      description: "Todas las características para 3 sucursales",
-      features: [
-        "3 Locales / Sucursales",
-        "Punto de venta completo",
-        "Gestión de inventario",
-        "Reportes y analytics",
-        "Gestión de clientes",
-        "Facturación electrónica",
-        "Control de gastos",
-        "Gestión de proveedores",
-        "Multi-sucursal",
-        "Soporte técnico 24/7",
-        "Respaldos automáticos",
-        "Todas las funcionalidades",
-      ],
-      popular: true,
-    },
-    {
-      name: "Comercial",
-      price: "₲ 520.000",
-      period: "/mes",
-      description: "Todas las características para 5 sucursales",
-      features: [
-        "5 Locales / Sucursales",
-        "Punto de venta completo",
-        "Gestión de inventario",
-        "Reportes y analytics",
-        "Gestión de clientes",
-        "Facturación electrónica",
-        "Control de gastos",
-        "Gestión de proveedores",
-        "Multi-sucursal avanzado",
-        "API personalizada",
-        "Integraciones",
-        "Consultor dedicado",
-        "Soporte técnico 24/7",
-        "Todas las funcionalidades",
-      ],
-      popular: false,
-    },
-  ]
-
-  const faqs = [
-    {
-      question: "¿Qué incluye la instalación del sistema?",
-      answer:
-        "La instalación incluye configuración completa del sistema, migración de datos existentes, capacitación del personal, y soporte durante los primeros 30 días sin costo adicional.",
-    },
-    {
-      question: "¿Es compatible con impresoras fiscales paraguayas?",
-      answer:
-        "Sí, POS CNID es totalmente compatible con todas las impresoras fiscales homologadas por la SET en Paraguay, incluyendo marcas como Hasar, Epson, y Bixolon.",
-    },
-    {
-      question: "¿Puedo usar el sistema sin conexión a internet?",
-      answer:
-        "Absolutamente. El sistema funciona completamente offline y sincroniza automáticamente cuando se restablece la conexión a internet.",
-    },
-    {
-      question: "¿Cómo funciona el soporte técnico?",
-      answer:
-        "Ofrecemos soporte técnico por múltiples canales: chat en vivo, WhatsApp, teléfono, y email. El tiempo de respuesta promedio es de 15 minutos en horario comercial.",
-    },
-    {
-      question: "¿Puedo personalizar el sistema para mi negocio?",
-      answer:
-        "Sí, el sistema es altamente personalizable. Podemos adaptar campos, reportes, flujos de trabajo, y funcionalidades específicas según las necesidades de tu negocio.",
-    },
-    {
-      question: "¿Qué pasa si quiero cambiar de plan?",
-      answer:
-        "Puedes cambiar de plan en cualquier momento. Los upgrades son inmediatos y los downgrades se aplican en el siguiente ciclo de facturación. No hay penalidades por cambios.",
-    },
-  ]
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [openFaq, setOpenFaq] = useState<number | null>(0)
+  const nav = [["#demo", "Demo"], ["#funciones", "Funciones"], ["#restaurantes", "Multi-restaurante"], ["#proximamente", "Próximamente"], ["#preguntas", "Preguntas"]]
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      isDarkMode 
-        ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white" 
-        : "bg-gradient-to-br from-blue-50 via-white to-purple-50"
-    }`}>
-      {/* Navigation */}
-      <nav className={`backdrop-blur-md border-b sticky top-0 z-50 transition-colors duration-300 ${
-        isDarkMode 
-          ? "bg-gray-900/90 border-gray-700" 
-          : "bg-white/80 border-gray-200"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                <ShoppingCart className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                POS CNID
-              </span>
-            </div>
-
-            <div className="hidden md:flex items-center space-x-8">
-              <a href="#features" className={`transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Funcionalidades
-              </a>
-              <a href="#solutions" className={`transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Soluciones
-              </a>
-              <a href="#pricing" className={`transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Precios
-              </a>
-              <a href="#contact" className={`transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Contacto
-              </a>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`p-2 border-2 bg-transparent transition-colors ${
-                  isDarkMode 
-                    ? "border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white" 
-                    : "border-gray-300 hover:bg-blue-50"
-                }`}
-                onClick={() => setIsDarkMode(!isDarkMode)}
-              >
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                className={`border-2 bg-transparent transition-colors ${
-                  isDarkMode 
-                    ? "border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white" 
-                    : "border-gray-300 hover:bg-blue-50"
-                }`}
-                onClick={() => (window.location.href = "/login")}
-              >
-                Acceder
-              </Button>
-            </div>
-
-            <button className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="RestoPOS, inicio">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30"><Sparkles className="h-5 w-5" /></span>
+            <span className="text-xl font-black tracking-tight">Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></span>
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 md:flex dark:text-slate-300" aria-label="Secciones">
+            {nav.map(([href, label]) => <a key={href} href={href} className="hover:text-indigo-600 dark:hover:text-indigo-300">{label}</a>)}
+          </nav>
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="hidden rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700 sm:inline-flex dark:bg-white dark:text-slate-900">Ingresar</Link>
+            <button onClick={() => setMenuOpen((v) => !v)} className="rounded-lg p-2 md:hidden" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-expanded={menuOpen}>
+              {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className={`md:hidden border-t transition-colors duration-300 ${
-            isDarkMode 
-              ? "bg-gray-900 border-gray-700" 
-              : "bg-white border-gray-200"
-          }`}>
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              <a href="#features" className={`block px-3 py-2 transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Funcionalidades
-              </a>
-              <a href="#solutions" className={`block px-3 py-2 transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Soluciones
-              </a>
-              <a href="#pricing" className={`block px-3 py-2 transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Precios
-              </a>
-              <a href="#contact" className={`block px-3 py-2 transition-colors ${
-                isDarkMode ? "text-gray-300 hover:text-blue-400" : "text-gray-700 hover:text-blue-600"
-              }`}>
-                Contacto
-              </a>
-              <div className="flex gap-2 mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`p-2 border-2 bg-transparent transition-colors ${
-                    isDarkMode 
-                      ? "border-gray-600 text-gray-300 hover:bg-gray-800" 
-                      : "border-gray-300 hover:bg-blue-50"
-                  }`}
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                >
-                  {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  className={`flex-1 border-2 bg-transparent transition-colors ${
-                    isDarkMode 
-                      ? "border-gray-600 text-gray-300 hover:bg-gray-800" 
-                      : "border-gray-300 hover:bg-blue-50"
-                  }`}
-                  onClick={() => (window.location.href = "/login")}
-                >
-                  Acceder
-                </Button>
-              </div>
-            </div>
-          </div>
+        {menuOpen && (
+          <nav className="border-t border-slate-200 bg-white px-4 py-3 md:hidden dark:border-slate-800 dark:bg-slate-950" aria-label="Secciones">
+            {nav.map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2.5 font-medium hover:bg-slate-100 dark:hover:bg-slate-900">{label}</a>)}
+            <Link href="/login" className="mt-2 block rounded-lg bg-slate-900 px-3 py-2.5 text-center font-semibold text-white dark:bg-white dark:text-slate-900">Ingresar</Link>
+          </nav>
         )}
-      </nav>
+      </header>
 
-      {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Badge className="mb-6 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200">
-            🚀 Sistema #1 en Paraguay
-          </Badge>
-
-          <h1 className={`text-4xl md:text-6xl font-bold mb-6 transition-colors ${
-            isDarkMode ? "text-white" : "text-gray-900"
-          }`}>
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">POS CNID</span>
-            <br />
-            Sistema de Gestión Integral
-          </h1>
-
-          <p className={`text-xl mb-8 max-w-3xl mx-auto transition-colors ${
-            isDarkMode ? "text-gray-300" : "text-gray-600"
-          }`}>
-            La solución completa para modernizar tu negocio. Más de 50 herramientas integradas para punto de venta,
-            inventario, facturación, reportes y mucho más.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-3"
-              onClick={() => window.open('https://wa.me/595994854167', '_blank')}
-            >
-              Contactar por WhatsApp
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 py-3 border-2 bg-transparent"
-              onClick={() => (window.location.href = "/login")}
-            >
-              Acceder al Sistema
-            </Button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">500+</div>
-              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                Negocios Activos
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">50K+</div>
-              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                Transacciones Diarias
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">99.9%</div>
-              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                Uptime Garantizado
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">24/7</div>
-              <div className={`transition-colors ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
-                Soporte Técnico
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Features */}
-      <section id="features" className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className={`text-3xl md:text-4xl font-bold mb-4 transition-colors ${
-              isDarkMode ? "text-white" : "text-gray-900"
-            }`}>
-              Funcionalidades Principales
-            </h2>
-            <p className={`text-xl max-w-3xl mx-auto transition-colors ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
-            }`}>
-              Todo lo que necesitas para gestionar tu negocio de manera profesional y eficiente
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <Card
-                key={index}
-                className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg hover:-translate-y-2"
-              >
-                <CardHeader className="text-center pb-4">
-                  <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <feature.icon className="h-8 w-8 text-white" />
-                  </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-gray-600 mb-4 text-center">{feature.description}</CardDescription>
-                  <ul className="space-y-2">
-                    {feature.details.map((detail, idx) => (
-                      <li key={idx} className="flex items-center text-sm text-gray-700">
-                        <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                        {detail}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Additional Features Grid */}
-      <section className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-900" : "bg-gray-50"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Más de 50 Herramientas Integradas</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Descubre todas las funcionalidades que hacen de POS CNID el sistema más completo del mercado
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {additionalFeatures.map((feature, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-center group hover:-translate-y-1"
-              >
-                <feature.icon className="h-8 w-8 mx-auto mb-3 text-blue-600 group-hover:text-purple-600 transition-colors" />
-                <p className="text-sm font-medium text-gray-700">{feature.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Business Solutions */}
-      <section id="solutions" className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Soluciones por Tipo de Negocio</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Adaptamos nuestro sistema a las necesidades específicas de tu industria
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {businessSolutions.map((solution, index) => (
-              <Card key={index} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg">
-                <CardHeader>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                      <solution.icon className="h-6 w-6 text-white" />
-                    </div>
-                    <CardTitle className="text-xl font-bold text-gray-900">{solution.title}</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-gray-600 mb-4">{solution.description}</CardDescription>
-                  <ul className="space-y-2">
-                    {solution.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center text-sm text-gray-700">
-                        <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Beneficios Comprobados</h2>
-            <p className="text-xl opacity-90 max-w-3xl mx-auto">
-              Resultados reales que nuestros clientes han logrado con POS CNID
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {benefits.map((benefit, index) => (
-              <div
-                key={index}
-                className="bg-white/10 backdrop-blur-sm p-6 rounded-xl hover:bg-white/20 transition-all duration-300"
-              >
-                <benefit.icon className="h-12 w-12 mb-4 text-yellow-300" />
-                <h3 className="text-xl font-bold mb-2">{benefit.title}</h3>
-                <p className="opacity-90 mb-3">{benefit.description}</p>
-                <div className="text-2xl font-bold text-yellow-300">{benefit.metric}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-900" : "bg-gray-50"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Lo que Dicen Nuestros Clientes</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Testimonios reales de empresarios paraguayos que transformaron sus negocios
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardHeader>
-                  <div className="flex items-center space-x-1 mb-2">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <CardTitle className="text-lg font-bold text-gray-900">{testimonial.name}</CardTitle>
-                  <CardDescription className="text-blue-600 font-medium">
-                    {testimonial.business} - {testimonial.location}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <p className="text-sm font-semibold text-green-800">Resultados:</p>
-                    <p className="text-sm text-green-700">{testimonial.results}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Planes y Precios</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Elige el plan perfecto para tu negocio. Todos incluyen soporte técnico y actualizaciones
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, index) => (
-              <Card
-                key={index}
-                className={`relative border-0 shadow-lg hover:shadow-xl transition-all duration-300 ${plan.popular ? "ring-2 ring-blue-500 scale-105" : ""}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1">
-                      Más Popular
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                    <span className="text-gray-600">{plan.period}</span>
-                  </div>
-                  <CardDescription className="mt-2">{plan.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center text-sm text-gray-700">
-                        <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${plan.popular ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" : "bg-gray-900 hover:bg-gray-800"}`}
-                  >
-                    Comenzar Ahora
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-gray-600 mb-4">¿Necesitas un plan personalizado?</p>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="border-2 bg-transparent"
-              onClick={() => window.open('https://wa.me/595994854167', '_blank')}
-            >
-              Contactar Ventas
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-900" : "bg-gray-50"
-      }`}>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Preguntas Frecuentes</h2>
-            <p className="text-xl text-gray-600">Resolvemos las dudas más comunes sobre POS CNID</p>
-          </div>
-
-          <div className="space-y-6">
-            {faqs.map((faq, index) => (
-              <Card key={index} className="border-0 shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center">
-                    <HelpCircle className="h-5 w-5 text-blue-600 mr-3" />
-                    {faq.question}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className={`py-20 transition-colors duration-300 ${
-        isDarkMode ? "bg-gray-800" : "bg-white"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Contáctanos</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Estamos aquí para ayudarte a transformar tu negocio. Contáctanos hoy mismo
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Contact Info */}
-            <div className="space-y-8">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                  <Phone className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Teléfono</h3>
-                  <a href="tel:+595994854167" className="text-gray-600 hover:text-blue-600 transition-colors">
-                    +595 994 854 167
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                  <Mail className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                  <a href="mailto:info@cnid.com.py" className="text-gray-600 hover:text-blue-600 transition-colors">
-                    info@cnid.com.py
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                  <MapPin className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Oficina</h3>
-                  <p className="text-gray-600">Avenida Fundadores</p>
-                  <p className="text-gray-600">Ciudad Bella Vista</p>
-                </div>
-              </div>
-
-              <div className="pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Síguenos</h3>
-                <div className="flex space-x-4">
-                  <Button size="sm" variant="outline" className="p-2 bg-transparent">
-                    <Facebook className="h-5 w-5" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="p-2 bg-transparent">
-                    <Twitter className="h-5 w-5" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="p-2 bg-transparent">
-                    <Instagram className="h-5 w-5" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="p-2 bg-transparent">
-                    <Linkedin className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Form */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold text-gray-900">Solicita una Demo Gratuita</CardTitle>
-                <CardDescription>Completa el formulario y te contactaremos en menos de 24 horas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                      <Input placeholder="Tu nombre completo" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                      <Input placeholder="+595 981 123-456" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <Input type="email" placeholder="tu@email.com" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Negocio</label>
-                    <Input placeholder="Ej: Supermercado, Restaurante, Farmacia" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
-                    <Textarea placeholder="Cuéntanos sobre tu negocio y cómo podemos ayudarte" rows={4} />
-                  </div>
-
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Solicitar Demo Gratuita
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Company Info */}
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-                  <ShoppingCart className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-xl font-bold">POS CNID</span>
-              </div>
-              <p className="text-gray-400 mb-6 max-w-md">
-                El sistema de gestión integral más completo de Paraguay. Transformamos negocios con tecnología de
-                vanguardia y soporte excepcional.
+      <main>
+        {/* Portada */}
+        <section className="relative overflow-hidden bg-slate-950 text-white">
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_20%_0%,rgba(99,102,241,.45),transparent),radial-gradient(50%_45%_at_90%_30%,rgba(168,85,247,.35),transparent)]" />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-20 pt-14 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:pb-28 lg:pt-20">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-indigo-200">
+                <ChefHat className="h-3.5 w-3.5" /> Sistema para restaurantes
+              </span>
+              <h1 className="mt-5 text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+                De la mesa a la caja, <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-fuchsia-300 bg-clip-text text-transparent">todo en un solo sistema.</span>
+              </h1>
+              <p className="mt-6 max-w-xl text-lg text-slate-300">
+                RestoPOS une el punto de venta, las mesas, la cocina, la precuenta y el cobro. Tus clientes piden desde el QR de la mesa y cada restaurante trabaja con sus propios datos.
               </p>
-              <div className="flex space-x-4">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-600 text-gray-400 hover:text-white hover:border-white bg-transparent"
-                >
-                  <Facebook className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-600 text-gray-400 hover:text-white hover:border-white bg-transparent"
-                >
-                  <Twitter className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-600 text-gray-400 hover:text-white hover:border-white bg-transparent"
-                >
-                  <Instagram className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-gray-600 text-gray-400 hover:text-white hover:border-white bg-transparent"
-                >
-                  <Linkedin className="h-4 w-4" />
-                </Button>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a href="#demo" className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-900 shadow-xl shadow-indigo-500/20 hover:bg-indigo-50">
+                  Ver la demo <ArrowRight className="h-4 w-4" />
+                </a>
+                <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3 font-semibold text-white hover:bg-white/10">
+                  <MessageCircle className="h-4 w-4" /> Hablar por WhatsApp
+                </a>
               </div>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Enlaces Rápidos</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="#features" className="text-gray-400 hover:text-white transition-colors">
-                    Funcionalidades
-                  </a>
-                </li>
-                <li>
-                  <a href="#solutions" className="text-gray-400 hover:text-white transition-colors">
-                    Soluciones
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="text-gray-400 hover:text-white transition-colors">
-                    Precios
-                  </a>
-                </li>
-                <li>
-                  <a href="#contact" className="text-gray-400 hover:text-white transition-colors">
-                    Contacto
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Blog
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Ayuda
-                  </a>
-                </li>
+              <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
+                {["Funciona en el navegador", "Pedidos desde el QR de la mesa", "Varios restaurantes"].map((item) => (
+                  <li key={item} className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />{item}</li>
+                ))}
               </ul>
             </div>
-
-            {/* Support */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Soporte</h3>
-              <ul className="space-y-2">
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Centro de Ayuda
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Documentación
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Tutoriales
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Estado del Sistema
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Términos de Servicio
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                    Política de Privacidad
-                  </a>
-                </li>
-              </ul>
+            <div className="relative">
+              <LaptopFrame className="lg:translate-x-6">
+                <img src="/landing/pos.webp" alt="Punto de venta de RestoPOS" className="h-full w-full object-cover object-top" />
+              </LaptopFrame>
+              <div className="absolute -bottom-12 -left-2 hidden w-32 motion-safe:animate-[float_6s_ease-in-out_infinite] sm:block lg:-left-10 lg:w-40">
+                <PhoneFrame>
+                  <img src="/landing/mesa-qr.webp" alt="Pedido desde el QR de la mesa en el teléfono" className="h-full w-full object-cover object-top" />
+                </PhoneFrame>
+              </div>
+              <img src="/landing/precuenta.webp" alt="Precuenta impresa" className="absolute -right-2 -top-8 hidden w-28 rotate-3 rounded-md shadow-2xl shadow-black/50 motion-safe:animate-[float_7s_ease-in-out_infinite_1s] md:block lg:w-32" />
             </div>
           </div>
+        </section>
 
-          <div className="border-t border-gray-800 mt-12 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-400 text-sm">© 2024 POS CNID. Todos los derechos reservados.</p>
-              <div className="flex items-center space-x-6 mt-4 md:mt-0">
-                <Badge variant="outline" className="border-green-500 text-green-400">
-                  <Shield className="h-3 w-3 mr-1" />
-                  SSL Seguro
-                </Badge>
-                <Badge variant="outline" className="border-blue-500 text-blue-400">
-                  <Award className="h-3 w-3 mr-1" />
-                  ISO 27001
-                </Badge>
-                <Badge variant="outline" className="border-purple-500 text-purple-400">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  SET Homologado
-                </Badge>
+        {/* Demo */}
+        <section id="demo" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-sm font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Recorrido</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Mirá RestoPOS funcionando</h2>
+              <p className="mt-4 text-slate-600 dark:text-slate-400">Pantallas reales del sistema, con la carta y los pedidos de un restaurante. Usá los capítulos o las flechas del teclado.</p>
+            </div>
+            <div className="mt-12"><DemoPlayer chapters={chapters} /></div>
+          </div>
+        </section>
+
+        {/* Flujo */}
+        <section className="bg-white px-4 py-16 sm:px-6 dark:bg-slate-900">
+          <div className="mx-auto max-w-7xl">
+            <h2 className="text-center text-2xl font-black tracking-tight sm:text-3xl">Así se mueve un pedido</h2>
+            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {flow.map((step, index) => (
+                <li key={step.title} className="relative rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white"><step.icon className="h-5 w-5" /></span>
+                    <span className="text-xs font-bold text-slate-400">PASO {index + 1}</span>
+                  </span>
+                  <h3 className="mt-4 font-bold">{step.title}</h3>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{step.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Funciones */}
+        <section id="funciones" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-300">Funciones</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Lo que tu restaurante usa todos los días</h2>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature) => (
+                <article key={feature.title} className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-indigo-100 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-none">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-950 dark:text-indigo-300"><feature.icon className="h-5 w-5" /></span>
+                  <h3 className="mt-4 font-bold">{feature.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-400">{feature.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Multi-restaurante */}
+        <section id="restaurantes" className="scroll-mt-20 bg-slate-950 px-4 py-20 text-white sm:px-6">
+          <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-indigo-300">Multi-restaurante</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Un sistema, todos tus restaurantes</h2>
+              <p className="mt-4 text-slate-300">La superadministración crea cada restaurante con su administrador. Cada uno trabaja con su propia base de datos: carta, ventas, mesas, cocina y usuarios nunca se cruzan.</p>
+              <ul className="mt-6 space-y-3 text-slate-200">
+                {["Alta de restaurantes con su administrador inicial", "Suspensión y reactivación del acceso", "Avisos generales o para un restaurante", "Datos aislados por restaurante"].map((item) => (
+                  <li key={item} className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />{item}</li>
+                ))}
+              </ul>
+            </div>
+            <LaptopFrame>
+              <img src="/landing/superadmin.webp" alt="Superadministración de restaurantes en RestoPOS" loading="lazy" className="h-full w-full object-cover object-top" />
+            </LaptopFrame>
+          </div>
+        </section>
+
+        {/* Próximamente */}
+        <section id="proximamente" className="scroll-mt-20 px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-300">En desarrollo</p>
+              <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">Lo que viene</h2>
+              <p className="mt-3 text-slate-600 dark:text-slate-400">Estas funciones están en desarrollo y todavía no están disponibles.</p>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {upcoming.map((item) => (
+                <article key={item.title} className="relative rounded-2xl border border-dashed border-violet-300 bg-violet-50/50 p-6 dark:border-violet-800 dark:bg-violet-950/20">
+                  <span className="absolute right-4 top-4 rounded-full bg-violet-600 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white">Próximamente</span>
+                  <item.icon className="h-6 w-6 text-violet-600 dark:text-violet-300" />
+                  <h3 className="mt-4 font-bold">{item.title}</h3>
+                  <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{item.text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Preguntas */}
+        <section id="preguntas" className="scroll-mt-20 bg-white px-4 py-20 sm:px-6 dark:bg-slate-900">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="text-center text-3xl font-black tracking-tight sm:text-4xl">Preguntas frecuentes</h2>
+            <div className="mt-10 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950">
+              {faqs.map((faq, index) => {
+                const open = openFaq === index
+                return (
+                  <div key={faq.q}>
+                    <button onClick={() => setOpenFaq(open ? null : index)} aria-expanded={open} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-semibold">
+                      {faq.q}
+                      <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
+                    </button>
+                    {open && <p className="px-5 pb-5 text-slate-600 dark:text-slate-400">{faq.a}</p>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Contacto */}
+        <section className="px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-8 text-white shadow-2xl shadow-indigo-500/30 sm:p-12">
+            <div className="grid items-center gap-8 md:grid-cols-[1.4fr_1fr]">
+              <div>
+                <h2 className="text-3xl font-black tracking-tight sm:text-4xl">¿Querés RestoPOS en tu restaurante?</h2>
+                <p className="mt-3 text-indigo-100">Escribinos y te mostramos el sistema con tu carta.</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-indigo-700 hover:bg-indigo-50"><MessageCircle className="h-5 w-5" /> +595 994 854 167</a>
+                <a href="mailto:info@cnid.com.py" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 px-6 py-3 font-semibold hover:bg-white/10"><Mail className="h-5 w-5" /> info@cnid.com.py</a>
               </div>
             </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-slate-200 px-4 py-8 text-sm text-slate-500 sm:px-6 dark:border-slate-800">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} RestoPOS · CNID</p>
+          <div className="flex gap-5">
+            <Link href="/login" className="hover:text-indigo-600">Ingresar</Link>
+            <Link href="/photo-credits" className="hover:text-indigo-600">Créditos de fotos</Link>
+            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600">WhatsApp</a>
           </div>
         </div>
       </footer>
 
-      {/* WhatsApp Floating Button */}
-      <a
-        href="https://wa.me/595994854167"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50 animate-pulse"
-        aria-label="Contactar por WhatsApp"
-      >
-        <MessageCircle className="h-6 w-6" />
+      <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp" className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-white shadow-xl shadow-emerald-500/40 hover:bg-emerald-600">
+        <MessageCircle className="h-7 w-7" />
       </a>
+
+      <style jsx global>{`
+        @keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+        html { scroll-behavior: smooth }
+        @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } }
+      `}</style>
     </div>
   )
 }

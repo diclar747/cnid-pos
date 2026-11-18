@@ -1,4 +1,4 @@
-# CNID POS
+# RestoPOS
 
 Next.js 15, React 19, TypeScript, Tailwind CSS y PostgreSQL local. El paquete se gestiona con pnpm.
 

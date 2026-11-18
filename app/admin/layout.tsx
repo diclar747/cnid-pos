@@ -40,7 +40,7 @@ export default function AdminLayout({
                   <div className="flex items-center gap-3">
                     <span className="hidden h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-white shadow-sm shadow-indigo-500/25 sm:flex"><LayoutDashboard className="h-4 w-4" /></span>
                     <div>
-                      <h2 className="text-sm font-bold tracking-wide text-slate-900 dark:text-white">CNID · Panel de control</h2>
+                      <h2 className="text-sm font-bold tracking-wide text-slate-900 dark:text-white">RestoPOS · Panel de control</h2>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{user?.restaurantName ?? "Ventas, compras e inventario de tu negocio"}</p>
                     </div>
                   </div>

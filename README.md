@@ -1,4 +1,4 @@
-# CNID POS
+# RestoPOS
 
 Sistema de punto de venta con Next.js y PostgreSQL local. No requiere servicios de base de datos externos.
 

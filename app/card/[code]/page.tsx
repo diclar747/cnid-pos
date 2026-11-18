@@ -19,18 +19,18 @@ const money = (value: number) => `Gs ${value.toLocaleString("es-PY")}`
 
 export default function CardBalancePage() {
   const params = useParams<{ code: string }>()
-  const [data, setData] = useState<{ label: string; order: PublicOrder | null } | null>(null)
+  const [data, setData] = useState<{ label: string; restaurantName?: string; order: PublicOrder | null } | null>(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
-    try { setData(await apiRequest<{ label: string; order: PublicOrder | null }>(`/api/card-lookup/${encodeURIComponent(params.code)}`)); setError("") }
+    try { setData(await apiRequest<{ label: string; restaurantName?: string; order: PublicOrder | null }>(`/api/card-lookup/${encodeURIComponent(params.code)}`)); setError("") }
     catch (problem) { setError(problem instanceof Error ? problem.message : "No se pudo consultar la tarjeta") }
     finally { setLoading(false) }
   }, [params.code])
   useEffect(() => { void load(); const timer = window.setInterval(() => { void load() }, 15000); return () => window.clearInterval(timer) }, [load])
   const order = data?.order
   return <main className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-950 to-violet-950 p-4 text-white sm:p-6"><div className="mx-auto max-w-lg">
-    <header className="mb-6 rounded-3xl border border-white/10 bg-white/10 p-6 text-center shadow-xl backdrop-blur"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600"><ShoppingBasket className="h-7 w-7" /></div><p className="text-xs font-bold uppercase tracking-[.25em] text-amber-300">De la Casa</p><h1 className="mt-1 text-2xl font-bold">Tu cuenta</h1><p className="mt-2 text-sm text-indigo-200">{data?.label || "Tarjeta QR"}</p></header>
+    <header className="mb-6 rounded-3xl border border-white/10 bg-white/10 p-6 text-center shadow-xl backdrop-blur"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600"><ShoppingBasket className="h-7 w-7" /></div><p className="text-xs font-bold uppercase tracking-[.25em] text-amber-300">{data?.restaurantName || "Tu restaurante"}</p><h1 className="mt-1 text-2xl font-bold">Tu cuenta</h1><p className="mt-2 text-sm text-indigo-200">{data?.label || "Tarjeta QR"}</p></header>
     {loading && <p className="py-10 text-center text-indigo-200">Consultando cuenta…</p>}
     {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-5 text-center text-red-100">{error}</div>}
     {!loading && !error && !order && <div className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center"><Clock3 className="mx-auto mb-3 h-10 w-10 text-indigo-200" /><h2 className="font-bold">Todavía no hay una cuenta abierta</h2><p className="mt-2 text-sm text-indigo-200">Mostrá esta tarjeta al personal para agregar comidas y bebidas.</p></div>}

@@ -1,6 +1,6 @@
 # Despliegue en el servidor
 
-Guía para publicar CNID POS en un servidor Linux propio (por ejemplo el VPS de cdpanel / cd.com.py) con Node.js, PostgreSQL y Nginx detrás de Cloudflare. Al final hay una variante para **Setup Node.js App** de cPanel.
+Guía para publicar RestoPOS en un servidor Linux propio (por ejemplo el VPS de cdpanel / cd.com.py) con Node.js, PostgreSQL y Nginx detrás de Cloudflare. Al final hay una variante para **Setup Node.js App** de cPanel.
 
 ## 1. Requisitos en el servidor
 
