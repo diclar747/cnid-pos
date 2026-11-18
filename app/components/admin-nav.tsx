@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../context/auth-context"
 import { cn } from "@/lib/utils"
+import { BrandIcon } from "./brand-logo"
 
 interface AdminNavProps {
   isCollapsed: boolean
@@ -186,9 +187,7 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
           isCollapsed && "justify-center px-2",
         )}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-lg shadow-indigo-900/40">
-          <ShoppingCart className="h-5 w-5 text-white" />
-        </div>
+        <BrandIcon className="h-10 w-10" />
         {!isCollapsed && (
           <div>
             <h1 className="text-base font-bold text-white">RestoPOS</h1>
@@ -292,9 +291,7 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
         {/* Mobile Header */}
         <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-[#111b3f] to-[#182d65] p-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400">
-              <ShoppingCart className="h-5 w-5 text-white" />
-            </div>
+            <BrandIcon className="h-8 w-8" />
             <h1 className="text-lg font-bold text-white">RestoPOS</h1>
           </div>
           <Button

@@ -1,13 +1,13 @@
 import Link from "next/link"
-import { Sparkles, Store, UserRound } from "lucide-react"
+import { Store, UserRound } from "lucide-react"
+import { BrandLogo } from "../components/brand-logo"
 
 export default function MarketplaceHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/marketplace" className="flex items-center gap-2.5" aria-label="RestoPOS, restaurantes">
-          <img src="/pwa-192.png" alt="" className="h-9 w-9 rounded-xl shadow-lg shadow-violet-500/30" />
-          <span className="text-xl font-black tracking-tight">Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></span>
+          <BrandLogo size="sm" tagline />
         </Link>
         <nav className="flex items-center gap-2 text-sm font-medium sm:gap-5" aria-label="Marketplace">
           <Link href="/marketplace" className="inline-flex items-center gap-1.5 text-slate-600 hover:text-indigo-600 dark:text-slate-300"><Store className="h-4 w-4" /><span className="hidden sm:inline">Restaurantes</span></Link>

@@ -41,7 +41,7 @@ export function InstallBanner() {
         <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
         <button type="button" onClick={close} className="absolute right-3 top-3 rounded-full p-1.5 text-white/80 hover:bg-white/15" aria-label="Ahora no"><X className="h-4 w-4" /></button>
         <div className="relative flex items-center gap-3 pr-8">
-          <img src="/pwa-192.png" alt="" className="h-14 w-14 rounded-2xl shadow-lg ring-2 ring-white/30" />
+          <img src="/brand/restopos-192.png" alt="" className="h-14 w-14 rounded-2xl shadow-lg ring-2 ring-white/30" />
           <div>
             <p className="text-lg font-black leading-tight">Instalá RestoPOS</p>
             <p className="text-sm text-white/85">Tu restaurante en línea, en tu teléfono</p>

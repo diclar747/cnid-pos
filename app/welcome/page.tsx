@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowRight, Banknote, BellRing, ChefHat, LogIn, MessageCircle, QrCode, Sparkles } from "lucide-react"
 import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
 import { InstallAppButton } from "../components/install-app"
+import { BrandLogo } from "../components/brand-logo"
 
 const SEEN_KEY = "restopos-welcome-seen"
 
@@ -67,8 +68,7 @@ export default function WelcomePage() {
     </div>
 
     <header className="relative z-10 flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
-      <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/30"><Sparkles className="h-5 w-5" /></span>
-        <span className="text-lg font-black">Resto<span className="bg-gradient-to-r from-indigo-300 to-violet-300 bg-clip-text text-transparent">POS</span></span></div>
+      <BrandLogo size="sm" tone="dark" />
       {!last && <button type="button" onClick={finish} className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-300 hover:bg-white/10">Saltar</button>}
     </header>
 

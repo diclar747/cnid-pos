@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "../context/auth-context"
 import { useCompany } from "../context/company-context"
 import RestaurantNavigation from "./restaurant-navigation"
+import { BrandIcon } from "./brand-logo"
 import { ThemeToggle } from "./theme-toggle"
 import { HeaderActions } from "./header-actions"
 import { headerTheme } from "@/lib/brand-theme"
@@ -80,8 +81,7 @@ function Shell({ children }: { children: ReactNode }) {
             <div className="flex min-w-0 items-center gap-2.5">
               {logo
                 ? <img src={logo} alt="" className="h-10 w-10 shrink-0 rounded-2xl border bg-white object-cover shadow-sm" />
-                : <div className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-indigo-300/40 sm:flex"
-                  style={{ background: accent ? `linear-gradient(135deg, ${accent}, #4f46e5)` : "linear-gradient(135deg, #4f46e5, #7c3aed, #06b6d4)" }}><Sparkles className="h-5 w-5" /></div>}
+                : <BrandIcon className="hidden h-10 w-10 sm:block" />}
               <div className="min-w-0">
                 <p className="brand-title truncate text-lg font-black leading-tight tracking-tight text-slate-900 dark:text-white">{logo || companyConfig?.name ? brand
                   : <>Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></>}</p>

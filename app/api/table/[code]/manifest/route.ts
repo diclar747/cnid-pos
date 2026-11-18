@@ -22,8 +22,8 @@ export async function GET(_request: NextRequest, { params }: Context) {
     background_color: "#eef2ff",
     theme_color: "#4338ca",
     icons: [
-      { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/brand/restopos-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/brand/restopos-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   }, { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=300" } })
 }

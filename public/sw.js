@@ -1,5 +1,5 @@
-const CACHE = "restopos-static-v5"
-const STATIC = ["/offline.html", "/pwa-192.png", "/pwa-512.png", "/landing/panel.webp", "/landing/pos.webp", "/landing/cocina.webp", "/landing/mesa-qr.webp", "/landing/ordenes.webp"]
+const CACHE = "restopos-static-v6"
+const STATIC = ["/offline.html", "/brand/restopos-192.png", "/brand/restopos-512.png", "/brand/restopos-icon.svg", "/landing/panel.webp", "/landing/pos.webp", "/landing/cocina.webp", "/landing/mesa-qr.webp", "/landing/ordenes.webp"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(STATIC)))
@@ -37,8 +37,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "RestoPOS"
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "",
-    icon: "/pwa-192.png",
-    badge: "/pwa-192.png",
+    icon: "/brand/restopos-192.png",
+    badge: "/brand/restopos-48.png",
     tag: data.tag || undefined,
     renotify: Boolean(data.tag),
     vibrate: [200, 100, 200],

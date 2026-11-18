@@ -17,10 +17,10 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "es-PY",
     categories: ["business", "food", "productivity"],
     icons: [
-      { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/pwa-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+      { src: "/brand/restopos-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/brand/restopos-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/brand/restopos-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/brand/restopos-icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
     ],
     screenshots: [
       { src: "/landing/panel.webp", sizes: "2880x1800", type: "image/webp", form_factor: "wide", label: "Panel con las ventas del día" },
@@ -29,10 +29,10 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/landing/mesa-qr.webp", sizes: "1170x2532", type: "image/webp", form_factor: "narrow", label: "Pedido desde el QR de la mesa" },
     ],
     shortcuts: [
-      { name: "Punto de venta", url: "/pos", icons: [{ src: "/pwa-192.png", sizes: "192x192" }] },
-      { name: "Pedidos en vivo", url: "/crm", icons: [{ src: "/pwa-192.png", sizes: "192x192" }] },
-      { name: "Cocina", url: "/kitchen", icons: [{ src: "/pwa-192.png", sizes: "192x192" }] },
-      { name: "Caja", url: "/cash", icons: [{ src: "/pwa-192.png", sizes: "192x192" }] },
+      { name: "Punto de venta", url: "/pos", icons: [{ src: "/brand/restopos-192.png", sizes: "192x192" }] },
+      { name: "Pedidos en vivo", url: "/crm", icons: [{ src: "/brand/restopos-192.png", sizes: "192x192" }] },
+      { name: "Cocina", url: "/kitchen", icons: [{ src: "/brand/restopos-192.png", sizes: "192x192" }] },
+      { name: "Caja", url: "/cash", icons: [{ src: "/brand/restopos-192.png", sizes: "192x192" }] },
     ],
   }
 }
