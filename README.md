@@ -99,6 +99,6 @@ El análisis del respaldo, las reglas de conversión y los casos que requieren d
 
 En una base nueva, `pnpm db:setup` carga cuentas y productos de demostración para el primer arranque; no los agrega si ya existen usuarios o productos.
 
-El esquema está en `scripts/03-local-postgres.sql`, la migración de restaurantes en `scripts/04-restaurants.sql` las mesas en `scripts/05-dining.sql` y el mesero y la precuenta de las cuentas en `scripts/06-service-billing.sql`. El script de preparación es `scripts/setup-local-db.mjs`.
+El esquema está en `scripts/03-local-postgres.sql`, la migración de restaurantes en `scripts/04-restaurants.sql`, las mesas en `scripts/05-dining.sql`, el mesero y la precuenta en `scripts/06-service-billing.sql`, y clientes, historial y delivery en `scripts/07-customers-delivery.sql`. El script de preparación es `scripts/setup-local-db.mjs`.
 
 Para comprobar el flujo principal con la aplicación iniciada en `http://127.0.0.1:3000`, ejecutar `pnpm test:smoke`. Para incluir cuentas abiertas, cocina, aislamiento entre restaurantes, pedidos QR y el catálogo histórico, ejecutar `pnpm test:smoke:all`. Las pruebas crean cuentas y registros temporales, verifican su persistencia y los eliminan al terminar. Si preferís usar una cuenta administradora existente, podés definir `POS_TEST_EMAIL` y `POS_TEST_PASSWORD`; la prueba de restaurantes acepta `SUPERADMIN_EMAIL` y `SUPERADMIN_PASSWORD`.

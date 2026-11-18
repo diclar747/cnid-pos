@@ -33,7 +33,24 @@ export interface CompanyConfig {
     twitter: string
     whatsapp: string
   }
+  /** Ficha pública: la usan la página del cliente y, más adelante, el asistente de WhatsApp. */
+  description: string
+  mapsUrl: string
+  latitude: string
+  longitude: string
+  serviceModes: { dineIn: boolean; delivery: boolean; pickup: boolean }
+  openingHours: OpeningDay[]
 }
+
+export interface OpeningDay {
+  day: string
+  open: string
+  close: string
+  closed: boolean
+}
+
+export const WEEK_DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+const defaultHours: OpeningDay[] = WEEK_DAYS.map((day) => ({ day, open: "11:00", close: "23:00", closed: false }))
 
 interface CompanyContextType {
   companyConfig: CompanyConfig
@@ -70,6 +87,12 @@ const defaultCompanyConfig: CompanyConfig = {
     twitter: "",
     whatsapp: "",
   },
+  description: "",
+  mapsUrl: "",
+  latitude: "",
+  longitude: "",
+  serviceModes: { dineIn: true, delivery: true, pickup: true },
+  openingHours: defaultHours,
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
@@ -87,6 +110,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         ...defaultCompanyConfig, ...item,
         colors: { ...defaultCompanyConfig.colors, ...item.colors },
         socialMedia: { ...defaultCompanyConfig.socialMedia, ...item.socialMedia },
+        serviceModes: { ...defaultCompanyConfig.serviceModes, ...item.serviceModes },
+        openingHours: Array.isArray(item.openingHours) && item.openingHours.length === 7 ? item.openingHours : defaultHours,
       }))
       .catch((error) => console.error("No se pudo cargar la empresa", error))
       .finally(() => setIsLoading(false))

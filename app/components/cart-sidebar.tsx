@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useCart } from "../context/cart-context"
-import type { ServiceOrder, StaffMember } from "@/lib/service-order-types"
+import type { DeliveryZone, ServiceOrder, StaffMember } from "@/lib/service-order-types"
 import type { DiningTable } from "@/lib/dining-types"
 import { apiRequest } from "@/lib/api-client"
 import { useAuth } from "../context/auth-context"
@@ -21,9 +21,11 @@ export interface OrderDetails {
   customerPhone: string
   cardCode: string
   waiterId: number | null
+  deliveryZoneId: number | null
+  deliveryAddress: string
 }
 
-const emptyDetails: OrderDetails = { tableId: null, tableLabel: "", customerName: "", customerPhone: "", cardCode: "", waiterId: null }
+const emptyDetails: OrderDetails = { tableId: null, tableLabel: "", customerName: "", customerPhone: "", cardCode: "", waiterId: null, deliveryZoneId: null, deliveryAddress: "" }
 const roleLabel = { admin: "administrador", manager: "gerente", cashier: "cajero", waiter: "mesero" }
 
 interface CartSidebarProps {
@@ -36,7 +38,8 @@ interface CartSidebarProps {
 }
 
 export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClearActive, orderSaving, onToggleCollapse }: CartSidebarProps) {
-  const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart } = useCart()
+  const { cart, updateQuantity, removeFromCart, getCartTotal, clearCart, orderType } = useCart()
+  const [zones, setZones] = useState<DeliveryZone[]>([])
   const router = useRouter()
   const { user, hasPermission } = useAuth()
   const canCharge = hasPermission("manage_sales")
@@ -49,6 +52,7 @@ export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClear
     if (!orderAction) return
     apiRequest<{ tables: DiningTable[] }>("/api/dining?compact=1").then((result) => setTables(result.tables.filter((table) => table.isActive))).catch(() => setTables([]))
     apiRequest<{ staff: StaffMember[] }>("/api/staff").then((result) => setStaff(result.staff)).catch(() => setStaff([]))
+    apiRequest<{ items: DeliveryZone[] }>("/api/delivery/zones").then((result) => setZones(result.items.filter((zone) => zone.isActive))).catch(() => setZones([]))
     // Un mesero que abre la cuenta queda asignado por defecto.
     if (user?.role === "waiter") setDetails((current) => current.waiterId ? current : { ...current, waiterId: Number(user.id) })
   }, [orderAction, user])
@@ -246,6 +250,10 @@ export default function CartSidebar({ onClose, activeOrder, onSaveOrder, onClear
           <div className="space-y-3">
             <label className="block text-sm font-medium">Mesa<select value={details.tableId ?? ""} onChange={(event) => setDetails((current) => ({ ...current, tableId: event.target.value ? Number(event.target.value) : null, tableLabel: "" }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3"><option value="">Sin mesa asignada</option>{tables.map((table) => <option key={table.id} value={table.id}>{table.roomName} · {table.label} ({table.seats} sillas){table.openOrderId ? ` · cuenta #${table.openOrderId}` : ""}</option>)}</select></label>
             <label className="block text-sm font-medium">Mesero<select value={details.waiterId ?? ""} onChange={(event) => setDetails((current) => ({ ...current, waiterId: event.target.value ? Number(event.target.value) : null }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3"><option value="">Sin mesero asignado</option>{staff.map((member) => <option key={member.id} value={member.id}>{member.name}{member.role !== "waiter" ? ` (${roleLabel[member.role]})` : ""}</option>)}</select></label>
+            {orderType === "delivery" && <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-slate-700 dark:bg-slate-900">
+              <label className="block text-sm font-medium">Zona de delivery<select value={details.deliveryZoneId ?? ""} onChange={(event) => setDetails((current) => ({ ...current, deliveryZoneId: event.target.value ? Number(event.target.value) : null }))} className="mt-1 h-10 w-full rounded-md border bg-background px-3"><option value="">Sin zona (sin costo de envío)</option>{zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name} · {zone.fee ? `Gs ${zone.fee.toLocaleString("es-PY")}` : "gratis"}{zone.etaMinutes ? ` · ${zone.etaMinutes} min` : ""}</option>)}</select></label>
+              <label className="block text-sm font-medium">Dirección de entrega<Input value={details.deliveryAddress} onChange={(event) => setDetails((current) => ({ ...current, deliveryAddress: event.target.value }))} placeholder="Calle, número, referencia" className="mt-1" /></label>
+            </div>}
             <label className="block text-sm font-medium">Referencia adicional<Input value={details.tableLabel} onChange={(event) => setDetails((current) => ({ ...current, tableLabel: event.target.value }))} placeholder="Opcional si no elegiste mesa" disabled={Boolean(details.tableId)} className="mt-1" /></label>
             <label className="block text-sm font-medium">Cliente<Input value={details.customerName} onChange={(event) => setDetails((current) => ({ ...current, customerName: event.target.value }))} placeholder="Nombre del cliente" className="mt-1" /></label>
             <label className="block text-sm font-medium">Teléfono<Input value={details.customerPhone} onChange={(event) => setDetails((current) => ({ ...current, customerPhone: event.target.value }))} placeholder="Para delivery o contacto" className="mt-1" /></label>

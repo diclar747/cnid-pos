@@ -36,7 +36,8 @@ export async function createRestaurant(body: unknown) {
   const input = restaurantInput(body, true)
   const sql = await readFile(resolve(process.cwd(), "scripts/03-local-postgres.sql"), "utf8")
   const diningSql = await readFile(resolve(process.cwd(), "scripts/05-dining.sql"), "utf8")
-  const billingSql = await readFile(resolve(process.cwd(), "scripts/06-service-billing.sql"), "utf8")
+  const tenantSql = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql"]
+    .map((file) => readFile(resolve(process.cwd(), "scripts", file), "utf8")))
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS products")
   if (start < 0) throw new Error("No se encontró el esquema de datos.")
   const client = await authDb.connect()
@@ -54,7 +55,7 @@ export async function createRestaurant(body: unknown) {
     await client.query(`SET LOCAL search_path TO "${schema}"`)
     await client.query(sql.slice(start).replaceAll("REFERENCES app_users(", "REFERENCES public.app_users("))
     await client.query(diningSql)
-    await client.query(billingSql)
+    for (const sql of tenantSql) await client.query(sql)
     await client.query(`INSERT INTO "${schema}".company_config (id, data) VALUES (1, $1::jsonb)`,
       [JSON.stringify({ name: input.name, email: input.email, phone: input.phone, address: input.address, taxId: input.taxId, businessType: "restaurant" })])
     const admin = await client.query(

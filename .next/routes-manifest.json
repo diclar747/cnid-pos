@@ -31,6 +31,14 @@
       "namedRegex": "^/api/card\\-lookup/(?<nxtPcode>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/customers/[id]",
+      "regex": "^/api/customers/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/customers/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/data/[entity]",
       "regex": "^/api/data/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -46,6 +54,22 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/data/(?<nxtPentity>[^/]+?)/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/delivery/couriers/[id]",
+      "regex": "^/api/delivery/couriers/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/delivery/couriers/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/delivery/zones/[id]",
+      "regex": "^/api/delivery/zones/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/delivery/zones/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/api/kitchen-tickets/[id]",
@@ -86,6 +110,14 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/service\\-orders/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/service-orders/[id]/history",
+      "regex": "^/api/service\\-orders/([^/]+?)/history(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/service\\-orders/(?<nxtPid>[^/]+?)/history(?:/)?$"
     },
     {
       "page": "/api/table/[code]",
@@ -161,6 +193,18 @@
       "regex": "^/admin/company(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/company(?:/)?$"
+    },
+    {
+      "page": "/admin/customers",
+      "regex": "^/admin/customers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/customers(?:/)?$"
+    },
+    {
+      "page": "/admin/delivery",
+      "regex": "^/admin/delivery(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/delivery(?:/)?$"
     },
     {
       "page": "/admin/dining",

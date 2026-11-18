@@ -14,7 +14,7 @@
     "db:superadmin": "node scripts/create-superadmin.mjs",
     "db:demo": "node scripts/seed-demo.mjs",
     "test:smoke": "node scripts/smoke-local.mjs",
-    "test:smoke:all": "node scripts/smoke-local.mjs && node scripts/smoke-service-orders.mjs && node scripts/smoke-restaurants.mjs && node scripts/smoke-legacy.mjs"
+    "test:smoke:all": "node scripts/smoke-local.mjs && node scripts/smoke-service-orders.mjs && node scripts/smoke-restaurants.mjs && node scripts/smoke-customers-delivery.mjs && node scripts/smoke-legacy.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",

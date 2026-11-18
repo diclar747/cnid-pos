@@ -14,6 +14,7 @@ type SaleRecord = {
   id: number; date: string; total: number; orderType?: TicketData["orderType"]; paymentMethod: string
   cashReceived?: number; change?: number; customerName?: string; customerRuc?: string; userName?: string
   serviceOrderId?: number; tableLabel?: string; waiterName?: string; notes?: string
+  subtotal?: number; deliveryFee?: number; deliveryAddress?: string; deliveryZoneName?: string; courierName?: string
   items: Array<{ productName?: string; product?: { name: string }; quantity: number; price: number; subtotal?: number; modifiers?: Array<{ name: string; price: number }> }>
 }
 
@@ -21,7 +22,8 @@ function fromOrder(order: ServiceOrder): TicketData {
   return {
     kind: "bill", orderId: order.id, saleId: null, date: order.billedAt ?? new Date().toISOString(), orderType: order.orderType,
     tableLabel: order.tableLabel, waiterName: order.waiterName, customerName: order.customerName, customerRuc: "",
-    notes: order.notes, cashierName: "", total: order.total, copyNumber: order.billCount,
+    notes: order.notes, cashierName: "", total: order.grandTotal, subtotal: order.total, deliveryFee: order.deliveryFee,
+    deliveryAddress: order.deliveryAddress, deliveryZone: order.deliveryZoneName, courierName: order.courierName, copyNumber: order.billCount,
     lines: order.items.map((line) => ({ quantity: line.quantity, name: line.productName, price: line.price, subtotal: line.subtotal,
       modifiers: line.modifiers.map((modifier) => ({ name: modifier.name, price: modifier.price })) })),
   }
@@ -33,6 +35,7 @@ function fromSale(sale: SaleRecord): TicketData {
     tableLabel: sale.tableLabel ?? "", waiterName: sale.waiterName ?? "", customerName: sale.customerName ?? "",
     customerRuc: sale.customerRuc ?? "", notes: sale.notes ?? "", cashierName: sale.userName ?? "", total: sale.total,
     paymentMethod: sale.paymentMethod, cashReceived: sale.cashReceived, change: sale.change,
+    subtotal: sale.subtotal, deliveryFee: sale.deliveryFee, deliveryAddress: sale.deliveryAddress, deliveryZone: sale.deliveryZoneName, courierName: sale.courierName,
     lines: sale.items.map((item) => ({ quantity: item.quantity, name: item.productName ?? item.product?.name ?? "Producto",
       price: item.price, subtotal: item.subtotal ?? item.price * item.quantity,
       modifiers: (item.modifiers ?? []).map((modifier) => ({ name: modifier.name, price: modifier.price })) })),

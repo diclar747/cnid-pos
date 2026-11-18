@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { loadOrder, ServiceOrderError, validOrderType } from "@/lib/service-order-server"
+import { loadOrder, logOrderEvent, recordCustomerPurchase, ServiceOrderError, upsertCustomer, validOrderType } from "@/lib/service-order-server"
 import type { OrderLine } from "@/lib/service-order-types"
 
 export const runtime = "nodejs"
@@ -117,30 +117,48 @@ export async function POST(request: NextRequest) {
       }
     }
     if (serviceOrder && total !== serviceOrder.total) throw new CheckoutError("El total de la orden cambió. Revisá la cuenta.")
+    if (serviceOrder?.confirmation === "pending") throw new CheckoutError("Confirmá el pedido antes de cobrarlo.")
 
-    const cashReceived = paymentMethod === "cash" ? Number(body.cashReceived) : total
-    if (!Number.isSafeInteger(cashReceived) || cashReceived < total) {
+    // El envío se cobra aparte de los productos y entra en el total de la venta.
+    const subtotal = total
+    const deliveryFee = serviceOrder?.orderType === "delivery" ? serviceOrder.deliveryFee : 0
+    const grandTotal = subtotal + deliveryFee
+    const cashReceived = paymentMethod === "cash" ? Number(body.cashReceived) : grandTotal
+    if (!Number.isSafeInteger(cashReceived) || cashReceived < grandTotal) {
       throw new CheckoutError("El monto recibido es insuficiente.")
     }
 
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0, 255) || serviceOrder?.customerName || "Cliente General" : serviceOrder?.customerName || "Cliente General"
+    const customerRuc = typeof body.customerRuc === "string" ? body.customerRuc.trim().slice(0, 50) : ""
+    const customerId = await upsertCustomer(client, { name: customerName, phone: serviceOrder?.customerPhone, ruc: customerRuc })
+      ?? serviceOrder?.customerId ?? null
     const sale = {
       date: new Date().toISOString(),
-      total,
+      total: grandTotal,
+      subtotal,
+      deliveryFee,
       items,
       paymentMethod,
       orderType,
-      customerName: typeof body.customerName === "string" ? body.customerName.trim().slice(0, 255) || serviceOrder?.customerName || "Cliente General" : serviceOrder?.customerName || "Cliente General",
-      customerRuc: typeof body.customerRuc === "string" ? body.customerRuc.trim().slice(0, 50) : "",
+      customerName,
+      customerRuc,
+      customerId,
       ...(serviceOrder ? { serviceOrderId: serviceOrder.id, tableLabel: serviceOrder.tableLabel, cardCode: serviceOrder.cardCode,
-        waiterId: serviceOrder.waiterId, waiterName: serviceOrder.waiterName, notes: serviceOrder.notes } : {}),
+        waiterId: serviceOrder.waiterId, waiterName: serviceOrder.waiterName, notes: serviceOrder.notes,
+        deliveryZoneName: serviceOrder.deliveryZoneName, deliveryAddress: serviceOrder.deliveryAddress,
+        courierName: serviceOrder.courierName, source: serviceOrder.source } : {}),
       cashReceived,
-      change: cashReceived - total,
+      change: cashReceived - grandTotal,
       userId: Number(user.id),
       userName: user.name,
     }
     const saved = await client.query(`INSERT INTO sales (data) VALUES ($1::jsonb) RETURNING id`, [JSON.stringify(sale)])
-    if (serviceOrder) await client.query(`UPDATE service_orders SET status = 'paid', sale_id = $1,
-      closed_at = NOW(), updated_at = NOW() WHERE id = $2`, [saved.rows[0].id, serviceOrder.id])
+    await recordCustomerPurchase(client, customerId, grandTotal)
+    if (serviceOrder) {
+      await client.query(`UPDATE service_orders SET status = 'paid', sale_id = $1, customer_id = COALESCE(customer_id, $3),
+        closed_at = NOW(), updated_at = NOW() WHERE id = $2`, [saved.rows[0].id, serviceOrder.id, customerId])
+      await logOrderEvent(client, serviceOrder.id, "paid", { status: paymentMethod, note: `Venta #${saved.rows[0].id}`, actor: { id: user.id, name: user.name } })
+    }
     await client.query("COMMIT")
     return NextResponse.json({ sale: { ...sale, id: Number(saved.rows[0].id) } }, { status: 201 })
   } catch (error) {

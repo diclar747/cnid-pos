@@ -33,7 +33,7 @@ export default function CheckoutPage() {
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder | null>(null)
   const [orderLoading, setOrderLoading] = useState(true)
 
-  const total = serviceOrder?.total ?? getCartTotal()
+  const total = serviceOrder ? serviceOrder.grandTotal : getCartTotal()
   const cashAmount = Number.parseFloat(cashReceived) || 0
   const change = cashAmount - total
 

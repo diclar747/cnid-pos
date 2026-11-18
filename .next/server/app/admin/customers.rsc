@@ -1,0 +1,30 @@
+1:"$Sreact.fragment"
+2:I[30421,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"PwaRegistration"]
+3:I[62632,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"AuthProvider"]
+4:I[44433,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"ThemeProvider"]
+5:I[79407,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"CompanyProvider"]
+6:I[33814,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"SalesProvider"]
+7:I[56094,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"PurchasesProvider"]
+8:I[73313,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"SuppliersProvider"]
+9:I[67656,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"CartProvider"]
+a:I[89846,["7177","static/chunks/app/layout-1f8e14cf96a37d47.js"],"NotificationsProvider"]
+b:I[87555,[],""]
+c:I[31295,[],""]
+d:I[11024,["3455","static/chunks/3455-3d153d6b4589b0b2.js","4345","static/chunks/app/not-found-a9992ca0502cae8f.js"],"default"]
+e:I[94970,[],"ClientSegmentRoot"]
+f:I[19229,["3455","static/chunks/3455-3d153d6b4589b0b2.js","1544","static/chunks/1544-661ea179525244f1.js","3568","static/chunks/3568-4d89cea2efa612bb.js","1476","static/chunks/1476-fc9b043f71c4bb88.js","7838","static/chunks/7838-bd3783e8020e086d.js","270","static/chunks/270-7af6f5fc6778d61d.js","1214","static/chunks/1214-a56ce3cd7a5c41e5.js","960","static/chunks/960-c0318e103fbe82d4.js","1357","static/chunks/1357-dc81f2585b98fc44.js","4179","static/chunks/4179-ee6c8a97ce7da192.js","7581","static/chunks/app/admin/layout-8d17a3f92e2af59d.js"],"default"]
+11:I[90894,[],"ClientPageRoot"]
+12:I[73995,["3455","static/chunks/3455-3d153d6b4589b0b2.js","1544","static/chunks/1544-661ea179525244f1.js","3568","static/chunks/3568-4d89cea2efa612bb.js","1476","static/chunks/1476-fc9b043f71c4bb88.js","7974","static/chunks/7974-040fae5a5bba9e7b.js","1016","static/chunks/app/admin/customers/page-dc36e384e5b1b5d0.js"],"default"]
+15:I[59665,[],"OutletBoundary"]
+18:I[59665,[],"ViewportBoundary"]
+1a:I[59665,[],"MetadataBoundary"]
+1c:I[26614,[],""]
+:HL["/_next/static/css/3ceecb59ced83acd.css","style"]
+0:{"P":null,"b":"sd3SUsBKyZKUDzaaQScI0","p":"","c":["","admin","customers"],"i":false,"f":[[["",{"children":["admin",{"children":["customers",{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/3ceecb59ced83acd.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"es","suppressHydrationWarning":true,"children":["$","body",null,{"className":"font-sans","suppressHydrationWarning":true,"children":[["$","$L2",null,{}],["$","$L3",null,{"children":["$","$L4",null,{"children":["$","$L5",null,{"children":["$","$L6",null,{"children":["$","$L7",null,{"children":["$","$L8",null,{"children":["$","$L9",null,{"children":["$","$La",null,{"children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Ld",null,{}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]}]}]}]}]}]}]]}]}]]}],{"children":["admin",["$","$1","c",{"children":[null,["$","$Le",null,{"Component":"$f","slots":{"children":["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]},"params":{},"promise":"$@10"}]]}],{"children":["customers",["$","$1","c",{"children":[null,["$","$Lb",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lc",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L11",null,{"Component":"$12","searchParams":{},"params":"$0:f:0:1:2:children:1:props:children:1:props:params","promises":["$@13","$@14"]}],"$undefined",null,["$","$L15",null,{"children":["$L16","$L17",null]}]]}],{},null,false]},null,false]},null,false]},[["$","div","l",{"className":"min-h-screen flex items-center justify-center bg-background","children":["$","div",null,{"className":"flex flex-col items-center space-y-4","children":[["$","div",null,{"className":"animate-spin rounded-full h-12 w-12 border-b-2 border-primary"}],["$","p",null,{"className":"text-muted-foreground","children":"Cargando..."}]]}]}],[],[]],false],["$","$1","h",{"children":[null,["$","$1","hDIyFetju_inYXYDfY_fk",{"children":[["$","$L18",null,{"children":"$L19"}],null]}],["$","$L1a",null,{"children":"$L1b"}]]}],false]],"m":"$undefined","G":["$1c","$undefined"],"s":false,"S":true}
+10:{}
+13:{}
+14:{}
+19:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, viewport-fit=cover"}],["$","meta","2",{"name":"theme-color","content":"#0f172a"}]]
+16:null
+17:null
+1b:[["$","title","0",{"children":"RestoPOS"}],["$","meta","1",{"name":"description","content":"Sistema de punto de venta completo para restaurantes y comercios"}],["$","link","2",{"rel":"manifest","href":"/manifest.webmanifest","crossOrigin":"$undefined"}],["$","meta","3",{"name":"mobile-web-app-capable","content":"yes"}],["$","meta","4",{"name":"apple-mobile-web-app-title","content":"RestoPOS"}],["$","meta","5",{"name":"apple-mobile-web-app-status-bar-style","content":"default"}],["$","link","6",{"rel":"icon","href":"/pwa-192.png"}],["$","link","7",{"rel":"apple-touch-icon","href":"/pwa-192.png"}]]

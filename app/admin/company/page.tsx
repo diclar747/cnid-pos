@@ -76,8 +76,9 @@ export default function CompanyConfigPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="ficha">Ficha</TabsTrigger>
           <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
@@ -203,6 +204,72 @@ export default function CompanyConfigPage() {
                   onChange={(e) => handleInputChange("website", e.target.value)}
                   placeholder="Ej: https://www.miempresa.com"
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ficha" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ficha del restaurante</CardTitle>
+              <CardDescription>Lo que ven tus clientes: descripción, cómo atendés, ubicación y horarios.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción</Label>
+                <Textarea id="description" value={formData.description} onChange={(e) => handleInputChange("description", e.target.value)} placeholder="Cocina casera, menú del día y delivery en todo el centro." rows={3} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp">WhatsApp del restaurante</Label>
+                  <Input id="whatsapp" value={formData.socialMedia.whatsapp} onChange={(e) => handleNestedInputChange("socialMedia", "whatsapp", e.target.value)} placeholder="+595 981 000 000" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessTypeFicha">Tipo de establecimiento</Label>
+                  <Input id="businessTypeFicha" value={formData.businessType} onChange={(e) => handleInputChange("businessType", e.target.value)} placeholder="Restaurante, pizzería, cafetería…" />
+                </div>
+              </div>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Modalidades de atención</legend>
+                <div className="flex flex-wrap gap-4">
+                  {([["dineIn", "En el local"], ["delivery", "Delivery"], ["pickup", "Retiro en el local"]] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" checked={formData.serviceModes[key]} onChange={(e) => setFormData((prev) => ({ ...prev, serviceModes: { ...prev.serviceModes, [key]: e.target.checked } }))} /> {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-3">
+                  <Label htmlFor="mapsUrl">Enlace de Google Maps</Label>
+                  <Input id="mapsUrl" value={formData.mapsUrl} onChange={(e) => handleInputChange("mapsUrl", e.target.value)} placeholder="https://maps.app.goo.gl/…" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitud</Label>
+                  <Input id="latitude" inputMode="decimal" value={formData.latitude} onChange={(e) => handleInputChange("latitude", e.target.value.replace(/[^\d.,-]/g, ""))} placeholder="-25.7801" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitud</Label>
+                  <Input id="longitude" inputMode="decimal" value={formData.longitude} onChange={(e) => handleInputChange("longitude", e.target.value.replace(/[^\d.,-]/g, ""))} placeholder="-56.4469" />
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-sm font-medium">Horarios</p>
+                <div className="space-y-2">
+                  {formData.openingHours.map((day, index) => (
+                    <div key={day.day} className="grid grid-cols-[6.5rem_1fr_1fr_auto] items-center gap-2 text-sm">
+                      <span className="font-medium">{day.day}</span>
+                      <Input type="time" aria-label={`${day.day}: abre`} value={day.open} disabled={day.closed}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, openingHours: prev.openingHours.map((d, i) => i === index ? { ...d, open: e.target.value } : d) }))} />
+                      <Input type="time" aria-label={`${day.day}: cierra`} value={day.close} disabled={day.closed}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, openingHours: prev.openingHours.map((d, i) => i === index ? { ...d, close: e.target.value } : d) }))} />
+                      <label className="flex items-center gap-1.5 whitespace-nowrap">
+                        <input type="checkbox" checked={day.closed} onChange={(e) => setFormData((prev) => ({ ...prev, openingHours: prev.openingHours.map((d, i) => i === index ? { ...d, closed: e.target.checked } : d) }))} /> Cerrado
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

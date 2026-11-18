@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { canTakeOrders, getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { cleanText, loadOrder, resolveWaiter, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
+import { cleanText, deliveryFeeFor, loadOrder, logOrderEvent, refreshDeliveryFee, resolveWaiter, sendDraftToKitchen, ServiceOrderError, upsertCustomer } from "@/lib/service-order-server"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ id: string }> }
@@ -28,20 +28,30 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   }
   const id = Number((await params).id)
   const body = await request.json().catch(() => null)
-  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill"].includes(body?.action)) {
+  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill", "confirm", "reject"].includes(body?.action)) {
     return NextResponse.json({ error: "Orden o acción inválida." }, { status: 400 })
   }
-  // Cancelar devuelve stock y anula la cuenta: queda reservado a quien puede cobrar.
-  if (body.action === "cancel" && !hasPermission(user, "manage_sales")) {
-    return NextResponse.json({ error: "Solo caja puede cancelar una orden." }, { status: 403 })
+  // Cancelar o rechazar devuelve stock y anula la cuenta: queda reservado a quien puede cobrar.
+  if ((body.action === "cancel" || body.action === "reject") && !hasPermission(user, "manage_sales")) {
+    return NextResponse.json({ error: "Solo caja puede cancelar o rechazar una orden." }, { status: 403 })
   }
+  const actor = { id: user.id, name: user.name }
   const client = await db.connect()
   try {
     await client.query("BEGIN")
     let order = await loadOrder(client, id, true)
     if (order.status !== "open") throw new ServiceOrderError("La orden ya fue cerrada.", 409)
     let ticket = null
-    if (body.action === "details") {
+    if (body.action === "confirm") {
+      if (order.confirmation !== "pending") throw new ServiceOrderError("La orden no está pendiente de confirmación.", 409)
+      await client.query("UPDATE service_orders SET confirmation = 'confirmed', updated_at = NOW() WHERE id = $1", [id])
+      await logOrderEvent(client, id, "confirmed", { note: cleanText(body.note, 300), actor })
+      if (body.sendToKitchen === true && order.items.some((line) => line.ticketId == null)) {
+        const sent = await sendDraftToKitchen(client, { ...order, confirmation: "confirmed" }, Number(user.id))
+        ticket = sent.ticket
+        await logOrderEvent(client, id, "sent_to_kitchen", { status: "pending", ticketId: ticket.id, actor })
+      }
+    } else if (body.action === "details") {
       let tableId = order.tableId
       let tableLabel = order.tableLabel
       if (body.tableId !== undefined) {
@@ -60,20 +70,49 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       const waiter = body.waiterId === undefined
         ? (order.waiterId ? { id: order.waiterId, name: order.waiterName } : null)
         : await resolveWaiter(client, body.waiterId, user.restaurantId)
+      const customerName = body.customerName === undefined ? order.customerName : cleanText(body.customerName, 120)
+      const customerPhone = body.customerPhone === undefined ? order.customerPhone : cleanText(body.customerPhone, 40)
+      const deliveryAddress = body.deliveryAddress === undefined ? order.deliveryAddress : cleanText(body.deliveryAddress, 300)
+      const customerId = await upsertCustomer(client, { name: customerName, phone: customerPhone, address: deliveryAddress }) ?? order.customerId
+      // Delivery: zona (define el costo de envío) y repartidor.
+      let zone = order.deliveryZoneId ? { id: order.deliveryZoneId, name: order.deliveryZoneName } : null
+      if (body.deliveryZoneId !== undefined) {
+        const zoneId = body.deliveryZoneId === null || body.deliveryZoneId === "" ? null : Number(body.deliveryZoneId)
+        if (zoneId !== null && (!Number.isSafeInteger(zoneId) || zoneId <= 0)) throw new ServiceOrderError("Zona de delivery inválida.")
+        zone = await deliveryFeeFor(client, zoneId, order.total)
+      }
+      let courier = order.courierId ? { id: order.courierId, name: order.courierName } : null
+      if (body.courierId !== undefined) {
+        const courierId = body.courierId === null || body.courierId === "" ? null : Number(body.courierId)
+        if (courierId !== null) {
+          if (!Number.isSafeInteger(courierId) || courierId <= 0) throw new ServiceOrderError("Repartidor inválido.")
+          const found = await client.query("SELECT id, name FROM couriers WHERE id = $1 AND is_active", [courierId])
+          if (!found.rows[0]) throw new ServiceOrderError("Repartidor no disponible.", 404)
+          courier = { id: Number(found.rows[0].id), name: String(found.rows[0].name) }
+        } else courier = null
+        if ((courier?.id ?? null) !== order.courierId) await logOrderEvent(client, id, "courier", { note: courier?.name ?? "Sin repartidor", actor })
+      }
+      if ((waiter?.id ?? null) !== order.waiterId) await logOrderEvent(client, id, "waiter", { note: waiter?.name ?? "Sin mesero", actor })
       await client.query(`UPDATE service_orders SET table_id=$1, table_label = $2, customer_name = $3,
-        customer_phone = $4, notes = $5, waiter_id = $6, waiter_name = $7, updated_at = NOW() WHERE id = $8`, [
-        tableId, tableLabel,
-        body.customerName === undefined ? order.customerName : cleanText(body.customerName, 120),
-        body.customerPhone === undefined ? order.customerPhone : cleanText(body.customerPhone, 40),
+        customer_phone = $4, notes = $5, waiter_id = $6, waiter_name = $7, customer_id = $8,
+        delivery_zone_id = $9, delivery_zone_name = $10, delivery_address = $11, courier_id = $12, courier_name = $13,
+        updated_at = NOW() WHERE id = $14`, [
+        tableId, tableLabel, customerName, customerPhone,
         body.notes === undefined ? order.notes : cleanText(body.notes, 500),
-        waiter?.id ?? null, waiter?.name ?? "", id,
+        waiter?.id ?? null, waiter?.name ?? "", customerId,
+        order.orderType === "delivery" ? zone?.id ?? null : null, order.orderType === "delivery" ? zone?.name ?? "" : "",
+        order.orderType === "delivery" ? deliveryAddress : "", courier?.id ?? null, courier?.name ?? "", id,
       ])
+      await refreshDeliveryFee(client, id)
+      await logOrderEvent(client, id, "details", { actor })
     } else if (body.action === "bill") {
       if (!order.items.length) throw new ServiceOrderError("La cuenta no tiene consumos para la precuenta.")
       await client.query("UPDATE service_orders SET billed_at = NOW(), bill_count = bill_count + 1, updated_at = NOW() WHERE id = $1", [id])
+      await logOrderEvent(client, id, "billed", { status: String(order.billCount + 1), actor })
     } else if (body.action === "send") {
       const sent = await sendDraftToKitchen(client, order, Number(user.id))
       ticket = sent.ticket
+      await logOrderEvent(client, id, "sent_to_kitchen", { status: "pending", ticketId: ticket.id, actor })
     } else {
       const tickets = await client.query("SELECT status FROM kitchen_tickets WHERE order_id = $1 FOR UPDATE", [id])
       if (tickets.rows.some((row) => ["ready", "served", "out_for_delivery", "delivered"].includes(row.status))) {
@@ -95,7 +134,10 @@ export async function PATCH(request: NextRequest, { params }: Context) {
           VALUES ($1, $2, $3, 'cancel_service_order', $4)`, [productId, product.stock, stock, Number(user.id)])
       }
       await client.query("UPDATE kitchen_tickets SET status = 'cancelled', updated_at = NOW() WHERE order_id = $1", [id])
-      await client.query("UPDATE service_orders SET status = 'cancelled', closed_at = NOW(), updated_at = NOW() WHERE id = $1", [id])
+      const rejected = body.action === "reject"
+      await client.query(`UPDATE service_orders SET status = 'cancelled', closed_at = NOW(), updated_at = NOW()
+        ${rejected ? ", confirmation = 'rejected'" : ""} WHERE id = $1`, [id])
+      await logOrderEvent(client, id, rejected ? "rejected" : "cancelled", { note: cleanText(body.reason ?? body.note, 300), actor })
     }
     order = await loadOrder(client, id)
     await client.query("COMMIT")
