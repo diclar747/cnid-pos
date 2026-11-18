@@ -10,6 +10,6 @@ export async function POST(request: NextRequest) {
     await authDb.query(`DELETE FROM public.app_sessions WHERE token_hash = $1`, [hashToken(token)])
   }
   const response = NextResponse.json({ ok: true })
-  response.cookies.set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "strict", path: "/", maxAge: 0 })
+  response.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.SESSION_COOKIE_SECURE === "true", sameSite: "strict", path: "/", maxAge: 0 })
   return response
 }

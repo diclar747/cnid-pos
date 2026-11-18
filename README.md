@@ -29,6 +29,8 @@ Sistema de punto de venta con Next.js y PostgreSQL local. No requiere servicios 
 
 `db:setup` crea las tablas y carga tres usuarios iniciales y un catálogo de productos solo cuando esas tablas están vacías. Se puede volver a ejecutar sin duplicar estos registros. Las ventas, compras, órdenes de compra, gastos, proveedores, usuarios, productos y datos de la empresa se guardan en PostgreSQL. El carrito se guarda por usuario en el navegador y se actualiza con los precios y el stock del catálogo al entrar. Las preferencias visuales y el estado plegado del menú también se mantienen en el navegador.
 
+Para publicarlo en un servidor, seguí [docs/despliegue.md](docs/despliegue.md).
+
 ## Superadministración y restaurantes
 
 Para crear la cuenta central una sola vez, ejecutá `pnpm db:superadmin` después de `pnpm db:setup`. El comando genera una contraseña aleatoria y la muestra solo al ejecutarse; cambiala desde **Mi perfil** después del primer acceso. Si ya existe una cuenta central, no modifica su contraseña. Se pueden definir `SUPERADMIN_EMAIL`, `SUPERADMIN_USERNAME`, `SUPERADMIN_NAME` y `SUPERADMIN_PASSWORD` antes de ejecutarlo.

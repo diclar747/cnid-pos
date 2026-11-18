@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ user: publicUser(account) })
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: false,
+    // En el servidor con HTTPS definí SESSION_COOKIE_SECURE=true; en local (http) queda desactivado.
+    secure: process.env.SESSION_COOKIE_SECURE === "true",
     sameSite: "strict",
     path: "/",
     maxAge: SESSION_MAX_AGE,
