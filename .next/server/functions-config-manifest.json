@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/auth/session": {},
+    "/api/auth/logout": {},
+    "/api/announcements/[id]": {},
+    "/api/announcements": {},
+    "/api/auth/login": {},
+    "/api/card-lookup/[code]": {},
+    "/api/data/[entity]/[id]": {},
+    "/api/data/[entity]": {},
+    "/api/kitchen-tickets/[id]": {},
+    "/api/checkout": {},
+    "/api/kitchen-tickets": {},
+    "/api/profile": {},
+    "/api/dining": {},
+    "/api/phone-access": {},
+    "/api/order-cards": {},
+    "/api/purchase-orders/[id]": {},
+    "/api/purchases": {},
+    "/api/restaurants": {},
+    "/api/purchase-orders": {},
+    "/api/ruc": {},
+    "/api/restaurants/[id]": {},
+    "/api/sales/[id]": {},
+    "/api/staff": {},
+    "/api/service-orders/[id]": {},
+    "/api/users": {},
+    "/api/table/[code]": {},
+    "/api/users/[id]": {},
+    "/api/service-orders": {}
+  }
+}
