@@ -15,7 +15,26 @@ import { sendText } from "./session"
 // calcula precios y totales, y registra el pedido. La IA nunca fija precios, confirma pagos ni cambia estados.
 
 export type CartItem = { productId: number; quantity: number; optionIds: number[]; note: string }
-export type Cart = { items: CartItem[]; orderType?: ServiceOrderType; address?: string; zoneId?: number | null; name?: string; notes?: string }
+export type Cart = { items: CartItem[]; orderType?: ServiceOrderType; address?: string; zoneId?: number | null; name?: string; notes?: string
+  location?: { lat: number; lng: number; label?: string } }
+
+/** Distancia en km entre dos coordenadas (fórmula del haversine). */
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const rad = (value: number) => value * Math.PI / 180
+  const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2
+  return 6371 * 2 * Math.asin(Math.sqrt(h))
+}
+
+/** Zona según la ubicación del cliente: la de menor radio que la cubra. null si el local no tiene ubicación cargada. */
+export function zoneByLocation(zones: any[], company: any, location: Cart["location"]) {
+  const lat = Number(String(company?.latitude ?? "").replace(",", ".")), lng = Number(String(company?.longitude ?? "").replace(",", "."))
+  if (!location || !String(company?.latitude ?? "").trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  const km = Math.round(distanceKm({ lat, lng }, location) * 10) / 10
+  const withRadius = zones.filter((zone) => zone.max_km != null)
+  if (!withRadius.length) return { km, zone: null as any, covered: null as boolean | null }
+  const zone = withRadius.filter((entry) => km <= Number(entry.max_km)).sort((a, b) => Number(a.max_km) - Number(b.max_km))[0] ?? null
+  return { km, zone, covered: Boolean(zone) }
+}
 type Action = { type: string; [key: string]: unknown }
 type Product = { id: number; name: string; category: string; price: number; description: string; modifierGroups: any[]; pricesByOrderType?: Record<string, number>
   promoPrice?: number | null; prepMinutes?: number | null; ingredients?: string }
@@ -67,10 +86,11 @@ export function cartSummary(priced: Awaited<ReturnType<typeof priceCart>>, cart:
     const note = cart.items[index]?.note
     return `• ${line.quantity} × ${line.productName}${extras ? ` (${extras})` : ""}${note ? ` — ${note}` : ""}: ${money(line.subtotal)}`
   })
+  const place = cart.orderType === "delivery" ? [cart.address, cart.location ? "📍 ubicación compartida" : ""].filter(Boolean).join(" · ") : ""
   const parts = ["*Tu pedido:*", ...rows, `Subtotal: ${money(priced.subtotal)}`]
   if (cart.orderType === "delivery") parts.push(priced.zone ? `Envío (${priced.zone.name}): ${priced.deliveryFee ? money(priced.deliveryFee) : "gratis"}` : "Envío: a confirmar según la zona")
   parts.push(`*Total: ${money(priced.total)}*`)
-  if (cart.orderType) parts.push(`Modalidad: ${typeLabel[cart.orderType]}${cart.orderType === "delivery" && cart.address ? ` · ${cart.address}` : ""}`)
+  if (cart.orderType) parts.push(`Modalidad: ${typeLabel[cart.orderType]}${place ? ` · ${place}` : ""}`)
   return parts.join("\n")
 }
 
@@ -129,7 +149,7 @@ async function loadContext(schema: string, query: SchemaQuery, conversationId: n
     query("SELECT * FROM ai_settings WHERE id = 1").then((result) => result.rows[0] ?? {}),
     query("SELECT data FROM company_config WHERE id = 1").then((result) => result.rows[0]?.data ?? {}),
     authDb.query("SELECT name FROM public.restaurants WHERE schema_name = $1", [schema]).then((result) => result.rows[0]?.name ?? "el restaurante"),
-    query("SELECT id, name, areas, fee, free_over, eta_minutes FROM delivery_zones WHERE is_active ORDER BY sort_order, name"),
+    query("SELECT id, name, areas, fee, free_over, eta_minutes, max_km FROM delivery_zones WHERE is_active ORDER BY sort_order, name"),
     query("SELECT id, data FROM products WHERE COALESCE((data->>'isActive')::boolean, TRUE) ORDER BY data->>'category', data->>'name'"),
     query(`SELECT author, body FROM (SELECT author, body, created_at, id FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT ${MAX_HISTORY}) recent ORDER BY created_at, id`, [conversationId]),
     query(`SELECT o.id, o.status, o.confirmation, o.order_type, o.total, o.delivery_fee, o.created_at,
@@ -158,7 +178,11 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
   const company = ctx.company ?? {}
   const modes = company.serviceModes ?? { dineIn: true, delivery: true, pickup: true }
   const hours = Array.isArray(company.openingHours) ? company.openingHours.map((day: any) => `${day.day}: ${day.closed ? "cerrado" : `${day.open} a ${day.close}`}`).join("; ") : ""
-  const zones = ctx.zones.map((zone: any) => `[${zone.id}] ${zone.name}${zone.areas ? ` (${zone.areas})` : ""}: envío Gs ${zone.fee}${zone.free_over != null ? `, gratis desde Gs ${zone.free_over}` : ""}${zone.eta_minutes ? `, ~${zone.eta_minutes} min` : ""}`).join("\n")
+  const zones = ctx.zones.map((zone: any) => `[${zone.id}] ${zone.name}${zone.areas ? ` (${zone.areas})` : ""}: envío Gs ${zone.fee}${zone.free_over != null ? `, gratis desde Gs ${zone.free_over}` : ""}${zone.eta_minutes ? `, ~${zone.eta_minutes} min` : ""}${zone.max_km != null ? `, hasta ${zone.max_km} km del local` : ""}`).join("\n")
+  const cart: Cart = { items: [], ...(ctx.conversation.cart ?? {}) }
+  const byLocation = zoneByLocation(ctx.zones, company, cart.location)
+  const locationText = !cart.location ? "no compartida todavía"
+    : `compartida${cart.location.label ? ` (${cart.location.label})` : ""}${byLocation ? `, a ${byLocation.km} km del local${byLocation.zone ? `, corresponde a la zona [${byLocation.zone.id}] ${byLocation.zone.name}` : byLocation.covered === false ? ", FUERA de todas las zonas de delivery" : ""}` : ""}`
   const orders = ctx.orders.map((order: any) => `#${order.id} (${typeLabel[order.order_type] ?? order.order_type}, ${new Date(order.created_at).toLocaleString("es-PY", { timeZone: "America/Asuncion" })}): ${orderStatusText(order)} · total Gs ${Number(order.total) + Number(order.delivery_fee ?? 0)}`).join("\n")
   return [
     `Sos el asistente virtual de WhatsApp de "${ctx.restaurant}". Atendés con amabilidad y mensajes breves (máximo 6 líneas), en español de Paraguay, con algún emoji ocasional.`,
@@ -171,7 +195,8 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
     "- Usá confirm_order únicamente cuando el cliente confirmó explícitamente el pedido después de ver el resumen, y ya están la modalidad, el nombre y, para delivery, la dirección y la zona.",
     "- No confirmes pagos ni transferencias: el local los verifica.",
     "- Si un producto tiene opciones obligatorias (marcadas con *), preguntá cuál prefiere antes de agregarlo. Usá los números entre corchetes como ids.",
-    "- Para delivery elegí la zona según el barrio o ciudad; si no coincide con ninguna, decí que no llegamos y ofrecé retiro.",
+    "- Para delivery pedí que el cliente comparta su UBICACIÓN de WhatsApp (📎 Adjuntar → Ubicación) y una referencia (calle, número o color de la casa). La ubicación compartida se guarda sola y figura en UBICACIÓN DEL CLIENTE.",
+    "- Si la ubicación ya indica la zona, usala; si no, elegí la zona según el barrio o ciudad. Si está fuera de las zonas o no coincide con ninguna, decí que no llegamos y ofrecé retiro.",
     "- Si el cliente pide hablar con una persona, tiene un reclamo o no podés resolverlo, usá handoff.",
     "",
     'RESPONDÉ SOLO con un objeto JSON válido, sin texto antes ni después: {"reply": "mensaje para el cliente", "actions": []}',
@@ -202,6 +227,8 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
     "",
     "CARRITO ACTUAL (calculado por el sistema)",
     cartText || "(vacío)",
+    "",
+    `UBICACIÓN DEL CLIENTE: ${locationText}`,
     "",
     "PEDIDOS DEL CLIENTE (estados reales del sistema)",
     orders || "(ninguno)",
@@ -268,15 +295,17 @@ function applyActions(cart: Cart, actions: Action[], ctx: Awaited<ReturnType<typ
 async function createOrder(schema: string, conversation: any, cart: Cart, products: Map<number, Product>) {
   if (!cart.items.length) throw new ServiceOrderError("Tu pedido está vacío.")
   if (!cart.orderType) throw new ServiceOrderError("Falta elegir si es delivery, retiro o en el local.")
-  if (cart.orderType === "delivery" && (!cart.address || !cart.zoneId)) throw new ServiceOrderError("Para delivery necesito la dirección y la zona.")
+  if (cart.orderType === "delivery" && (!(cart.address || cart.location) || !cart.zoneId)) throw new ServiceOrderError("Para delivery necesito tu ubicación (o dirección) y la zona. Compartí tu ubicación de WhatsApp 📍")
   const name = (cart.name || conversation.name || "Cliente WhatsApp").slice(0, 120)
   return withSchema(schema, async (client) => {
     const customerId = await upsertCustomer(client, { name, phone: conversation.phone, address: cart.orderType === "delivery" ? cart.address : undefined })
     const zone = cart.orderType === "delivery" ? await deliveryFeeFor(client, cart.zoneId ?? null, 0) : null
     const inserted = await client.query(`INSERT INTO service_orders (order_type, customer_name, customer_phone, notes, source, confirmation, customer_id,
-        delivery_zone_id, delivery_zone_name, delivery_address, wa_conversation_id)
-      VALUES ($1,$2,$3,$4,'whatsapp','pending',$5,$6,$7,$8,$9) RETURNING id`,
-      [cart.orderType, name, conversation.phone ?? "", cart.notes ?? "", customerId, zone?.id ?? null, zone?.name ?? "", cart.orderType === "delivery" ? cart.address : "", conversation.id])
+        delivery_zone_id, delivery_zone_name, delivery_address, wa_conversation_id, delivery_lat, delivery_lng)
+      VALUES ($1,$2,$3,$4,'whatsapp','pending',$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [cart.orderType, name, conversation.phone ?? "", cart.notes ?? "", customerId, zone?.id ?? null, zone?.name ?? "",
+        cart.orderType === "delivery" ? (cart.address || cart.location?.label || "Ubicación compartida por WhatsApp") : "", conversation.id,
+        cart.orderType === "delivery" ? cart.location?.lat ?? null : null, cart.orderType === "delivery" ? cart.location?.lng ?? null : null])
     let order = await loadOrder(client, Number(inserted.rows[0].id), true)
     const lines = await makeOrderLines(client, cart.items.map((item) => ({ id: item.productId, quantity: item.quantity, selectedModifiers: modifiersFor(products.get(item.productId), item.optionIds) })), cart.orderType!)
     lines.forEach((line, index) => { const note = cart.items[index]?.note; if (note) line.productName = `${line.productName} (${note})` })
@@ -343,6 +372,12 @@ export async function runAssistant(schema: string, conversationId: number, optio
   let reply = typeof parsed?.reply === "string" ? parsed.reply.trim().slice(0, 1500) : ""
   if (!parsed) reply = "Disculpá, no te entendí bien. ¿Me lo podés escribir de otra forma? 🙏"
   const applied = applyActions(cart, actions, ctx)
+  // Con ubicación compartida y zonas con radio, la zona sale de la distancia al local (no la decide la IA).
+  if (applied.cart.orderType === "delivery" && applied.cart.location) {
+    const byLocation = zoneByLocation(ctx.zones, ctx.company, applied.cart.location)
+    if (byLocation?.zone) { if (applied.cart.zoneId !== Number(byLocation.zone.id)) { applied.cart.zoneId = Number(byLocation.zone.id); applied.changed = true } }
+    else if (byLocation?.covered === false) { applied.cart.zoneId = null; applied.notes.push(`📍 Tu ubicación queda a ${byLocation.km} km y está fuera de nuestras zonas de delivery. Podés pasar a retirarlo 🙌`) }
+  }
   let orderId: number | null = null
   const extra: string[] = [...applied.notes]
   // Validar el carrito con precios reales: si algo no se puede (opción obligatoria, sin stock), se descarta ese cambio.

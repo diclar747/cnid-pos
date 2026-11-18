@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
 import { sourceLabel, typeLabel } from "@/lib/order-labels"
-import type { ServiceOrder } from "@/lib/service-order-types"
+import { WhatsAppInbox } from "../../components/whatsapp-inbox"
 
 type Status = { session: { enabled: boolean; status: string; live: boolean; phone: string; pushName: string; qr: string | null; qrAt: string | null; connectedAt: string | null; lastError: string }
-  logs: { event: string; detail: string; createdAt: string }[]; ai: { enabled: boolean; instructions: string; greeting: string; configured: boolean }
+  logs: { event: string; detail: string; createdAt: string }[]; ai: { enabled: boolean; instructions: string; greeting: string; transcribeAudio: boolean; configured: boolean }
   usage: { replies: number; errors: number; transcriptions: number; tokens: number; latencyMs: number }; counts: { conversations: number; unread: number; handoffs: number }; canManage: boolean }
 type Conversation = { id: number; phone: string; name: string; botEnabled: boolean; handoffRequested: boolean; assignedName: string; unread: number; lastMessage: string
   lastMessageAt: string | null; cartItems: number; openOrders: number }
@@ -52,7 +52,7 @@ export default function WhatsAppPage() {
     {!status ? <p className="py-16 text-center text-muted-foreground">Cargando…</p>
       : tab === "connection" ? <ConnectionPanel status={status} onChanged={load} />
       : tab === "ai" ? <AssistantPanel status={status} onChanged={load} />
-      : <Inbox connected={status.session.status === "connected"} />}
+      : <div className="h-[calc(100dvh-15rem)] min-h-[32rem] overflow-hidden rounded-2xl border"><WhatsAppInbox connected={status.session.status === "connected"} /></div>}
   </div>
 }
 
@@ -102,6 +102,7 @@ function ConnectionPanel({ status, onChanged }: { status: Status; onChanged: () 
 
 function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () => Promise<void> }) {
   const [enabled, setEnabled] = useState(status.ai.enabled)
+  const [transcribeAudio, setTranscribeAudio] = useState(status.ai.transcribeAudio)
   const [instructions, setInstructions] = useState(status.ai.instructions)
   const [greeting, setGreeting] = useState(status.ai.greeting)
   const [saving, setSaving] = useState(false)
@@ -117,7 +118,7 @@ function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () =
   }, [status.ai.configured, status.canManage])
   const save = async () => {
     setSaving(true)
-    try { await apiRequest("/api/whatsapp/ai", { method: "PUT", body: JSON.stringify({ enabled, instructions, greeting }) }); toast.success("Asistente guardado"); await onChanged() }
+    try { await apiRequest("/api/whatsapp/ai", { method: "PUT", body: JSON.stringify({ enabled, instructions, greeting, transcribeAudio }) }); toast.success("Asistente guardado"); await onChanged() }
     catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo guardar") }
     finally { setSaving(false) }
   }
@@ -138,6 +139,8 @@ function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () =
       {!status.ai.configured && <p className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         <span>Falta la variable <code className="rounded bg-white/70 px-1">NIRO_API_KEY</code> en el servidor (panel del hosting → Variables). Sin ella el asistente no responde y los mensajes quedan para el personal.</span></p>}
       <p className="text-sm text-muted-foreground">El asistente usa siempre la carta, precios, opciones, zonas de delivery y horarios cargados en el sistema. No puede cambiar precios, confirmar pagos ni avanzar estados: los pedidos entran como <strong>Nuevos</strong> en el tablero para que el local los confirme.</p>
+      <label className="flex items-start gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={transcribeAudio} onChange={(event) => setTranscribeAudio(event.target.checked)} className="mt-0.5 h-4 w-4" />
+        <span><strong>Transcribir audios automáticamente</strong><span className="block text-xs text-muted-foreground">El audio siempre llega y se puede escuchar en Conversaciones. Con esta opción, Niro también lo pasa a texto (usa créditos) para que el asistente lo entienda.</span></span></label>
       <label className="block text-sm font-semibold">Saludo inicial
         <Input value={greeting} onChange={(event) => setGreeting(event.target.value)} maxLength={600} placeholder="¡Hola! Bienvenido a … ¿Qué te gustaría pedir hoy?" className="mt-1" /></label>
       <label className="block text-sm font-semibold">Instrucciones del restaurante
@@ -177,86 +180,3 @@ function Bubble({ mine, body, meta }: { mine: boolean; body: string; meta: strin
       {body.replace(/\*(.+?)\*/g, "$1")}<p className="mt-1 text-right text-[10px] text-slate-500 dark:text-slate-400">{meta}</p></div></div>
 }
 
-function Inbox({ connected }: { connected: boolean }) {
-  const [items, setItems] = useState<Conversation[]>([])
-  const [search, setSearch] = useState("")
-  const [selected, setSelected] = useState<number | null>(null)
-  const [detail, setDetail] = useState<{ conversation: Conversation & { cart: any }; messages: Message[]; orders: ServiceOrder[] } | null>(null)
-  const [draft, setDraft] = useState("")
-  const [sending, setSending] = useState(false)
-  const end = useRef<HTMLDivElement>(null)
-  const loadList = useCallback(async () => {
-    try {
-      const params = new URLSearchParams()
-      if (search.trim()) params.set("q", search.trim())
-      const phone = new URLSearchParams(window.location.search).get("phone")
-      if (phone && !search) params.set("phone", phone)
-      const result = await apiRequest<{ items: Conversation[] }>(`/api/whatsapp/conversations?${params}`)
-      setItems(result.items)
-      const wanted = Number(new URLSearchParams(window.location.search).get("c"))
-      setSelected((current) => current ?? (wanted || (phone && result.items[0]?.id) || null))
-    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudieron cargar las conversaciones") }
-  }, [search])
-  const loadDetail = useCallback(async () => {
-    if (!selected) { setDetail(null); return }
-    try { setDetail(await apiRequest(`/api/whatsapp/conversations/${selected}`)) } catch { setDetail(null) }
-  }, [selected])
-  useEffect(() => { const timer = window.setTimeout(() => void loadList(), search ? 300 : 0); return () => window.clearTimeout(timer) }, [loadList, search])
-  useEffect(() => { void loadDetail() }, [loadDetail])
-  useLiveTables(["wa_conversations", "wa_messages"], () => { void loadList(); void loadDetail() }, 8000)
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }) }, [detail?.messages.length])
-  const act = async (action: "send" | "take" | "release", text?: string) => {
-    if (!selected) return
-    setSending(true)
-    try { await apiRequest(`/api/whatsapp/conversations/${selected}`, { method: "POST", body: JSON.stringify({ action, text }) }); if (action === "send") setDraft(""); await loadDetail(); await loadList() }
-    catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo completar") }
-    finally { setSending(false) }
-  }
-  const current = detail?.conversation
-  const openOrders = useMemo(() => detail?.orders.filter((order) => order.status === "open") ?? [], [detail?.orders])
-  return <div className="grid h-[calc(100dvh-15rem)] min-h-[32rem] overflow-hidden rounded-2xl border bg-white dark:bg-slate-900 md:grid-cols-[20rem_1fr]">
-    <aside className={`flex min-h-0 flex-col border-r ${selected ? "hidden md:flex" : "flex"}`}>
-      <div className="border-b p-3"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nombre, número o mensaje" className="h-9 pl-9" /></div>
-        {!connected && <p className="mt-2 text-xs text-amber-700">WhatsApp no está conectado: no llegan mensajes nuevos.</p>}</div>
-      <ul className="min-h-0 flex-1 divide-y overflow-y-auto">{items.map((item) => <li key={item.id}>
-        <button type="button" onClick={() => setSelected(item.id)} className={`flex w-full items-start gap-3 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800 ${selected === item.id ? "bg-green-50 dark:bg-green-950/30" : ""}`}>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-800"><UserRound className="h-5 w-5" /></div>
-          <div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate font-semibold">{item.name || (item.phone ? `+${item.phone}` : "Contacto")}</p><span className="shrink-0 text-[10px] text-muted-foreground">{time(item.lastMessageAt)}</span></div>
-            <p className="truncate text-xs text-muted-foreground">{item.lastMessage}</p>
-            <div className="mt-1 flex flex-wrap gap-1">{item.handoffRequested && <span className="rounded bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">Pide persona</span>}
-              {!item.botEnabled && !item.handoffRequested && <span className="rounded bg-slate-100 px-1.5 text-[10px] text-slate-700">{item.assignedName ? `Atiende ${item.assignedName}` : "Asistente pausado"}</span>}
-              {item.openOrders > 0 && <span className="rounded bg-indigo-100 px-1.5 text-[10px] text-indigo-700">{item.openOrders} pedido(s)</span>}
-              {item.cartItems > 0 && <span className="rounded bg-amber-100 px-1.5 text-[10px] text-amber-800">armando pedido</span>}
-              {item.unread > 0 && <span className="rounded-full bg-green-600 px-1.5 text-[10px] font-bold text-white">{item.unread}</span>}</div></div>
-        </button></li>)}
-        {!items.length && <li className="p-6 text-center text-sm text-muted-foreground">Sin conversaciones todavía.</li>}</ul>
-    </aside>
-    <section className={`min-h-0 flex-col ${selected ? "flex" : "hidden md:flex"}`}>
-      {!current ? <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">Elegí una conversación para ver los mensajes.</div> : <>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
-          <div className="flex items-center gap-2"><Button variant="ghost" size="sm" className="md:hidden" onClick={() => setSelected(null)}>←</Button>
-            <div><p className="font-bold">{current.name || "Contacto"}</p><p className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{current.phone ? `+${current.phone}` : "número oculto"} · {current.botEnabled ? "responde el asistente" : current.assignedName ? `atiende ${current.assignedName}` : "asistente pausado"}</p></div></div>
-          <div className="flex gap-2">{current.botEnabled ? <Button size="sm" variant="outline" disabled={sending} onClick={() => void act("take")}><Hand className="mr-1 h-4 w-4" />Tomar conversación</Button>
-            : <Button size="sm" variant="outline" disabled={sending} onClick={() => void act("release")}><Bot className="mr-1 h-4 w-4" />Devolver al asistente</Button>}</div>
-        </div>
-        {openOrders.length > 0 && <div className="flex flex-wrap gap-2 border-b bg-indigo-50/60 px-3 py-2 text-xs dark:bg-indigo-950/20">{openOrders.map((order) => <Link key={order.id} href={`/crm?q=${order.id}`}
-          className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 font-semibold text-indigo-700 shadow-sm dark:bg-slate-800"><KanbanSquare className="h-3.5 w-3.5" />#{order.id} · {typeLabel[order.orderType]} · {order.confirmation === "pending" ? "por confirmar" : sourceLabel[order.source]}</Link>)}</div>}
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#efeae2] p-4 dark:bg-slate-950">
-          {detail.messages.map((message) => message.author === "system" && message.status === "simulated"
-            ? <p key={message.id} className="mx-auto w-fit rounded-lg bg-white/80 px-3 py-1 text-center text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message.body} · {time(message.createdAt)}</p>
-            : <div key={message.id} className={`flex ${message.direction === "out" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm shadow-sm ${message.direction === "out" ? "rounded-tr-sm bg-[#d9fdd3] text-slate-900 dark:bg-emerald-900 dark:text-white" : "rounded-tl-sm bg-white text-slate-900 dark:bg-slate-800 dark:text-white"}`}>
-                {message.body.replace(/\*(.+?)\*/g, "$1")}
-                <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-slate-400">{message.direction === "out" && (message.author === "bot" ? <Bot className="h-3 w-3" /> : message.author === "staff" ? <UserRound className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />)}
-                  {message.direction === "out" ? message.authorName || message.author : ""} {time(message.createdAt)} {message.status === "failed" ? "· no enviado" : message.direction === "out" ? <CheckCheck className="h-3 w-3" /> : null}</p></div></div>)}
-          <div ref={end} />
-        </div>
-        <form className="flex gap-2 border-t p-3" onSubmit={(event) => { event.preventDefault(); if (draft.trim()) void act("send", draft.trim()) }}>
-          <Input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={connected ? "Escribí una respuesta (pausa el asistente en esta conversación)" : "WhatsApp desconectado"} maxLength={4000} />
-          <Button type="submit" disabled={!draft.trim() || sending} className="bg-green-600 hover:bg-green-700"><Send className="h-4 w-4" /></Button>
-        </form>
-      </>}
-    </section>
-  </div>
-}

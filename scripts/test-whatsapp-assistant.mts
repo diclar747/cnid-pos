@@ -42,6 +42,7 @@ await db.connect()
 const created = { products: [] as number[], zones: [] as number[], conversations: [] as number[], orders: [] as number[] }
 const sent: { jid: string; text: string }[] = []
 let previousAiEnabled: boolean | null = null
+let previousCompany: any = null
 const fakeSock = { sendMessage: async (jid: string, content: { text: string }) => { sent.push({ jid, text: content.text }); return { key: { id: `OUT-${randomBytes(6).toString("hex")}` } } },
   readMessages: async () => undefined, sendPresenceUpdate: async () => undefined, updateMediaMessage: async () => undefined }
 globalThis.restoposWhatsApp = new Map([["public", { sock: fakeSock as any, stopping: false, retries: 0, qrCount: 0, registered: true, timer: null, starting: null }]])
@@ -179,12 +180,49 @@ try {
   await incoming("¿Cuánto sale?")
   check(sent.at(-1)?.text.includes("no te entendí bien") && !sent.at(-1)?.text.includes("5.000"), "Una respuesta inválida de la IA no se reenvía")
 
-  console.log("OK: WhatsApp + Niro: contexto real, sin duplicados, opciones y precios validados, delivery por zona, pedido pendiente, avisos de estado, derivación y errores")
+  // 12) Delivery con ubicación de WhatsApp: la zona se elige por distancia al local y el pedido guarda las coordenadas.
+  const company = (await db.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}
+  previousCompany = company
+  await db.query("UPDATE company_config SET data = data || $1::jsonb WHERE id = 1", [JSON.stringify({ latitude: "-25.2867", longitude: "-57.6470", serviceModes: { dineIn: true, delivery: true, pickup: true } })])
+  const near = await db.query("INSERT INTO delivery_zones (name, areas, fee, max_km) VALUES ($1, '', 7000, 5) RETURNING id", [`Radio WA ${suffix}`])
+  created.zones.push(Number(near.rows[0].id))
+  const jid2 = `595982${suffix.replace(/\D/g, "3").padEnd(6, "3").slice(0, 6)}@s.whatsapp.net`
+  let counter2 = 0
+  const send2 = async (message: any) => {
+    counter2 += 1
+    await handleUpsert("public", fakeSock, { type: "notify", messages: [{ key: { remoteJid: jid2, id: `LOC-${suffix}-${counter2}`, fromMe: false }, pushName: "Cliente Ubicación", messageTimestamp: Math.floor(Date.now() / 1000), message }] })
+    await new Promise((resolve) => setTimeout(resolve, 400))
+  }
+  script = () => ({ content: JSON.stringify({ reply: "¡Dale! Pasame tu ubicación 📍", actions: [{ type: "add_item", productId, quantity: 1, optionIds: [990012] }, { type: "set_order_type", value: "delivery" }, { type: "set_name", name: "Cliente Ubicación" }] }) })
+  await send2({ conversation: "Quiero una hamburguesa bien cocida por delivery" })
+  const conversation2 = (await db.query("SELECT id FROM wa_conversations WHERE jid = $1", [jid2])).rows[0]
+  created.conversations.push(Number(conversation2.id))
+  script = () => ({ content: JSON.stringify({ reply: "¡Gracias! Ya tengo tu ubicación.", actions: [] }) })
+  await send2({ locationMessage: { degreesLatitude: -25.2900, degreesLongitude: -57.6400, name: "Casa", address: "Barrio Jara" } })
+  const cart2 = (await db.query("SELECT cart FROM wa_conversations WHERE id = $1", [conversation2.id])).rows[0].cart
+  check(cart2.location?.lat === -25.29 && cart2.zoneId === Number(near.rows[0].id), `Ubicación y zona por distancia: ${JSON.stringify(cart2)}`)
+  check(seen.at(-1)?.system.includes("UBICACIÓN DEL CLIENTE: compartida") && seen.at(-1)?.system.includes(`zona [${near.rows[0].id}]`), "La IA ve la ubicación y la zona")
+  check(sent.at(-1)?.text.includes(`Envío (Radio WA ${suffix}): Gs 7.000`) && sent.at(-1)?.text.includes("ubicación compartida"), `Resumen con envío por distancia: ${sent.at(-1)?.text}`)
+  script = () => ({ content: JSON.stringify({ reply: "Listo", actions: [{ type: "confirm_order" }] }) })
+  await send2({ conversation: "Confirmo" })
+  const order2 = (await db.query("SELECT * FROM service_orders WHERE wa_conversation_id = $1 ORDER BY id DESC LIMIT 1", [conversation2.id])).rows[0]
+  check(order2, "Pedido con ubicación")
+  created.orders.push(Number(order2.id))
+  check(Number(order2.delivery_lat) === -25.29 && Number(order2.delivery_lng) === -57.64 && Number(order2.delivery_fee) === 7000, `Coordenadas en el pedido: ${order2.delivery_lat},${order2.delivery_lng}`)
+  // Ubicación lejana: fuera de zona.
+  script = () => ({ content: JSON.stringify({ reply: "Veamos.", actions: [{ type: "add_item", productId, quantity: 1, optionIds: [990011] }, { type: "set_order_type", value: "delivery" }] }) })
+  await send2({ conversation: "Otra para delivery" })
+  script = () => ({ content: JSON.stringify({ reply: "Recibido.", actions: [] }) })
+  await send2({ locationMessage: { degreesLatitude: -25.7000, degreesLongitude: -57.6400 } })
+  check(sent.at(-1)?.text.includes("fuera de nuestras zonas de delivery"), `Fuera de zona: ${sent.at(-1)?.text}`)
+
+  console.log("OK: WhatsApp + Niro: contexto real, sin duplicados, opciones y precios validados, delivery por zona y por ubicación, pedido pendiente, avisos de estado, derivación y errores")
 } finally {
   for (const id of created.orders) { await db.query("DELETE FROM kitchen_tickets WHERE order_id = $1", [id]); await db.query("DELETE FROM service_orders WHERE id = $1", [id]) }
+  if (previousCompany) await db.query("UPDATE company_config SET data = $1::jsonb WHERE id = 1", [JSON.stringify(previousCompany)])
   if (previousAiEnabled !== null) await db.query("UPDATE ai_settings SET enabled = $1 WHERE id = 1", [previousAiEnabled])
   for (const id of created.conversations) { await db.query("DELETE FROM ai_interactions WHERE conversation_id = $1", [id]); await db.query("DELETE FROM wa_conversations WHERE id = $1", [id]) }
-  await db.query("DELETE FROM customers WHERE name = 'Lucía Prueba'")
+  await db.query("DELETE FROM customers WHERE name IN ('Lucía Prueba', 'Cliente Ubicación')")
   if (created.zones.length) await db.query("DELETE FROM delivery_zones WHERE id = ANY($1::bigint[])", [created.zones])
   if (created.products.length) await db.query("DELETE FROM products WHERE id = ANY($1::bigint[])", [created.products])
   await db.query("DELETE FROM ai_interactions WHERE conversation_id IS NULL AND created_at > NOW() - INTERVAL '10 minutes' AND model = 'niro-test'")

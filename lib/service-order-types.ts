@@ -53,6 +53,8 @@ export interface ServiceOrder {
   /** Costo de envío; no está incluido en `total` (suma de productos). */
   deliveryFee: number
   deliveryAddress: string
+  /** Ubicación compartida por el cliente (WhatsApp), para el repartidor. */
+  deliveryLocation: { lat: number; lng: number } | null
   courierId: number | null
   courierName: string
   /** total + deliveryFee: lo que paga el cliente. */
@@ -94,6 +96,8 @@ export interface DeliveryZone {
   fee: number
   freeOver: number | null
   etaMinutes: number | null
+  /** Radio de la zona en km desde el local; con la ubicación del cliente se elige la zona sola. */
+  maxKm: number | null
   isActive: boolean
   sortOrder: number
 }

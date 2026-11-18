@@ -4,11 +4,15 @@ import { schemaQuery, type SchemaQuery } from "../db"
 import { niroConfigured, niroTranscribe } from "../niro"
 import { notifyStaff } from "../web-push"
 
-// Mensajes entrantes de WhatsApp: se guardan una sola vez, se transcriben los audios y se pasan al asistente
+// Mensajes entrantes de WhatsApp: se guardan una sola vez (con el audio o la imagen original para escucharlos
+// y verlos en la bandeja), se transcriben los audios si está activado y se pasan al asistente
 // (o al personal cuando la conversación está tomada por una persona).
 
-type Incoming = { kind: "text" | "audio" | "image" | "location" | "other"; body: string }
+type Media = { buffer: Buffer; mime: string; seconds: number | null }
+type Incoming = { kind: "text" | "audio" | "image" | "location" | "other"; body: string; media?: Media; location?: { lat: number; lng: number; label: string } }
 const queues = new Map<string, Promise<void>>()
+const MAX_AUDIO = 16 * 1024 * 1024
+const MAX_IMAGE = 5 * 1024 * 1024
 
 function unwrap(message: any): any {
   let content = message
@@ -21,7 +25,12 @@ function unwrap(message: any): any {
   return content
 }
 
-async function readContent(baileys: any, sock: any, msg: any, query: SchemaQuery, conversationId: number): Promise<Incoming | null> {
+async function download(baileys: any, sock: any, msg: any): Promise<Buffer | null> {
+  try { return await baileys.downloadMediaMessage(msg, "buffer", {}, { logger: undefined, reuploadRequest: sock.updateMediaMessage }) }
+  catch (error) { console.error("WhatsApp: no se pudo descargar el archivo", error instanceof Error ? error.message : error); return null }
+}
+
+async function readContent(baileys: any, sock: any, msg: any, query: SchemaQuery, conversationId: number, transcribe: boolean): Promise<Incoming | null> {
   const m = unwrap(msg.message)
   if (!m || m.protocolMessage || m.reactionMessage || m.pollUpdateMessage) return null
   const text = m.conversation ?? m.extendedTextMessage?.text ?? m.buttonsResponseMessage?.selectedDisplayText ?? m.listResponseMessage?.title
@@ -31,24 +40,35 @@ async function readContent(baileys: any, sock: any, msg: any, query: SchemaQuery
     const place = m.locationMessage ?? m.liveLocationMessage
     const lat = Number(place.degreesLatitude), lng = Number(place.degreesLongitude)
     const label = [place.name, place.address].filter(Boolean).join(" · ")
-    return { kind: "location", body: `📍 Ubicación compartida${label ? `: ${label}` : ""} https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}` }
+    const valid = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+    return { kind: "location", body: `📍 Ubicación compartida${label ? `: ${label}` : ""} https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`,
+      location: valid ? { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6, label: label.slice(0, 200) } : undefined }
   }
   if (m.audioMessage) {
-    if (!niroConfigured()) return { kind: "audio", body: "🎤 [audio]" }
+    const mime = String(m.audioMessage.mimetype ?? "audio/ogg").split(";")[0] || "audio/ogg"
+    const seconds = Number(m.audioMessage.seconds) || null
+    const buffer = await download(baileys, sock, msg)
+    const media = buffer && buffer.length <= MAX_AUDIO ? { buffer, mime, seconds } : undefined
+    if (!buffer) return { kind: "audio", body: "🎤 [audio que no se pudo descargar]" }
+    if (!transcribe || !niroConfigured()) return { kind: "audio", body: "🎤 [audio sin transcribir]", media }
+    if (buffer.length > MAX_AUDIO) return { kind: "audio", body: "🎤 [audio demasiado largo]" }
     const started = Date.now()
     try {
-      const buffer = await baileys.downloadMediaMessage(msg, "buffer", {}, { logger: undefined, reuploadRequest: sock.updateMediaMessage })
-      if (buffer.length > 16 * 1024 * 1024) return { kind: "audio", body: "🎤 [audio demasiado largo]" }
-      const result = await niroTranscribe(buffer, "audio.ogg", m.audioMessage.mimetype?.split(";")[0] || "audio/ogg")
+      const result = await niroTranscribe(buffer, "audio.ogg", mime)
       await query(`INSERT INTO ai_interactions (conversation_id, kind, status, latency_ms) VALUES ($1, 'transcription', 'ok', $2)`, [conversationId, result.latencyMs])
-      return { kind: "audio", body: result.text ? `🎤 ${result.text}` : "🎤 [audio sin texto reconocible]" }
+      return { kind: "audio", body: result.text ? `🎤 ${result.text}` : "🎤 [audio sin texto reconocible]", media }
     } catch (error) {
       await query(`INSERT INTO ai_interactions (conversation_id, kind, status, latency_ms, error) VALUES ($1, 'transcription', 'error', $2, $3)`,
         [conversationId, Date.now() - started, (error instanceof Error ? error.message : String(error)).slice(0, 300)])
-      return { kind: "audio", body: "🎤 [audio que no se pudo transcribir]" }
+      return { kind: "audio", body: "🎤 [audio que no se pudo transcribir]", media }
     }
   }
-  if (m.imageMessage) return { kind: "image", body: `🖼️ [imagen]${m.imageMessage.caption ? ` ${m.imageMessage.caption}` : ""}` }
+  if (m.imageMessage) {
+    const buffer = await download(baileys, sock, msg)
+    const mime = String(m.imageMessage.mimetype ?? "image/jpeg").split(";")[0] || "image/jpeg"
+    return { kind: "image", body: `🖼️ [imagen]${m.imageMessage.caption ? ` ${m.imageMessage.caption}` : ""}`,
+      media: buffer && buffer.length <= MAX_IMAGE && /^image\/(jpeg|png|webp|gif)$/.test(mime) ? { buffer, mime, seconds: null } : undefined }
+  }
   if (m.videoMessage || m.documentMessage || m.stickerMessage || m.contactMessage) return { kind: "other", body: "[archivo adjunto]" }
   return null
 }
@@ -61,10 +81,31 @@ function phoneOf(baileys: any, key: any) {
   return ""
 }
 
+/** Foto de perfil del contacto: se guarda la imagen (los enlaces de WhatsApp vencen) y se revisa cada 24 h. */
+async function refreshAvatar(query: SchemaQuery, sock: any, conversationId: number, jids: string[]) {
+  const current = (await query("SELECT checked_at FROM wa_avatars WHERE conversation_id = $1", [conversationId])).rows[0]
+  if (current && Date.now() - new Date(current.checked_at).getTime() < 24 * 60 * 60 * 1000) return
+  let data: Buffer | null = null, mime: string | null = null
+  for (const jid of jids.filter(Boolean)) {
+    try {
+      const url = await sock.profilePictureUrl?.(jid, "image")
+      if (!url) continue
+      const response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+      if (!response.ok) continue
+      const bytes = Buffer.from(await response.arrayBuffer())
+      if (bytes.length > 0 && bytes.length <= 2 * 1024 * 1024) { data = bytes; mime = response.headers.get("content-type")?.split(";")[0] || "image/jpeg"; break }
+    } catch { /* sin foto o privada */ }
+  }
+  await query(`INSERT INTO wa_avatars (conversation_id, mime, data, checked_at) VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (conversation_id) DO UPDATE SET mime = COALESCE(EXCLUDED.mime, wa_avatars.mime), data = COALESCE(EXCLUDED.data, wa_avatars.data), checked_at = NOW()`,
+    [conversationId, mime, data])
+}
+
 export async function handleUpsert(schema: string, sock: any, event: { messages: any[]; type: string }) {
   if (event.type !== "notify") return
   const baileys = await import("@whiskeysockets/baileys")
   const query = await schemaQuery(schema)
+  const transcribe = (await query("SELECT transcribe_audio FROM ai_settings WHERE id = 1")).rows[0]?.transcribe_audio !== false
   for (const msg of event.messages) {
     const jid: string | undefined = msg.key?.remoteJid
     if (!jid || !msg.message || baileys.isJidGroup(jid) || baileys.isJidBroadcast(jid) || baileys.isJidStatusBroadcast(jid) || baileys.isJidNewsletter(jid)) continue
@@ -79,16 +120,26 @@ export async function handleUpsert(schema: string, sock: any, event: { messages:
         name = CASE WHEN EXCLUDED.name <> '' AND NOT $4 THEN EXCLUDED.name ELSE wa_conversations.name END, updated_at = NOW()
       RETURNING id, bot_enabled, name`, [jid, phone, fromMe ? "" : String(msg.pushName ?? "").slice(0, 80), fromMe])).rows[0]
     const conversationId = Number(conversation.id)
-    const content = await readContent(baileys, sock, msg, query, conversationId)
+    const content = await readContent(baileys, sock, msg, query, conversationId, transcribe)
     if (!content) continue
     const inserted = await query(`INSERT INTO wa_messages (conversation_id, wa_id, direction, author, author_name, kind, body, status, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, to_timestamp($9)) ON CONFLICT DO NOTHING RETURNING id`,
       [conversationId, waId, fromMe ? "out" : "in", fromMe ? "staff" : "customer", fromMe ? "Desde el teléfono" : conversation.name, content.kind, content.body,
         fromMe ? "sent" : "received", Number(msg.messageTimestamp ?? Date.now() / 1000)])
     if (!inserted.rows[0]) continue
+    const messageId = Number(inserted.rows[0].id)
+    if (content.media) {
+      const media = await query(`INSERT INTO wa_media (message_id, mime, size, seconds, data) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [messageId, content.media.mime, content.media.buffer.length, content.media.seconds, content.media.buffer])
+      await query("UPDATE wa_messages SET media_id = $2 WHERE id = $1", [messageId, media.rows[0].id])
+    }
     await query(`UPDATE wa_conversations SET last_message = $2, last_message_at = NOW(), unread = unread + $3, updated_at = NOW() WHERE id = $1`,
       [conversationId, content.body.slice(0, 200), fromMe ? 0 : 1])
+    // La ubicación compartida queda en el pedido en curso: es la referencia para el delivery.
+    if (content.location && !fromMe) await query("UPDATE wa_conversations SET cart = cart || jsonb_build_object('location', $2::jsonb) WHERE id = $1",
+      [conversationId, JSON.stringify(content.location)])
     if (fromMe) continue
+    void refreshAvatar(query, sock, conversationId, [jid, msg.key.remoteJidAlt]).catch(() => undefined)
     // Un mensaje a la vez por conversación, en orden.
     const key = `${schema}:${conversationId}`
     const previous = queues.get(key) ?? Promise.resolve()

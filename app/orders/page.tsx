@@ -112,7 +112,7 @@ export default function OrdersPage() {
           {order.source === "whatsapp" && <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1 text-emerald-800"><MessageCircle className="h-3 w-3" /> WhatsApp</span>}
         </div>
         {order.orderType === "delivery" && (order.deliveryAddress || order.deliveryZoneName || order.courierName) && <div className="mt-2 space-y-1 text-xs text-slate-700 dark:text-slate-300">
-          {(order.deliveryAddress || order.deliveryZoneName) && <p className="flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{[order.deliveryAddress, order.deliveryZoneName].filter(Boolean).join(" · ")}</p>}
+          {(order.deliveryAddress || order.deliveryZoneName) && <p className="flex items-start gap-1"><MapPin className="mt-0.5 h-3 w-3 shrink-0" />{[order.deliveryAddress, order.deliveryZoneName].filter(Boolean).join(" · ")}{order.deliveryLocation && <a href={`https://maps.google.com/?q=${order.deliveryLocation.lat},${order.deliveryLocation.lng}`} target="_blank" rel="noreferrer" className="ml-1 shrink-0 font-semibold text-sky-700 underline">Ver en el mapa</a>}</p>}
           {order.courierName && <p className="flex items-center gap-1"><Bike className="h-3 w-3" /> {order.courierName}</p>}
         </div>}
         {order.status === "open" && order.confirmation === "pending" && <p className="mt-2 rounded-lg bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">Pendiente de confirmación: revisalo antes de enviarlo a cocina.</p>}
