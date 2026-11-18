@@ -18,5 +18,5 @@ const app = next({ dev: false, dir: process.cwd(), hostname: address, port: 3443
 await app.prepare()
 const handler = app.getRequestHandler()
 https.createServer({ key, cert }, (request, response) => handler(request, response)).listen(3443, address, () => {
-  console.log(`CNID POS para teléfono: https://${address}:3443/login`)
+  console.log(`RestoPOS para teléfono: https://${address}:3443/login`)
 })

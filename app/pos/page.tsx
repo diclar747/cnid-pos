@@ -261,7 +261,7 @@ export default function POSPage() {
               </Button>
               <div className="flex items-center gap-2.5">
                 <div className="hidden h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 text-white shadow-lg shadow-indigo-300/40 sm:flex"><Sparkles className="h-5 w-5" /></div>
-                <div><h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">CNID <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></h1>
+                <div><h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></h1>
                 <p className="hidden text-xs text-muted-foreground sm:block">
                   {user?.restaurantName ? `${user.restaurantName} · ` : ""}{user?.name} -{" "}
                   {user?.role === "admin" ? "Administrador" : user?.role === "manager" ? "Gerente" : "Cajero"}

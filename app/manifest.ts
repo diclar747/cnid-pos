@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CNID POS",
-    short_name: "CNID POS",
+    name: "RestoPOS",
+    short_name: "RestoPOS",
     description: "Punto de venta, productos, proveedores e inventario",
     start_url: "/login",
     scope: "/",

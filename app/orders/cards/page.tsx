@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input"
 import ProtectedRoute from "../../components/protected-route"
 import { apiRequest } from "@/lib/api-client"
 import type { OrderCard } from "@/lib/service-order-types"
+import { useCompany } from "../../context/company-context"
 
 function PrintableCard({ card, baseUrl }: { card: OrderCard; baseUrl: string }) {
+  const { companyConfig } = useCompany()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (!canvasRef.current || !baseUrl) return
@@ -19,7 +21,7 @@ function PrintableCard({ card, baseUrl }: { card: OrderCard; baseUrl: string }) 
       .catch(() => toast.error("No se pudo dibujar un código QR"))
   }, [card.code, baseUrl])
   return <article className="print-card break-inside-avoid rounded-2xl border-2 border-indigo-200 bg-white p-4 text-center text-slate-900 shadow-sm">
-    <div className="mb-2 flex items-center justify-center gap-2 text-sm font-extrabold tracking-wide text-indigo-700"><Ticket className="h-4 w-4" /> DE LA CASA</div>
+    <div className="mb-2 flex items-center justify-center gap-2 text-sm font-extrabold tracking-wide text-indigo-700"><Ticket className="h-4 w-4" /> <span className="uppercase">{companyConfig.name || "Restaurante"}</span></div>
     <p className="min-h-6 text-base font-bold">{card.label || `Tarjeta ${card.id}`}</p>
     <canvas ref={canvasRef} className="mx-auto my-2 max-w-full" aria-label={`Código QR de ${card.label || card.code}`} />
     <p className="font-mono text-[10px] tracking-wide">{card.code}</p>

@@ -12,10 +12,10 @@ import { CompanyProvider } from "./context/company-context"
 import { PwaRegistration } from "./components/pwa-registration"
 
 export const metadata: Metadata = {
-  title: "CNID POS System",
+  title: "RestoPOS",
   description: "Sistema de punto de venta completo para restaurantes y comercios",
-  appleWebApp: { capable: true, title: "CNID POS", statusBarStyle: "default" },
-  icons: { apple: "/pwa-192.png" },
+  appleWebApp: { capable: true, title: "RestoPOS", statusBarStyle: "default" },
+  icons: { icon: "/pwa-192.png", apple: "/pwa-192.png" },
 }
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f172a" }

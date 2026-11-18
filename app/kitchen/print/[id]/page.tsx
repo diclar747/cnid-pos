@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button"
 import ProtectedRoute from "../../../components/protected-route"
 import { apiRequest } from "@/lib/api-client"
 import type { KitchenTicket } from "@/lib/service-order-types"
+import { useCompany } from "../../../context/company-context"
 
 const typeLabel = { dineIn: "LOCAL", delivery: "DELIVERY", pickup: "RETIRO" }
 
 export default function KitchenPrintPage() {
   const params = useParams<{ id: string }>()
+  const { companyConfig } = useCompany()
   const [ticket, setTicket] = useState<KitchenTicket | null>(null)
   const [error, setError] = useState("")
   const printed = useRef(false)
@@ -32,7 +34,7 @@ export default function KitchenPrintPage() {
     {error && <p className="mx-auto max-w-sm rounded-lg bg-red-100 p-4 text-red-800">{error}</p>}
     {!ticket && !error && <p className="text-center">Cargando comanda…</p>}
     {ticket && <article className="ticket mx-auto w-full max-w-sm bg-white p-5 font-mono text-sm shadow-lg">
-      <div className="border-b-2 border-dashed border-black pb-3 text-center"><p className="text-lg font-extrabold">DE LA CASA</p><p className="text-xs">COMANDA DE COCINA</p><p className="mt-2 text-3xl font-black">#{ticket.orderId}</p><p>Ticket #{ticket.id} · {typeLabel[ticket.orderType]}</p></div>
+      <div className="border-b-2 border-dashed border-black pb-3 text-center"><p className="text-lg font-extrabold uppercase">{companyConfig.name || "Restaurante"}</p><p className="text-xs">COMANDA DE COCINA</p><p className="mt-2 text-3xl font-black">#{ticket.orderId}</p><p>Ticket #{ticket.id} · {typeLabel[ticket.orderType]}</p></div>
       <div className="space-y-1 border-b-2 border-dashed border-black py-3"><p><strong>Fecha:</strong> {new Date(ticket.createdAt).toLocaleString("es-PY")}</p>{ticket.tableLabel && <p><strong>Mesa:</strong> {ticket.tableLabel}</p>}{ticket.waiterName && <p><strong>Mesero:</strong> {ticket.waiterName}</p>}{ticket.customerName && <p><strong>Cliente:</strong> {ticket.customerName}</p>}{ticket.cardCode && <p><strong>Tarjeta:</strong> {ticket.cardCode.slice(-6)}</p>}</div>
       <div className="space-y-4 border-b-2 border-dashed border-black py-4">{ticket.items.map((line) => <div key={line.lineId}><div className="flex gap-3 text-base font-extrabold"><span>{line.quantity}×</span><span>{line.productName}</span></div>{line.modifiers.map((option) => <p key={`${option.groupId}-${option.optionId}`} className="pl-7 text-xs">+ {option.name}</p>)}</div>)}</div>
       {ticket.notes && <div className="border-b-2 border-dashed border-black py-3"><strong>NOTAS:</strong><p className="mt-1 whitespace-pre-wrap">{ticket.notes}</p></div>}

@@ -68,7 +68,7 @@ export default function SuccessPage() {
     if (navigator.share && saleData) {
       try {
         await navigator.share({
-          title: "Recibo de Venta - CNID POS",
+          title: "Recibo de Venta - RestoPOS",
           text: `Venta #${saleData.id} completada por Gs ${saleData.total.toLocaleString("es-PY")}`,
           url: window.location.href,
         })
@@ -193,7 +193,7 @@ export default function SuccessPage() {
 
         {/* Footer */}
         <div className="text-center text-sm text-muted-foreground">
-          <p>Gracias por usar CNID POS</p>
+          <p>Gracias por usar RestoPOS</p>
           <p>¡Esperamos verte pronto!</p>
         </div>
       </div>

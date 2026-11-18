@@ -14,7 +14,7 @@ $serverRequest = Join-Path $certDirectory 'server.csr'
 $serverExtensions = Join-Path $certDirectory 'server.ext'
 
 if (-not (Test-Path -LiteralPath $caKey)) {
-  & $openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout $caKey -out $caCert -subj '/CN=CNID POS Local CA' -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign' 2>$null
+  & $openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes -keyout $caKey -out $caCert -subj '/CN=RestoPOS Local CA' -addext 'basicConstraints=critical,CA:TRUE' -addext 'keyUsage=critical,keyCertSign,cRLSign' 2>$null
   if ($LASTEXITCODE -ne 0) { throw 'No se pudo generar la autoridad local.' }
 }
 & $openssl x509 -in $caCert -outform DER -out $caForPhone

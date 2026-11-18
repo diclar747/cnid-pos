@@ -152,7 +152,7 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
         </div>
         {!isCollapsed && (
           <div>
-            <h1 className="text-base font-bold text-white">CNID POS</h1>
+            <h1 className="text-base font-bold text-white">RestoPOS</h1>
             <p className="text-xs text-indigo-200/65">Panel de administración</p>
           </div>
         )}
@@ -256,7 +256,7 @@ export default function AdminNav({ isCollapsed, setIsCollapsed }: AdminNavProps)
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-400">
               <ShoppingCart className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-lg font-bold text-white">CNID POS</h1>
+            <h1 className="text-lg font-bold text-white">RestoPOS</h1>
           </div>
           <Button
             variant="ghost"
