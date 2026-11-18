@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { canTakeOrders, getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { mapCustomer, recordError, validateCustomer } from "@/lib/customer-records"
+import { mapCustomer, recordError, validateCredit, validateCustomer } from "@/lib/customer-records"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ id: string }> }
@@ -37,9 +37,13 @@ export async function PUT(request: NextRequest, { params }: Context) {
   const id = Number((await params).id)
   if (!Number.isSafeInteger(id) || id <= 0) return NextResponse.json({ error: "Cliente inválido." }, { status: 400 })
   try {
-    const c = validateCustomer(await request.json().catch(() => null))
-    const result = await db.query(`UPDATE customers SET name=$1, phone=$2, ruc=$3, email=$4, address=$5, notes=$6, updated_at=NOW()
-      WHERE id=$7 RETURNING *`, [c.name, c.phone, c.ruc, c.email, c.address, c.notes, id])
+    const body = await request.json().catch(() => null)
+    const c = validateCustomer(body)
+    const credit = hasPermission(user, "manage_sales") ? validateCredit(body) : undefined
+    const result = await db.query(`UPDATE customers SET name=$1, phone=$2, ruc=$3, email=$4, address=$5, notes=$6,
+      credit_enabled = COALESCE($8, credit_enabled), credit_limit = CASE WHEN $8::boolean IS NULL THEN credit_limit ELSE $9::bigint END,
+      billing_cycle = COALESCE($10, billing_cycle), updated_at=NOW()
+      WHERE id=$7 RETURNING *`, [c.name, c.phone, c.ruc, c.email, c.address, c.notes, id, credit ? credit.creditEnabled : null, credit ? credit.creditLimit : null, credit ? credit.billingCycle : null])
     if (!result.rows[0]) return NextResponse.json({ error: "Cliente no encontrado." }, { status: 404 })
     return NextResponse.json({ item: mapCustomer(result.rows[0]) })
   } catch (error) {

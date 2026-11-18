@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
   const [summary, movements, payments, pending, history, methods, unassigned] = await Promise.all([
     sessionId ? cashSummary(db, sessionId) : null,
     sessionId ? db.query("SELECT * FROM cash_movements WHERE session_id = $1 ORDER BY created_at DESC LIMIT 200", [sessionId]) : null,
-    sessionId ? db.query(`SELECT p.*, s.data->>'customerName' AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id
+    sessionId ? db.query(`SELECT p.*, COALESCE(s.data->>'customerName', c.name) AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.session_id = $1 ORDER BY p.created_at DESC LIMIT 200`, [sessionId]) : null,
-    db.query(`SELECT p.*, s.data->>'customerName' AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id
+    db.query(`SELECT p.*, COALESCE(s.data->>'customerName', c.name) AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.status = 'pending' ORDER BY p.created_at LIMIT 200`),
     db.query("SELECT * FROM cash_sessions WHERE status = 'closed' ORDER BY closed_at DESC LIMIT 30"),
     listPaymentMethods(db),

@@ -16,10 +16,11 @@ type Method = { code: string; name: string; kind: string; needsVerification: boo
 type Session = { id: number; status: string; openingAmount: number; openedBy: string; openedAt: string; closedBy: string; closedAt: string | null
   expectedCash: number | null; countedCash: number | null; difference: number | null; notes: string }
 type Summary = { openingAmount: number; byMethod: { method: string; name: string; kind: string; confirmed: number; pending: number; rejected: number; count: number }[]
-  salesTotal: number; salesCount: number; incomes: number; expenses: number; cashSales: number; cashIncomes: number; cashExpenses: number; expectedCash: number; pendingCount: number }
+  salesTotal: number; salesCount: number; incomes: number; expenses: number; cashSales: number; cashIncomes: number; cashExpenses: number; expectedCash: number; pendingCount: number
+  creditSales?: number; accountPayments?: { method: string; name: string; confirmed: number; pending: number; count: number }[]; accountTotal?: number; cashAccountPayments?: number }
 type Movement = { id: number; kind: "income" | "expense"; method: string; amount: number; description: string; userName: string; createdAt: string }
 type Payment = { id: number; saleId: number | null; orderId: number | null; method: string; methodName: string; amount: number; status: string; reference: string
-  createdBy: string; verifiedBy: string; verifyNote: string; createdAt: string; customerName: string }
+  createdBy: string; verifiedBy: string; verifyNote: string; createdAt: string; customerName: string; purpose?: string }
 type CashState = { session: Session | null; summary: Summary | null; methods: Method[]; movements: Movement[]; payments: Payment[]; pending: Payment[]
   history: Session[]; withoutSession: { count: number; total: number } }
 
@@ -103,8 +104,8 @@ export default function CashPage() {
         ) : summary && (
           <div className="space-y-6">
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat title="Efectivo esperado" value={money(summary.expectedCash)} note={`Inicial ${money(summary.openingAmount)} + ventas ${money(summary.cashSales)}`} tone="from-emerald-500 to-teal-600" />
-              <Stat title="Ventas del turno" value={money(summary.salesTotal)} note={`${summary.salesCount} cobros`} tone="from-indigo-600 to-violet-600" />
+              <Stat title="Efectivo esperado" value={money(summary.expectedCash)} note={`Inicial ${money(summary.openingAmount)} + ventas ${money(summary.cashSales)}${summary.cashAccountPayments ? ` + cuentas ${money(summary.cashAccountPayments)}` : ""}`} tone="from-emerald-500 to-teal-600" />
+              <Stat title="Ventas del turno" value={money(summary.salesTotal)} note={`${summary.salesCount} cobros${summary.creditSales ? ` · a cuenta ${money(summary.creditSales)}` : ""}`} tone="from-indigo-600 to-violet-600" />
               <Stat title="Ingresos" value={money(summary.incomes)} note={`Efectivo ${money(summary.cashIncomes)}`} tone="from-sky-500 to-blue-600" />
               <Stat title="Egresos" value={money(summary.expenses)} note={`Efectivo ${money(summary.cashExpenses)}`} tone="from-rose-500 to-orange-500" />
             </section>
@@ -116,10 +117,16 @@ export default function CashPage() {
                 <table className="mt-3 w-full text-sm">
                   <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Medio</th><th>Cobros</th><th className="text-right">Confirmado</th><th className="text-right">Por verificar</th></tr></thead>
                   <tbody>{summary.byMethod.length ? summary.byMethod.map((row) => <tr key={row.method} className="border-t">
-                    <td className="py-2 font-medium">{row.name}</td><td>{row.count}</td><td className="text-right">{money(row.confirmed)}</td>
+                    <td className="py-2 font-medium">{row.name}{row.kind === "credit" && <span className="block text-xs font-normal text-muted-foreground">No entra dinero: queda en la cuenta del cliente</span>}</td><td>{row.count}</td><td className="text-right">{money(row.confirmed)}</td>
                     <td className="text-right text-amber-700">{row.pending ? money(row.pending) : "—"}</td></tr>)
                     : <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">Todavía no hay cobros en este turno.</td></tr>}</tbody>
                 </table>
+                {summary.accountPayments && summary.accountPayments.length > 0 && <>
+                  <h3 className="mt-5 font-semibold">Pagos de cuentas corrientes</h3>
+                  <table className="mt-2 w-full text-sm"><tbody>{summary.accountPayments.map((row) => <tr key={row.method} className="border-t">
+                    <td className="py-2 font-medium">{row.name}</td><td>{row.count}</td><td className="text-right">{money(row.confirmed)}</td>
+                    <td className="text-right text-amber-700">{row.pending ? money(row.pending) : "—"}</td></tr>)}</tbody></table>
+                </>}
               </section>
               <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
                 <h2 className="font-bold">Registrar ingreso o egreso</h2>
@@ -150,7 +157,7 @@ export default function CashPage() {
               <section className="rounded-2xl border bg-white p-5 dark:bg-slate-900">
                 <h2 className="font-bold">Cobros del turno</h2>
                 <ul className="mt-3 max-h-80 divide-y overflow-y-auto text-sm">{state.payments.length ? state.payments.map((payment) => <li key={payment.id} className="flex items-center justify-between gap-3 py-2">
-                  <div className="min-w-0"><p className="truncate font-medium">{payment.saleId ? `Venta #${payment.saleId}` : "Pago"} · {payment.customerName || "Cliente"}</p>
+                  <div className="min-w-0"><p className="truncate font-medium">{payment.saleId ? `Venta #${payment.saleId}` : payment.purpose === "account" ? "Pago de cuenta" : "Pago"} · {payment.customerName || "Cliente"}</p>
                     <p className="text-xs text-muted-foreground">{time(payment.createdAt)} · {payment.methodName}{payment.reference ? ` · ${payment.reference}` : ""}</p></div>
                   <div className="text-right"><strong>{money(payment.amount)}</strong><StatusBadge status={payment.status} /></div></li>)
                   : <li className="py-6 text-center text-muted-foreground">Sin cobros todavía.</li>}</ul>
@@ -178,7 +185,7 @@ export default function CashPage() {
           <p className="text-sm text-amber-800 dark:text-amber-300">Confirmá cada transferencia o pago QR recién cuando lo veas acreditado en el banco o la billetera.</p>
           <ul className="mt-3 divide-y divide-amber-200 text-sm">{state.pending.map((payment) => <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
             <div><p className="font-semibold">{money(payment.amount)} · {payment.methodName}{payment.reference ? ` · ref. ${payment.reference}` : ""}</p>
-              <p className="text-xs">{payment.saleId ? `Venta #${payment.saleId}` : ""} · {payment.customerName || "Cliente"} · {time(payment.createdAt)} · cobró {payment.createdBy}</p></div>
+              <p className="text-xs">{payment.saleId ? `Venta #${payment.saleId}` : payment.purpose === "account" ? "Pago de cuenta" : ""} · {payment.customerName || "Cliente"} · {time(payment.createdAt)} · cobró {payment.createdBy}</p></div>
             <div className="flex gap-2"><Button size="sm" disabled={busy} onClick={() => void verify(payment, "confirm")} className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle2 className="mr-1 h-4 w-4" /> Confirmar</Button>
               <Button size="sm" variant="outline" disabled={busy} onClick={() => { setRejecting(payment); setRejectNote("") }} className="border-red-300 text-red-700"><XCircle className="mr-1 h-4 w-4" /> Rechazar</Button></div>
           </li>)}</ul>
@@ -204,6 +211,7 @@ export default function CashPage() {
             <div className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-800">
               <p className="flex justify-between"><span>Inicial</span><span>{money(summary.openingAmount)}</span></p>
               <p className="flex justify-between"><span>Ventas en efectivo</span><span>{money(summary.cashSales)}</span></p>
+              {Boolean(summary.cashAccountPayments) && <p className="flex justify-between"><span>Pagos de cuentas en efectivo</span><span>{money(summary.cashAccountPayments ?? 0)}</span></p>}
               <p className="flex justify-between"><span>Ingresos en efectivo</span><span>{money(summary.cashIncomes)}</span></p>
               <p className="flex justify-between"><span>Egresos en efectivo</span><span>−{money(summary.cashExpenses)}</span></p>
               <p className="mt-1 flex justify-between border-t pt-1 font-bold"><span>Esperado</span><span>{money(summary.expectedCash)}</span></p>

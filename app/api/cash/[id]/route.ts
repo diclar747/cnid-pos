@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: Context) {
   const [summary, movements, payments] = await Promise.all([
     row.status === "closed" && row.summary ? row.summary : cashSummary(db, id),
     db.query("SELECT * FROM cash_movements WHERE session_id = $1 ORDER BY created_at", [id]),
-    db.query(`SELECT p.*, s.data->>'customerName' AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id
+    db.query(`SELECT p.*, COALESCE(s.data->>'customerName', c.name) AS customer_name FROM payments p LEFT JOIN sales s ON s.id = p.sale_id LEFT JOIN customers c ON c.id = p.customer_id
       WHERE p.session_id = $1 ORDER BY p.created_at`, [id]),
   ])
   return NextResponse.json({ session: sessionRow(row), summary, movements: movements.rows.map(movementRow), payments: payments.rows.map(paymentRow) })

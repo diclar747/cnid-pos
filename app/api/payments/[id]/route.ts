@@ -3,6 +3,7 @@ import { getSessionUser, hasPermission } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { paymentRow } from "@/lib/cash"
 import { cleanText } from "@/lib/service-order-server"
+import { revertAccountPayment } from "@/lib/credit"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ id: string }> }
@@ -28,8 +29,13 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       [id, body.action === "confirm" ? "confirmed" : "rejected", Number(user.id), user.name, note, reference])
     const payment = updated.rows[0]
     if (!payment) { await client.query("ROLLBACK"); return NextResponse.json({ error: "El pago ya fue verificado o no existe." }, { status: 409 }) }
-    if (payment.sale_id) await client.query(`UPDATE sales SET data = data || jsonb_build_object('paymentStatus', $2::text), updated_at = NOW() WHERE id = $1`,
-      [payment.sale_id, payment.status])
+    // Con pago dividido, la venta queda rechazada si algún pago se rechazó, pendiente si falta verificar alguno.
+    if (payment.sale_id) await client.query(`UPDATE sales SET data = data || jsonb_build_object('paymentStatus', (
+        SELECT CASE WHEN bool_or(status = 'rejected') THEN 'rejected' WHEN bool_or(status = 'pending') THEN 'pending' ELSE 'confirmed' END
+        FROM payments WHERE sale_id = $1 AND purpose = 'sale')), updated_at = NOW() WHERE id = $1`, [payment.sale_id])
+    if (payment.purpose === "account" && payment.status === "rejected" && payment.customer_id) {
+      await revertAccountPayment(client, { id: Number(payment.id), customerId: Number(payment.customer_id), amount: Number(payment.amount), methodName: payment.method_name }, note, user)
+    }
     await client.query("COMMIT")
     return NextResponse.json({ payment: paymentRow(payment) })
   } catch (cause) {

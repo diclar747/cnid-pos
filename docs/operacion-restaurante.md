@@ -7,8 +7,9 @@
 3. Desde **Órdenes**, abrí la cuenta por número, mesa, cliente o tarjeta. Podés agregar más consumos y generar varias comandas en la misma cuenta. **Cobrar** factura la cuenta completa cuando termine.
 4. **Precuenta**: desde **Órdenes**, el botón **Precuenta** imprime la cuenta para el cliente antes de cobrar (ticket de 75 mm con mesa, mesero, cliente, detalle y total, marcado «No válido como comprobante de pago»). La orden muestra **Precuenta impresa** con la hora. Si después se agregan consumos, la marca desaparece y hay que volver a imprimirla. Cada reimpresión se numera.
 5. **Mesero**: al abrir una cuenta se elige el mesero; si quien la abre tiene rol **Mesero**, queda asignado automáticamente. Se puede cambiar desde **Órdenes → Datos**. El mesero aparece en la comanda de cocina, en la precuenta y en el comprobante, y queda guardado en la venta.
-6. **Comprobante de pago**: al cobrar se abre el ticket de 75 mm con el mismo formato que la precuenta más forma de pago, monto recibido y saldo devuelto. Las cuentas cobradas tienen **Reimprimir comprobante** en **Órdenes**.
-7. La reserva de stock ocurre al enviar a cocina. Al cobrar se descuenta únicamente lo que no se había reservado. Cancelar una orden pendiente devuelve el stock reservado; las órdenes listas o entregadas requieren una devolución aparte.
+6. **Cobro en una ventana**: **Cobrar ahora**, **Cobrar cuenta completa**, **Órdenes → Cobrar** y **Pedidos → Cobrar** abren el mismo cuadro sin salir de la pantalla. Se elige el medio (efectivo, tarjeta, transferencia, QR o **A cuenta**), con efectivo se carga lo recibido (o se toca un billete sugerido) y se ve el vuelto al instante. **Dividir pago** reparte el total entre varios medios (por ejemplo, parte en efectivo y parte con tarjeta). Opcionalmente se agregan RUC y nombre para el comprobante. Al terminar muestra el vuelto a entregar, imprime el ticket (se puede desactivar) y queda listo para la venta siguiente.
+7. **Comprobante de pago**: al cobrar se abre el ticket de 75 mm con el mismo formato que la precuenta más forma de pago, monto recibido y saldo devuelto. Las cuentas cobradas tienen **Reimprimir comprobante** en **Órdenes**.
+8. La reserva de stock ocurre al enviar a cocina. Al cobrar se descuenta únicamente lo que no se había reservado. Cancelar una orden pendiente devuelve el stock reservado; las órdenes listas o entregadas requieren una devolución aparte.
 
 ## Roles en el salón
 
@@ -53,6 +54,19 @@ Las notificaciones usan Web Push estándar implementado con Node (sin servicios 
 
 Cada pedido con teléfono (o cobro con RUC) registra o actualiza al cliente del restaurante: nombre, teléfono, RUC, dirección, cantidad de compras, total gastado y última compra. En **Administración → Clientes** se buscan por nombre, teléfono o RUC, se editan sus datos y se ven sus compras con el ticket de cada una. El teléfono se guarda con código de país (595…) para usarlo después con WhatsApp.
 
+### Cuenta corriente (comer a crédito)
+
+Para clientes fijos que comen y pagan después (por semana, quincena o mes):
+
+1. Al cobrar, elegí **A cuenta (crédito)** y buscá al cliente. Si no existe, **Nuevo cliente** lo registra ahí mismo con nombre, teléfono, cada cuánto paga y un límite opcional. A un cliente existente se le habilita el crédito desde el mismo cuadro.
+2. La venta queda registrada y el monto se suma a su **saldo pendiente**. El ticket muestra lo cargado a cuenta, el saldo y una línea para la firma del cliente. Se puede combinar: parte en efectivo y el resto a cuenta.
+3. Si el cliente tiene límite y el consumo lo supera, el cobro se bloquea hasta que abone o se ajuste el límite.
+4. En **Administración → Clientes** aparece el total **por cobrar**, el filtro **Con saldo pendiente** y, en cada cliente, su cuenta: saldo, consumos y pagos del período actual (semana, quincena o mes) y todos los movimientos.
+5. **Registrar pago**: el cliente abona todo o una parte con cualquier medio; el pago entra en la caja abierta (en efectivo suma al esperado del arqueo). Si es transferencia queda por verificar y, si caja la rechaza, la deuda vuelve a la cuenta.
+6. **Ajuste** (solo administración): descuentos o correcciones con motivo obligatorio. **Recordar por WhatsApp** abre un mensaje con el saldo y los consumos del período.
+
+Las ventas a cuenta aparecen en caja como «Crédito (cuenta corriente)», pero no suman efectivo; los pagos de cuentas se listan aparte en el resumen y en el arqueo.
+
 ## Delivery por zonas
 
 En **Administración → Delivery** se cargan las zonas (barrios o ciudades, costo de envío, monto para envío gratis y demora estimada) y los repartidores. Al abrir una cuenta de delivery desde el POS se elige la zona y la dirección; el envío se suma solo y se recalcula si cambian los consumos (gratis al superar el monto configurado). El repartidor se asigna desde **Órdenes → Datos** y aparece en la comanda, el tablero de cocina y el ticket. El cobro incluye el envío; el ticket muestra subtotal, envío y total.
@@ -81,7 +95,7 @@ En **Administración → Productos**, cada producto admite además:
 1. **Abrir caja** con el efectivo inicial (cambio). Solo puede haber una caja abierta por restaurante.
 2. Cada cobro registra el pago con su medio y lo asocia a la caja abierta. Si la caja está cerrada, la venta se registra igual pero no entra en ningún arqueo; la pantalla de cobro lo avisa.
 3. **Registrar ingreso o egreso** (refuerzo de cambio, compra de hielo, pago a un proveedor…) con monto, medio y motivo. Un egreso en efectivo no puede superar lo que hay en caja.
-4. **Cerrar caja**: se cuenta el efectivo; el sistema muestra lo esperado (inicial + ventas en efectivo + ingresos − egresos), la diferencia (sobrante o faltante) e imprime el arqueo en 75 mm. Los cierres quedan en el historial.
+4. **Cerrar caja**: se cuenta el efectivo; el sistema muestra lo esperado (inicial + ventas en efectivo + pagos de cuentas en efectivo + ingresos − egresos), la diferencia (sobrante o faltante) e imprime el arqueo en 75 mm. Los cierres quedan en el historial.
 
 **Medios de pago**: efectivo, tarjeta, transferencia y QR vienen cargados; desde **Caja → Medios de pago** se agregan otros (por ejemplo, una billetera) y se activan o desactivan. Las transferencias y los QR quedan **por verificar**: caja los confirma recién cuando ve el dinero acreditado, o los rechaza con un motivo. El comprobante indica «(a verificar)» mientras tanto.
 
