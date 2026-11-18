@@ -94,11 +94,32 @@ function menuText(products: Product[]) {
   return lines.join("\n")
 }
 
-function extractJson(content: string): { reply?: unknown; actions?: unknown } | null {
+/** Escapa saltos de línea y tabulaciones que el modelo deja sin escapar dentro de los textos del JSON. */
+function escapeControlChars(source: string) {
+  let out = "", inString = false, escaped = false
+  for (const char of source) {
+    if (!inString) { if (char === "\"") inString = true; out += char; continue }
+    if (escaped) { out += char; escaped = false; continue }
+    if (char === "\\") { out += char; escaped = true; continue }
+    if (char === "\"") { inString = false; out += char; continue }
+    out += char === "\n" ? "\\n" : char === "\t" ? "\\t" : char === "\r" ? "" : char
+  }
+  return out
+}
+
+export function extractJson(content: string): { reply?: unknown; actions?: unknown } | null {
   const cleaned = content.replace(/```(?:json)?/gi, "").trim()
   const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}")
   if (start < 0 || end <= start) return null
-  try { return JSON.parse(cleaned.slice(start, end + 1)) } catch { return null }
+  const slice = cleaned.slice(start, end + 1)
+  const fixed = escapeControlChars(slice)
+  for (const candidate of [slice, fixed, fixed.replace(/,\s*([}\]])/g, "$1")]) {
+    try {
+      const parsed = JSON.parse(candidate)
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed
+    } catch { /* se prueba la siguiente variante */ }
+  }
+  return null
 }
 
 async function loadContext(schema: string, query: SchemaQuery, conversationId: number) {
@@ -303,7 +324,21 @@ export async function runAssistant(schema: string, conversationId: number, optio
     }
     return { replies, orderId: null, handoff: true, error: error instanceof NiroError ? message : "Niro IA no respondió." }
   }
-  const parsed = extractJson(result.content)
+  let parsed = extractJson(result.content)
+  let invalidSample = ""
+  if (!parsed) {
+    // Un reintento: se le muestra al modelo su respuesta y se le pide solo el JSON.
+    invalidSample = result.content.slice(0, 300)
+    try {
+      const retry = await niroChat([...chat, { role: "assistant", content: result.content.slice(0, 2000) },
+        { role: "user", content: 'Tu respuesta anterior no era un JSON válido. Respondé de nuevo SOLO con el objeto JSON {"reply": "...", "actions": [...]}, sin texto fuera del JSON y sin saltos de línea sin escapar.' }])
+      result = { ...retry, promptTokens: result.promptTokens + retry.promptTokens, completionTokens: result.completionTokens + retry.completionTokens, latencyMs: result.latencyMs + retry.latencyMs }
+      parsed = extractJson(retry.content)
+      if (!parsed) invalidSample = retry.content.slice(0, 300)
+    } catch { /* se responde con el mensaje de aclaración */ }
+  }
+  if (invalidSample && !parsed) await query(`INSERT INTO ai_interactions (conversation_id, kind, status, model, latency_ms, error) VALUES ($1, $2, 'error', $3, $4, $5)`,
+    [conversationId, options.mode === "simulator" ? "simulator" : "chat", result.model.slice(0, 80), result.latencyMs, `Respuesta no JSON: ${invalidSample}`])
   const actions: Action[] = Array.isArray(parsed?.actions) ? (parsed!.actions as unknown[]).filter((item): item is Action => Boolean(item) && typeof (item as Action).type === "string") : []
   let reply = typeof parsed?.reply === "string" ? parsed.reply.trim().slice(0, 1500) : ""
   if (!parsed) reply = "Disculpá, no te entendí bien. ¿Me lo podés escribir de otra forma? 🙏"
