@@ -9,7 +9,7 @@ import { beep, pushSupport, subscribePush } from "@/lib/push-client"
 
 type TableCall = { id: number; tableId: number; tableLabel: string; kind: "waiter" | "bill"; createdAt: string; orderId: number | null; waiterName: string }
 
-const PUBLIC_PREFIXES = ["/table/", "/landing", "/login", "/card/"]
+const PUBLIC_PREFIXES = ["/table/", "/landing", "/login", "/card/", "/welcome"]
 const minutesAgo = (iso: string) => {
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
   return minutes < 1 ? "recién" : `hace ${minutes} min`

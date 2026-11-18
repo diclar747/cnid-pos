@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CreditCard, DollarSign, Smartphone, Receipt, Search, CheckCircle, AlertCircle } from "lucide-react"
+import { ArrowLeft, CreditCard, DollarSign, Smartphone, Receipt, Search, CheckCircle, AlertCircle, QrCode, Wallet, Lock } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -32,6 +33,16 @@ export default function CheckoutPage() {
   const [rucValidated, setRucValidated] = useState(false)
   const [serviceOrder, setServiceOrder] = useState<ServiceOrder | null>(null)
   const [orderLoading, setOrderLoading] = useState(true)
+  const [methods, setMethods] = useState<{ code: string; name: string; kind: string; needsVerification: boolean }[]>([])
+  const [cashOpen, setCashOpen] = useState(true)
+  const [paymentReference, setPaymentReference] = useState("")
+  const selectedMethod = methods.find((method) => method.code === paymentMethod)
+  const isCash = (selectedMethod?.kind ?? paymentMethod) === "cash"
+  useEffect(() => {
+    apiRequest<{ items: typeof methods; cashOpen: boolean }>("/api/payment-methods")
+      .then((result) => { setMethods(result.items); setCashOpen(result.cashOpen) })
+      .catch(() => setMethods([{ code: "cash", name: "Efectivo", kind: "cash", needsVerification: false }]))
+  }, [])
 
   const total = serviceOrder ? serviceOrder.grandTotal : getCartTotal()
   const cashAmount = Number.parseFloat(cashReceived) || 0
@@ -114,7 +125,7 @@ export default function CheckoutPage() {
   }
 
   const handlePayment = async () => {
-    if (paymentMethod === "cash" && cashAmount < total) {
+    if (isCash && cashAmount < total) {
       toast.error("El monto recibido es insuficiente")
       return
     }
@@ -132,11 +143,12 @@ export default function CheckoutPage() {
         ...(serviceOrder ? { serviceOrderId: serviceOrder.id } : {}),
         total,
         paymentMethod,
+        paymentReference,
         orderType: serviceOrder?.orderType ?? orderType,
         customerName: customerName || "Cliente General",
         customerRuc: customerRuc || "",
-        cashReceived: paymentMethod === "cash" ? cashAmount : total,
-        change: paymentMethod === "cash" ? change : 0,
+        cashReceived: isCash ? cashAmount : total,
+        change: isCash ? change : 0,
       }
 
       const savedSale = await addSale(saleData)
@@ -147,6 +159,7 @@ export default function CheckoutPage() {
         total: savedSale.total,
         cashReceived: savedSale.cashReceived,
         change: savedSale.change,
+        paymentMethodName: selectedMethod?.name, paymentStatus: selectedMethod?.needsVerification ? "pending" : "confirmed",
         items: savedSale.items.map((item: any) => ({
           name: item.productName, quantity: item.quantity, price: item.price,
           selectedModifiers: item.modifiers ?? [],
@@ -310,33 +323,27 @@ export default function CheckoutPage() {
               {/* Payment Method */}
               <div>
                 <Label className="text-base font-medium">Método de Pago</Label>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="mt-2">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cash" id="cash" />
-                    <Label htmlFor="cash" className="flex items-center cursor-pointer">
-                      <DollarSign className="h-4 w-4 mr-2" />
-                      Efectivo
+                {!cashOpen && <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                  <Lock className="mt-0.5 h-4 w-4 shrink-0" /><span>La caja está cerrada: la venta se registra igual, pero no entra en ningún arqueo. <Link href="/cash" className="font-semibold underline">Abrir caja</Link></span></div>}
+                <RadioGroup value={paymentMethod} onValueChange={(value) => { setPaymentMethod(value); setPaymentReference("") }} className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {methods.map((method) => {
+                    const Icon = method.kind === "cash" ? DollarSign : method.kind === "card" ? CreditCard : method.kind === "qr" ? QrCode : method.kind === "transfer" ? Smartphone : Wallet
+                    return <Label key={method.code} htmlFor={`pay-${method.code}`} className={`flex cursor-pointer items-center gap-2 rounded-lg border p-3 transition ${paymentMethod === method.code ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "hover:bg-muted"}`}>
+                      <RadioGroupItem value={method.code} id={`pay-${method.code}`} />
+                      <Icon className="h-4 w-4" /> <span className="flex-1">{method.name}</span>
+                      {method.needsVerification && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">verificar</span>}
                     </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card" className="flex items-center cursor-pointer">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Tarjeta
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="transfer" id="transfer" />
-                    <Label htmlFor="transfer" className="flex items-center cursor-pointer">
-                      <Smartphone className="h-4 w-4 mr-2" />
-                      Pago Digital
-                    </Label>
-                  </div>
+                  })}
                 </RadioGroup>
+                {selectedMethod?.needsVerification && <div className="mt-3 space-y-1">
+                  <Label htmlFor="paymentReference">Referencia o comprobante (opcional)</Label>
+                  <Input id="paymentReference" value={paymentReference} onChange={(event) => setPaymentReference(event.target.value)} placeholder="N.º de operación, últimos dígitos…" maxLength={80} />
+                  <p className="text-xs text-muted-foreground">El pago queda pendiente hasta que caja lo verifique en el banco o la billetera.</p>
+                </div>}
               </div>
 
               {/* Cash Payment Details */}
-              {paymentMethod === "cash" && (
+              {isCash && (
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="cashReceived">Monto Recibido</Label>
@@ -373,7 +380,7 @@ export default function CheckoutPage() {
               {/* Process Payment Button */}
               <Button
                 onClick={handlePayment}
-                disabled={isProcessing || (paymentMethod === "cash" && cashAmount < total)}
+                disabled={isProcessing || !selectedMethod || (isCash && cashAmount < total)}
                 className="w-full"
                 size="lg"
               >

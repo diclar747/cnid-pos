@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, ShoppingCart, AlertCircle, UtensilsCrossed, BarChart3, PackageCheck } from "lucide-react"
+import Link from "next/link"
+import { InstallAppButton } from "../components/install-app"
+import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
 import { useAuth } from "../context/auth-context"
 import toast from "react-hot-toast"
 
@@ -146,17 +149,26 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            <div className="flex flex-col items-center gap-2 border-t pt-4 text-sm">
+              <InstallAppButton className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2.5 font-semibold text-indigo-700 hover:bg-indigo-100" label="Instalar RestoPOS como app" />
+              <Link href="/welcome?again=1" className="text-indigo-600 hover:underline">Ver la presentación</Link>
+            </div>
           </CardContent>
         </Card>
 
-        <div className="rounded-3xl bg-slate-950 p-8 text-white shadow-2xl sm:p-10">
-          <div className="mb-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10"><UtensilsCrossed className="h-7 w-7" /></div>
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">Tu restaurante</p>
-          <h2 className="mb-4 text-4xl font-bold tracking-tight">Todo bajo control</h2>
-          <p className="mb-10 max-w-md text-slate-300">Menús, ventas y operaciones de cada restaurante en un solo lugar.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <div className="relative hidden overflow-hidden rounded-3xl bg-slate-950 p-8 text-white shadow-2xl sm:p-10 lg:block">
+          <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-600/30 blur-3xl" />
+          <div className="relative mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10"><UtensilsCrossed className="h-7 w-7" /></div>
+          <p className="relative mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">Tu restaurante</p>
+          <h2 className="relative mb-3 text-4xl font-bold tracking-tight">Todo bajo control</h2>
+          <p className="relative mb-8 max-w-md text-slate-300">Ventas, mesas, cocina, caja y delivery de cada restaurante en un solo lugar.</p>
+          <div className="relative flex items-end">
+            <div className="min-w-0 flex-1"><LaptopFrame><Screen src="/landing/panel.webp" alt="Panel de RestoPOS con las ventas del día" /></LaptopFrame></div>
+            <div className="relative z-10 -mb-2 -ml-[4%] w-[22%] shrink-0 motion-safe:animate-[float_6s_ease-in-out_infinite]"><PhoneFrame><Screen src="/landing/mesa-qr.webp" alt="Pedido desde el QR de la mesa" /></PhoneFrame></div>
+          </div>
+          <div className="relative mt-8 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><PackageCheck className="mb-3 h-5 w-5 text-blue-300" /><p className="font-medium">Menú completo</p><p className="mt-1 text-sm text-slate-400">Artículos, variantes y agregados.</p></div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><BarChart3 className="mb-3 h-5 w-5 text-blue-300" /><p className="font-medium">Historial de ventas</p><p className="mt-1 text-sm text-slate-400">Movimientos y reportes en PostgreSQL local.</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4"><BarChart3 className="mb-3 h-5 w-5 text-blue-300" /><p className="font-medium">Caja y estadísticas</p><p className="mt-1 text-sm text-slate-400">Arqueo, medios de pago y reportes.</p></div>
           </div>
         </div>
       </div>

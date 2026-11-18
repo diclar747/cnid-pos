@@ -28,6 +28,8 @@ export interface TicketData {
   lines: TicketLine[]
   total: number
   paymentMethod?: string
+  paymentMethodName?: string
+  paymentStatus?: string
   cashReceived?: number
   change?: number
   copyNumber?: number
@@ -94,7 +96,7 @@ export function Ticket75mm({ data, company }: { data: TicketData; company: Ticke
     <section className="space-y-0.5 border-b border-dashed border-black py-2">
       <p className="flex justify-between"><span>Subtotal:</span><span>{money(data.subtotal ?? data.total)}</span></p>
       {data.orderType === "delivery" && data.deliveryFee != null && <p className="flex justify-between"><span>Envío:</span><span>{data.deliveryFee ? money(data.deliveryFee) : "Gratis"}</span></p>}
-      {!isBill && data.paymentMethod && <p className="flex justify-between"><span>Pago:</span><span>{paymentLabel[data.paymentMethod] ?? data.paymentMethod}</span></p>}
+      {!isBill && data.paymentMethod && <p className="flex justify-between"><span>Pago:</span><span>{data.paymentMethodName || paymentLabel[data.paymentMethod] || data.paymentMethod}{data.paymentStatus === "pending" ? " (a verificar)" : ""}</span></p>}
       {!isBill && data.paymentMethod === "cash" && data.cashReceived != null && <>
         <p className="flex justify-between"><span>Recibido:</span><span>{money(data.cashReceived)}</span></p>
         <p className="flex justify-between"><span>Saldo devuelto:</span><span>{money(data.change ?? 0)}</span></p>
