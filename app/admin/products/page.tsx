@@ -21,6 +21,7 @@ import {
   QrCode,
   Camera,
 } from "lucide-react"
+import { cleanGroups, ModifierEditor, type ModifierGroup } from "../../components/modifier-editor"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -79,6 +80,11 @@ export default function ProductsPage() {
     trackStock: true,
     image: "",
     supplierId: "",
+    promoPrice: "",
+    prepMinutes: "",
+    ingredients: "",
+    isActive: true,
+    modifierGroups: [] as ModifierGroup[],
   })
 
   const formatCurrency = (amount: number) => {
@@ -241,6 +247,11 @@ export default function ProductsPage() {
       trackStock: true,
       image: "",
       supplierId: "",
+      promoPrice: "",
+      prepMinutes: "",
+      ingredients: "",
+      isActive: true,
+      modifierGroups: [],
     })
     setEditingProduct(null)
   }
@@ -258,6 +269,11 @@ export default function ProductsPage() {
       trackStock: formData.trackStock,
       image: formData.image || "/placeholder.svg",
       supplierId: formData.supplierId ? Number(formData.supplierId) : undefined,
+      promoPrice: formData.promoPrice ? Number.parseInt(formData.promoPrice) : null,
+      prepMinutes: formData.prepMinutes ? Number.parseInt(formData.prepMinutes) : null,
+      ingredients: formData.ingredients,
+      isActive: formData.isActive,
+      modifierGroups: cleanGroups(formData.modifierGroups),
     }
 
     try {
@@ -287,6 +303,11 @@ export default function ProductsPage() {
       trackStock: product.trackStock !== false,
       image: product.image,
       supplierId: product.supplierId ? String(product.supplierId) : "",
+      promoPrice: product.promoPrice != null ? String(product.promoPrice) : "",
+      prepMinutes: product.prepMinutes != null ? String(product.prepMinutes) : "",
+      ingredients: product.ingredients ?? "",
+      isActive: product.isActive !== false,
+      modifierGroups: (product.modifierGroups ?? []) as ModifierGroup[],
     })
     setIsDialogOpen(true)
   }
@@ -571,6 +592,19 @@ export default function ProductsPage() {
                   /><Button type="button" variant="outline" size="icon" onClick={() => setShowCodeCamera(true)} title="Escanear con cámara" aria-label="Escanear código del producto"><Camera className="h-4 w-4" /></Button></div>
                   <p className="mt-1 text-xs text-muted-foreground">Al escanear se completa el código; un QR generado por este sistema también puede completar nombre y precio.</p>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div><Label htmlFor="promoPrice">Precio promocional</Label>
+                    <Input id="promoPrice" inputMode="numeric" value={formData.promoPrice} onChange={(event) => setFormData({ ...formData, promoPrice: event.target.value.replace(/D/g, "").slice(0, 10) })} placeholder="Opcional" />
+                    <p className="mt-1 text-[11px] text-muted-foreground">Si es menor al precio, se cobra este.</p></div>
+                  <div><Label htmlFor="prepMinutes">Preparación (min)</Label>
+                    <Input id="prepMinutes" inputMode="numeric" value={formData.prepMinutes} onChange={(event) => setFormData({ ...formData, prepMinutes: event.target.value.replace(/D/g, "").slice(0, 3) })} placeholder="Ej.: 15" /></div>
+                  <label className="flex items-center gap-2 self-center text-sm font-medium"><input type="checkbox" checked={formData.isActive} onChange={(event) => setFormData({ ...formData, isActive: event.target.checked })} />Disponible para vender</label>
+                </div>
+                <div><Label htmlFor="ingredients">Ingredientes</Label>
+                  <Input id="ingredients" value={formData.ingredients} onChange={(event) => setFormData({ ...formData, ingredients: event.target.value })} maxLength={500} placeholder="Ej.: carne, cheddar, tomate, lechuga" /></div>
+                <div><Label>Opciones y adicionales</Label><p className="mb-2 text-xs text-muted-foreground">Tamaños, variantes, punto de cocción o extras con precio. Se usan en el POS, el QR de mesa y WhatsApp.</p>
+                  <ModifierEditor groups={formData.modifierGroups} onChange={(modifierGroups) => setFormData({ ...formData, modifierGroups })} /></div>
 
                 <div><Label>Proveedor principal</Label><Select value={formData.supplierId || "none"} onValueChange={(value) => setFormData({ ...formData, supplierId: value === "none" ? "" : value })}><SelectTrigger><SelectValue placeholder="Seleccioná un proveedor" /></SelectTrigger><SelectContent><SelectItem value="none">Sin proveedor asignado</SelectItem>{suppliers.filter((item) => item.isActive).map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.name} · {item.ruc}</SelectItem>)}</SelectContent></Select></div>
 

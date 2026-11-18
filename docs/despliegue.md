@@ -82,6 +82,16 @@ server {
 
     client_max_body_size 10m;   # fotos de salones y avatares
 
+    # Eventos en vivo (tablero, cocina, caja, WhatsApp): sin buffer y conexión larga.
+    location /api/events {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -128,17 +138,33 @@ El panel corre cada sitio en un contenedor Node 22: clona el repositorio, ejecut
    | `SUPERADMIN_EMAIL` | Cuenta central; solo se crea si no existe. `SUPERADMIN_PASSWORD` (14+ caracteres) es opcional: si falta, se genera y se muestra una vez en **Registros**. |
 
    Después del primer arranque podés borrar las variables de contraseña: las cuentas ya quedan en la base.
+
+   Variables opcionales:
+
+   | Variable | Para qué |
+   | --- | --- |
+   | `NIRO_API_KEY` | API key de Niro IA (`niro_…`, se genera en niro.cnid.com.py → API Keys). Activa el asistente de WhatsApp y la transcripción de audios. Solo vive en el servidor: nunca llega al navegador ni a los logs. Si se expone, revocala y generá otra. |
+   | `NIRO_BASE_URL` | Solo si Niro cambia de dirección (por defecto `https://niro.cnid.com.py/api/v1`). |
+   | `VAPID_SUBJECT` | Contacto para las notificaciones push (por ejemplo `mailto:soporte@tudominio.com`). |
+   | `STATS_TIMEZONE` | Zona horaria de estadísticas y tablero (por defecto `America/Asuncion`). |
+   | `WHATSAPP_AUTOSTART` | `false` para no reanudar las sesiones de WhatsApp al arrancar. |
+
+   WhatsApp y el tiempo real mantienen conexiones abiertas en el proceso: corré **una sola instancia** de la app por base de datos (dos instancias con la misma sesión de WhatsApp se desconectan entre sí). Detrás de Nginx, `/api/events` necesita `proxy_buffering off` (la app ya envía `X-Accel-Buffering: no`).
 4. **Despliegue:** URL `https://github.com/diclar747/cnid-pos` (sin credenciales), rama **`panel`**. El panel compila con 1 vCPU y corta a los 10 minutos, y `next build` no entra; por eso se despliega la rama `panel`, que ya trae `.next` compilado: el panel solo instala dependencias (~3 min) y `scripts/build.mjs` omite la compilación al ver `.next/PREBUILT`. El repositorio es público; si vuelve a ser privado, el panel necesita un token cargado desde el botón **Git** de la tarjeta del sitio.
 
    **Actualizar la rama `panel`:** cada push a `main` la regenera con GitHub Actions (`.github/workflows/panel-build.yml`). Si Actions no está disponible, compilala a mano y publicala, y después tocá **Volver a desplegar**:
 
    ```bash
-   git clone --depth 1 https://github.com/diclar747/cnid-pos.git /tmp/cnid-panel && cd /tmp/cnid-panel
+   git clone --depth 1 https://github.com/diclar747/cnid-pos.git /tmp/cnid-build && cd /tmp/cnid-build
    npm ci && npm run build
-   rm -rf .next/cache && git rev-parse HEAD > .next/PREBUILT
-   git checkout --orphan panel && git add -A && git add -f .next
-   git commit -m "Build para el panel" && git push -f origin panel
+   git clone --depth 1 --branch panel https://github.com/diclar747/cnid-pos.git /tmp/cnid-panel && cd /tmp/cnid-panel
+   git rm -rq --cached . && find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+   git -C /tmp/cnid-build archive HEAD | tar -x -C . && cp -r /tmp/cnid-build/.next .next && rm -rf .next/cache
+   git -C /tmp/cnid-build rev-parse HEAD > .next/PREBUILT
+   git add -A && git add -f .next && git commit -m "Build para el panel de $(git -C /tmp/cnid-build rev-parse --short HEAD)" && git push origin panel
    ```
+
+   Así cada build queda como un commit nuevo sobre `panel` (sin reescribir la rama).
 5. **Carta de De la Casa:** con **Administrador de archivos**, en la carpeta del sitio creá `data/` y subí `de-la-casa-export.json` (está en la PC, en `.legacy-export/`). Reiniciá el sitio (no vuelvas a desplegar, porque un despliegue reemplaza la carpeta): al arrancar se importa una sola vez. Las actualizaciones posteriores no la vuelven a importar ni pisan los cambios hechos desde la administración.
 6. **Probar:** `https://restopos.cd.com.py/login` con el administrador inicial; crear una cuenta, enviar a cocina, imprimir la precuenta y cobrar.
 

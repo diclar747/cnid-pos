@@ -24,7 +24,8 @@ export const mapCourier = (row: Row): Courier => ({
 })
 
 export class RecordError extends Error {
-  constructor(message: string, public status = 400) { super(message) }
+  status: number
+  constructor(message: string, status = 400) { super(message); this.status = status }
 }
 
 const money = (value: unknown, label: string, optional = false): number | null => {

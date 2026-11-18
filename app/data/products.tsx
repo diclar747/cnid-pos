@@ -12,6 +12,11 @@ export interface Product {
   supplierId?: number
   menuName?: string
   pricesByOrderType?: { dineIn: number; delivery: number; pickup: number }
+  /** Precio promocional: si es menor al precio normal, se cobra este. */
+  promoPrice?: number | null
+  /** Tiempo estimado de preparación en minutos. */
+  prepMinutes?: number | null
+  ingredients?: string
   modifierGroups?: Array<{ legacyId: number; name: string; required: boolean; multiple: boolean; options: Array<{ legacyId: number; name: string; price: number }> }>
 }
 

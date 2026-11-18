@@ -6,6 +6,12 @@
       "static/chunks/3700.82815e881a3520d9.js"
     ]
   },
+  "app\\admin\\whatsapp\\page.tsx -> qrcode": {
+    "id": 16862,
+    "files": [
+      "static/chunks/6862-efff51af68016934.js"
+    ]
+  },
   "app\\components\\bulk-qr-generator.tsx -> qrcode": {
     "id": 16862,
     "files": [

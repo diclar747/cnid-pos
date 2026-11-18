@@ -10,6 +10,7 @@ import { useAuth } from "../context/auth-context"
 import CategorySidebar from "../components/category-sidebar"
 import ProductGrid from "../components/product-grid"
 import CartSidebar, { type OrderDetails } from "../components/cart-sidebar"
+import { effectivePrice } from "@/lib/product-price"
 import { CodeCamera } from "../components/code-camera"
 import { parseScannedCode } from "@/lib/scan-code"
 import toast from "react-hot-toast"
@@ -179,7 +180,7 @@ export default function POSPage() {
     return { ...group, visibleOptions, showNoAddition }
   }).filter((group) => group.visibleOptions.length > 0 || group.showNoAddition) ?? []
   const configuredBasePrice = configuring
-    ? configuring.product.pricesByOrderType?.[orderType] ?? configuring.product.price
+    ? effectivePrice(configuring.product, orderType)
     : 0
   const configuredExtrasPrice = configuring?.product.modifierGroups?.reduce((total, group) =>
     total + group.options.reduce((sum, option) =>

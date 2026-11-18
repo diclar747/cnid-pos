@@ -52,6 +52,28 @@ export function record(row: { id: string | number; data: Record<string, unknown>
   return { ...row.data, id: Number(row.id) }
 }
 
+/** Opciones y adicionales de un producto: grupos (obligatorio / varias) con opciones y precio extra. */
+function validModifierGroups(value: unknown) {
+  if (!Array.isArray(value) || value.length > 20) throw new Error("Las opciones del producto no son válidas (máximo 20 grupos).")
+  const groupIds = new Set<number>(), ids = new Set<number>()
+  return value.map((group: any) => {
+    const name = typeof group?.name === "string" ? group.name.trim().slice(0, 60) : ""
+    if (!name || !Number.isSafeInteger(group.legacyId) || !Array.isArray(group.options) || !group.options.length || group.options.length > 50) {
+      throw new Error("Cada grupo de opciones necesita un nombre y al menos una opción.")
+    }
+    if (groupIds.has(group.legacyId)) throw new Error("Hay grupos de opciones repetidos.")
+    groupIds.add(group.legacyId)
+    return { legacyId: group.legacyId, name, required: group.required === true, multiple: group.multiple === true,
+      options: group.options.map((option: any) => {
+        const optionName = typeof option?.name === "string" ? option.name.trim().slice(0, 60) : ""
+        if (!optionName || !Number.isSafeInteger(option.legacyId) || !Number.isSafeInteger(option.price) || option.price < 0) throw new Error(`Revisá las opciones de «${name}».`)
+        if (ids.has(option.legacyId)) throw new Error("Hay opciones repetidas.")
+        ids.add(option.legacyId)
+        return { legacyId: option.legacyId, name: optionName, price: option.price }
+      }) }
+  })
+}
+
 export function validateRecord(collection: Collection, body: unknown): Record<string, unknown> {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     throw new Error("Los datos deben ser un objeto.")
@@ -67,6 +89,11 @@ export function validateRecord(collection: Collection, body: unknown): Record<st
     if (typeof data.category !== "string" || !data.category.trim()) throw new Error("Seleccioná una categoría.")
     if (data.supplierId !== undefined && (!Number.isSafeInteger(data.supplierId) || (data.supplierId as number) <= 0)) throw new Error("El proveedor asignado no es válido.")
     data.isActive = data.isActive !== false
+    // Precio promocional (menor al precio), tiempo de preparación e ingredientes: opcionales.
+    data.promoPrice = Number.isSafeInteger(data.promoPrice) && (data.promoPrice as number) >= 0 && (data.promoPrice as number) < (data.price as number) ? data.promoPrice : null
+    data.prepMinutes = Number.isSafeInteger(data.prepMinutes) && (data.prepMinutes as number) >= 1 && (data.prepMinutes as number) <= 240 ? data.prepMinutes : null
+    data.ingredients = typeof data.ingredients === "string" ? data.ingredients.trim().slice(0, 500) : ""
+    if (data.modifierGroups !== undefined) data.modifierGroups = validModifierGroups(data.modifierGroups)
   } else if (collection === "expenses") {
     if (typeof data.description !== "string" || !data.description.trim()) throw new Error("El gasto necesita una descripción.")
     if (!Number.isSafeInteger(data.amount) || (data.amount as number) <= 0) throw new Error("El monto no es válido.")

@@ -64,3 +64,54 @@ Cada orden guarda su historial: creación, productos agregados, envíos a cocina
 ## Ficha del restaurante
 
 En **Configuración → Ficha** se cargan descripción, WhatsApp, tipo de establecimiento, modalidades de atención (local, delivery, retiro), ubicación (enlace de Google Maps y coordenadas) y horarios por día.
+
+## Menú: promociones, preparación y opciones
+
+En **Administración → Productos**, cada producto admite además:
+
+- **Precio promocional**: si es menor al precio normal, se cobra ese precio en el POS, el QR de mesa, las órdenes y WhatsApp; la carta lo muestra tachado.
+- **Tiempo de preparación** (minutos) e **ingredientes**: los ve el cliente en el QR y el asistente de WhatsApp los usa para responder.
+- **Disponible para vender**: un producto desactivado no se puede cobrar ni pedir.
+- **Opciones y adicionales**: grupos como Tamaño, Punto o Extras, cada uno obligatorio o no, con una o varias opciones y precio extra. El sistema exige las opciones obligatorias en todos los canales.
+
+## Caja y pagos
+
+**Caja** (desde el POS o la administración, con permiso de ventas):
+
+1. **Abrir caja** con el efectivo inicial (cambio). Solo puede haber una caja abierta por restaurante.
+2. Cada cobro registra el pago con su medio y lo asocia a la caja abierta. Si la caja está cerrada, la venta se registra igual pero no entra en ningún arqueo; la pantalla de cobro lo avisa.
+3. **Registrar ingreso o egreso** (refuerzo de cambio, compra de hielo, pago a un proveedor…) con monto, medio y motivo. Un egreso en efectivo no puede superar lo que hay en caja.
+4. **Cerrar caja**: se cuenta el efectivo; el sistema muestra lo esperado (inicial + ventas en efectivo + ingresos − egresos), la diferencia (sobrante o faltante) e imprime el arqueo en 75 mm. Los cierres quedan en el historial.
+
+**Medios de pago**: efectivo, tarjeta, transferencia y QR vienen cargados; desde **Caja → Medios de pago** se agregan otros (por ejemplo, una billetera) y se activan o desactivan. Las transferencias y los QR quedan **por verificar**: caja los confirma recién cuando ve el dinero acreditado, o los rechaza con un motivo. El comprobante indica «(a verificar)» mientras tanto.
+
+## Pedidos en vivo (tablero CRM)
+
+**Pedidos** muestra los pedidos del día en columnas: *Nuevos* (por confirmar, por ejemplo de WhatsApp), *Pendientes* (con consumos sin enviar), *Confirmados*, *En cocina*, *Listos*, *En delivery*, *Entregados* y *Cancelados*. La columna sale del estado real de la orden y sus comandas.
+
+- Arrastrá una tarjeta a la columna siguiente o usá su botón (*Confirmar y enviar*, *Aceptar en cocina*, *Marcar listo*, *Salió el delivery*, *Entregado*). Se aplican las mismas reglas que en Órdenes y Cocina y el cliente recibe el aviso.
+- El detalle muestra productos, comandas, historial, responsable, repartidor y observaciones; desde ahí se cobra, se imprime y se cancela (con motivo).
+- Filtros por fecha, origen (POS, QR, WhatsApp) y búsqueda por número, cliente, teléfono o mesa.
+- Todo se actualiza en vivo (PostgreSQL LISTEN/NOTIFY + Server-Sent Events). Si la conexión en vivo no está disponible, la pantalla consulta cada pocos segundos.
+
+En **Cocina** cada comanda pendiente o en preparación tiene **Urgente** (se muestra primero), **+10 min** (avisa la demora al cliente) y **Falta** (avisa qué producto falta para ofrecer una alternativa).
+
+## Estadísticas
+
+**Administración → Estadísticas** (permiso de reportes) muestra, para el período elegido y comparado con el anterior: ventas, cobros, ticket promedio, clientes, pedidos y cancelados, evolución diaria, semanal y mensual, horarios de mayor demanda, productos más y menos vendidos (y sin ventas), clientes frecuentes, rendimiento de caja y de mozos, origen y modalidad de los pedidos, medios de pago, tiempos de cocina (hasta «Listo» y hasta la entrega) y delivery por zona y repartidor. Se exporta a CSV. Los pagos rechazados no se cuentan.
+
+## WhatsApp y asistente Niro IA
+
+**Administración → WhatsApp e IA**:
+
+- **Conexión**: *Conectar WhatsApp* genera un código QR; en el teléfono del local, WhatsApp → *Dispositivos vinculados* → *Vincular un dispositivo*. Cada restaurante usa su propia sesión. Si nadie escanea en unos 2 minutos, se detiene. La sesión se reanuda sola cuando el servidor reinicia y se reconecta ante cortes. *Desvincular* cierra la sesión del teléfono. La conexión usa WhatsApp Web (Baileys), que no es oficial: puede desconectarse y WhatsApp puede restringir números que envían en masa.
+- **Conversaciones**: todos los mensajes (los audios se transcriben con Niro; las ubicaciones llegan como enlace de mapa). **Tomar conversación** o responder pausa el asistente en ese chat y muestra quién atiende; **Devolver al asistente** lo reactiva. Las conversaciones donde el cliente pidió una persona aparecen primero.
+- **Asistente IA**: activalo, cargá el saludo y las instrucciones del local y probalo en **Probar asistente** (no envía WhatsApp ni registra pedidos).
+
+Cómo trabaja el asistente: conversa con el cliente y propone acciones (agregar productos y opciones, modalidad, dirección y zona, nombre, confirmar). El servidor valida cada acción con la carta, las opciones obligatorias, la disponibilidad y las zonas reales; los precios, el envío y el total los calcula el sistema, nunca la IA. Al confirmar, el pedido entra como **Nuevo** en el tablero para que el local lo confirme; cada cambio de estado (confirmado, en preparación, listo, en camino, entregado, demora, cancelado) se avisa por WhatsApp con el nombre del restaurante y el número de pedido. Si el cliente pide una persona, se queja o Niro no responde (por ejemplo, sin créditos), la conversación pasa al personal con un aviso push. Se registran las respuestas, los tokens y los errores (últimos 30 días en la misma pantalla).
+
+Requiere la variable `NIRO_API_KEY` en el servidor (ver docs/despliegue.md). Sin ella, los mensajes llegan a Conversaciones para que los atienda el personal.
+
+## App instalable
+
+RestoPOS se instala como app (Android, iPhone y escritorio) desde **Instalar app** en la portada o en el inicio de sesión. La primera vez muestra una presentación deslizable que termina en **Iniciar sesión**; después abre directo el inicio de sesión. El manifiesto incluye capturas y accesos directos a POS, Pedidos, Cocina y Caja.

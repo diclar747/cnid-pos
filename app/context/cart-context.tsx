@@ -5,6 +5,7 @@ import type { Product } from "../data/products"
 export type { Product } from "../data/products"
 import { useAuth } from "./auth-context"
 import { apiRequest } from "@/lib/api-client"
+import { effectivePrice } from "@/lib/product-price"
 
 export interface SelectedModifier {
   groupId: number
@@ -20,7 +21,7 @@ interface CartItem extends Product {
 }
 
 export type OrderType = "dineIn" | "delivery" | "pickup"
-const salePrice = (product: Product, orderType: OrderType) => product.pricesByOrderType?.[orderType] ?? product.price
+const salePrice = (product: Product, orderType: OrderType) => effectivePrice(product, orderType)
 const configuredPrice = (product: Product, orderType: OrderType, modifiers: SelectedModifier[]) =>
   salePrice(product, orderType) + modifiers.reduce((sum, modifier) => sum + modifier.price, 0)
 const makeCartKey = (id: number, modifiers: SelectedModifier[]) =>

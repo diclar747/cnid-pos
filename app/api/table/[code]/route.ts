@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { authDb, schemaQuery } from "@/lib/db"
 import { notifyStaff } from "@/lib/web-push"
 import { cleanText, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, sendDraftToKitchen, ServiceOrderError } from "@/lib/service-order-server"
+import { effectivePrice } from "@/lib/product-price"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ code: string }> }
@@ -31,7 +32,7 @@ export async function GET(_request: NextRequest, { params }: Context) {
     const rows = await client.query("SELECT id, data FROM products WHERE data->>'isActive' IS DISTINCT FROM 'false' ORDER BY id")
     const products = rows.rows.map((row) => ({ ...row.data, id: Number(row.id) })).filter((p) => p.trackStock === false || Number(p.stock) > 0)
       .map((p) => ({ id: p.id, name: p.name, description: p.description, category: p.category, menuName: p.menuName,
-        image: p.image, price: p.pricesByOrderType?.dineIn ?? p.price, stock: p.stock, trackStock: p.trackStock,
+        image: p.image, price: effectivePrice(p, "dineIn"), regularPrice: p.pricesByOrderType?.dineIn ?? p.price, prepMinutes: p.prepMinutes ?? null, stock: p.stock, trackStock: p.trackStock,
         modifierGroups: p.modifierGroups ?? [] }))
     const order = table.order_id ? await loadOrder(client, Number(table.order_id)) : null
     const tickets = order ? (await client.query("SELECT id, status, created_at, updated_at FROM kitchen_tickets WHERE order_id = $1 ORDER BY id", [order.id])).rows : []

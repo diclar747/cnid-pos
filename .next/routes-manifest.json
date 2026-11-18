@@ -192,6 +192,14 @@
       "namedRegex": "^/api/users/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/whatsapp/conversations/[id]",
+      "regex": "^/api/whatsapp/conversations/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/whatsapp/conversations/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/card/[code]",
       "regex": "^/card/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -335,6 +343,12 @@
       "regex": "^/admin/users(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/users(?:/)?$"
+    },
+    {
+      "page": "/admin/whatsapp",
+      "regex": "^/admin/whatsapp(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/whatsapp(?:/)?$"
     },
     {
       "page": "/cash",

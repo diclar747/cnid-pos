@@ -3,9 +3,11 @@ import "server-only"
 import { randomUUID } from "node:crypto"
 import type { PoolClient } from "pg"
 import type { KitchenTicket, OrderLine, OrderModifier, ServiceOrder, ServiceOrderType } from "./service-order-types"
+import { effectivePrice } from "./product-price"
 
 export class ServiceOrderError extends Error {
-  constructor(message: string, public status = 400) { super(message) }
+  status: number
+  constructor(message: string, status = 400) { super(message); this.status = status }
 }
 
 export const cleanText = (value: unknown, max = 120) => typeof value === "string" ? value.trim().slice(0, max) : ""
@@ -185,7 +187,7 @@ export async function makeOrderLines(client: PoolClient, rawItems: unknown, orde
         throw new ServiceOrderError(`Elegí correctamente los agregados de ${group.name}.`)
       }
     }
-    const basePrice = product.pricesByOrderType?.[orderType] ?? product.price
+    const basePrice = effectivePrice(product, orderType)
     const price = basePrice + selected.reduce((sum, modifier) => sum + modifier.price, 0)
     const subtotal = price * item.quantity
     if (!Number.isSafeInteger(price) || price < 0 || !Number.isSafeInteger(subtotal)) throw new ServiceOrderError("Precio inválido.")
