@@ -89,7 +89,7 @@ export default function DiningPage() {
   return <main className="min-h-full bg-gradient-to-br from-slate-50 via-indigo-50/50 to-cyan-50/60 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-7">
     <div className="mx-auto max-w-7xl">
       <div className="screen-only mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div><Button variant="ghost" size="sm" className="mb-2" onClick={() => router.push("/pos")}><ArrowLeft className="mr-2 h-4 w-4" /> POS</Button>
+        <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-indigo-600">Configuración del local</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Salones y mesas</h1>
           <p className="mt-1 text-slate-600 dark:text-slate-300">Organizá sillas, cuentas y pedidos por QR en cada mesa.</p></div>

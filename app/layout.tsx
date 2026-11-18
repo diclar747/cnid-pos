@@ -10,14 +10,15 @@ import { PurchasesProvider } from "./context/purchases-context"
 import { SuppliersProvider } from "./context/suppliers-context"
 import { CompanyProvider } from "./context/company-context"
 import { PwaRegistration } from "./components/pwa-registration"
+import { InstallBanner } from "./components/install-banner"
 import { TableCallsListener } from "./components/table-calls-listener"
-import { WhatsAppDrawer } from "./components/whatsapp-drawer"
+import { WorkspaceFrame } from "./components/workspace-shell"
 
 export const metadata: Metadata = {
   title: "RestoPOS",
   description: "Sistema de punto de venta completo para restaurantes y comercios",
   appleWebApp: { capable: true, title: "RestoPOS", statusBarStyle: "default" },
-  icons: { icon: "/pwa-192.png", apple: "/pwa-192.png" },
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/favicon-48.png", sizes: "48x48" }], apple: "/apple-touch-icon.png" },
 }
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f172a" }
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className="font-sans" suppressHydrationWarning>
         <PwaRegistration />
+        <InstallBanner />
         <AuthProvider>
           <ThemeProvider>
             <CompanyProvider>
@@ -38,7 +40,7 @@ export default function RootLayout({
                 <PurchasesProvider>
                   <SuppliersProvider>
                     <CartProvider>
-                      <NotificationsProvider>{children}<TableCallsListener /><WhatsAppDrawer /></NotificationsProvider>
+                      <NotificationsProvider><WorkspaceFrame>{children}</WorkspaceFrame><TableCallsListener /></NotificationsProvider>
                     </CartProvider>
                   </SuppliersProvider>
                 </PurchasesProvider>

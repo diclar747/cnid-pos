@@ -12,7 +12,6 @@ import type { Product } from "../data/products"
 import Image from "next/image"
 import { basePrice, effectivePrice, hasPromo } from "@/lib/product-price"
 import Link from "next/link"
-import RestaurantNavigation from "./restaurant-navigation"
 
 interface ProductGridProps {
   searchTerm: string
@@ -135,7 +134,6 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
               Fotos ilustrativas · créditos
             </Link>
           </div>
-          <RestaurantNavigation />
         </div>
         {searchTerm && <Badge variant="outline" className="mt-2 border-blue-200 bg-blue-50 text-blue-700">Búsqueda: {searchTerm}</Badge>}
       </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Search, Menu, X, Camera, ShoppingCart, PanelRightOpen, Sparkles } from "lucide-react"
+import { Search, Camera, ShoppingCart, PanelRightOpen, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -14,8 +14,7 @@ import { effectivePrice } from "@/lib/product-price"
 import { CodeCamera } from "../components/code-camera"
 import { parseScannedCode } from "@/lib/scan-code"
 import toast from "react-hot-toast"
-import { ThemeToggle } from "../components/theme-toggle"
-import { HeaderActions } from "../components/header-actions"
+import { useWorkspace, WorkspaceSlot } from "../components/workspace-shell"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
 import { apiRequest } from "@/lib/api-client"
@@ -32,9 +31,7 @@ export default function POSPage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedMenu, setSelectedMenu] = useState("all")
   const [selectedFilter, setSelectedFilter] = useState("")
-  const [showCategories, setShowCategories] = useState(false)
   const [showCart, setShowCart] = useState(false)
-  const [categoriesCollapsed, setCategoriesCollapsed] = useState(false)
   const [cartCollapsed, setCartCollapsed] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [configuring, setConfiguring] = useState<{ product: Product; quantity: number } | null>(null)
@@ -45,21 +42,16 @@ export default function POSPage() {
   const { cart, products, addToCart, clearCart, refreshProducts, getCartTotal, orderType, setOrderType } = useCart()
   const searchRef = useRef<HTMLInputElement>(null)
   const { user } = useAuth()
+  const workspace = useWorkspace()
 
   const totalItems = cart?.reduce((sum, item) => sum + item.quantity, 0) || 0
 
   useEffect(() => { searchRef.current?.focus() }, [])
   useEffect(() => {
     try {
-      setCategoriesCollapsed(window.localStorage.getItem("pos:categories-collapsed") === "1")
       setCartCollapsed(window.localStorage.getItem("pos:cart-collapsed") === "1")
     } catch { /* Los paneles siguen funcionando aunque el navegador no guarde preferencias. */ }
   }, [])
-  const toggleCategoriesCollapse = () => {
-    const next = !categoriesCollapsed
-    setCategoriesCollapsed(next)
-    try { window.localStorage.setItem("pos:categories-collapsed", next ? "1" : "0") } catch { /* Preferencia opcional. */ }
-  }
   const toggleCartCollapse = () => {
     const next = !cartCollapsed
     setCartCollapsed(next)
@@ -250,56 +242,48 @@ export default function POSPage() {
     return () => window.clearTimeout(timer)
   }, [searchTerm, availableProducts])
 
+  const categoryList = (mobile: boolean) => <CategorySidebar
+    selectedCategory={selectedCategory}
+    onCategoryChange={(category) => { setSelectedCategory(category); if (mobile) workspace?.closeMobile() }}
+    selectedFilter={selectedFilter}
+    onFilterChange={(filter) => { setSelectedFilter(filter); if (mobile) workspace?.closeMobile() }}
+    collapsed={!mobile && Boolean(workspace?.collapsed)}
+  />
+
   return (
     <ProtectedRoute requiredPermissions={["access_pos"]}>
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-gradient-to-br from-indigo-50 via-slate-50 to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
-        {/* Header */}
-        <header className="z-40 shrink-0 border-b border-indigo-100/80 bg-white/85 shadow-sm shadow-indigo-100/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/85">
-          <div className="flex flex-wrap items-center gap-2 px-3 py-3 md:flex-nowrap md:gap-3 md:px-5">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setShowCategories(true)} aria-label="Abrir opciones y categorías">
-                <Menu className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center gap-2.5">
-                <div className="hidden h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-cyan-500 text-white shadow-lg shadow-indigo-300/40 sm:flex"><Sparkles className="h-5 w-5" /></div>
-                <div><h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">Resto<span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">POS</span></h1>
-                <p className="hidden text-xs text-muted-foreground sm:block">
-                  {user?.restaurantName ? `${user.restaurantName} · ` : ""}{user?.name} -{" "}
-                  {user?.role === "admin" ? "Administrador" : user?.role === "manager" ? "Gerente" : "Cajero"}
-                </p></div>
-              </div>
-            </div>
-
-            <div className="relative order-2 basis-full md:order-none md:mx-4 md:max-w-xl md:flex-1 md:basis-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  ref={searchRef}
-                  autoFocus
-                  autoComplete="off"
-                  aria-label="Buscar o escanear producto"
-                  placeholder="Producto, código, mesa o tarjeta QR…"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); addProductFromSearch(e.currentTarget.value) }
-                    if (e.key === "Tab" && (exactProduct(e.currentTarget.value) || cardPattern.test(cardCodeFromScan(e.currentTarget.value)) || tablePattern.test(tableCodeFromScan(e.currentTarget.value)))) { e.preventDefault(); addProductFromSearch(e.currentTarget.value) }
-                    if (e.key === "Escape") setSearchTerm("")
-                  }}
-                  className="h-11 rounded-2xl border-indigo-100 bg-white pl-10 pr-12 shadow-sm shadow-indigo-100/60 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
-                />
-                <button type="button" onClick={() => setShowScanner(true)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Usar cámara para escanear" title="Usar cámara"><Camera className="h-5 w-5" /></button>
-              </div>
-              {searchTerm && <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-card p-1 shadow-xl">
-                {availableProducts.filter((product) => product.name.toLocaleLowerCase().includes(searchTerm.toLocaleLowerCase()) || product.barcode.includes(searchTerm)).slice(0, 8).map((product) => (
-                  <button type="button" key={product.id} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => addProductFromSearch(product.barcode)}>
-                    <span>{product.name}<span className="ml-2 text-xs text-muted-foreground">{product.barcode}</span></span><span className="text-xs text-muted-foreground">{product.trackStock === false ? "Disponible" : `${product.stock} disp.`}</span>
-                  </button>
-                ))}
-              </div>}
-            </div>
-
-            <div className="order-1 ml-auto flex items-center gap-2 md:order-none">
+      {/* El buscador va en el encabezado del marco y las categorías debajo de «Opciones». */}
+      <WorkspaceSlot name="header">
+        <div className="relative w-full">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              ref={searchRef}
+              autoFocus
+              autoComplete="off"
+              aria-label="Buscar o escanear producto"
+              placeholder="Producto, código, mesa o tarjeta QR…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); addProductFromSearch(e.currentTarget.value) }
+                if (e.key === "Tab" && (exactProduct(e.currentTarget.value) || cardPattern.test(cardCodeFromScan(e.currentTarget.value)) || tablePattern.test(tableCodeFromScan(e.currentTarget.value)))) { e.preventDefault(); addProductFromSearch(e.currentTarget.value) }
+                if (e.key === "Escape") setSearchTerm("")
+              }}
+              className="h-11 rounded-2xl border-indigo-100 bg-white pl-10 pr-12 shadow-sm shadow-indigo-100/60 focus-visible:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
+            />
+            <button type="button" onClick={() => setShowScanner(true)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Usar cámara para escanear" title="Usar cámara"><Camera className="h-5 w-5" /></button>
+          </div>
+          {searchTerm && <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-xl border bg-card p-1 shadow-xl">
+            {availableProducts.filter((product) => product.name.toLocaleLowerCase().includes(searchTerm.toLocaleLowerCase()) || product.barcode.includes(searchTerm)).slice(0, 8).map((product) => (
+              <button type="button" key={product.id} className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-muted" onClick={() => addProductFromSearch(product.barcode)}>
+                <span>{product.name}<span className="ml-2 text-xs text-muted-foreground">{product.barcode}</span></span><span className="text-xs text-muted-foreground">{product.trackStock === false ? "Disponible" : `${product.stock} disp.`}</span>
+              </button>
+            ))}
+          </div>}
+        </div>
+      </WorkspaceSlot>
+      <WorkspaceSlot name="headerEnd">
               <Button
                 variant="outline"
                 size="sm"
@@ -314,56 +298,11 @@ export default function POSPage() {
                   </Badge>
                 )}
               </Button>
+      </WorkspaceSlot>
+      <WorkspaceSlot name="sidebar">{categoryList(false)}</WorkspaceSlot>
+      <WorkspaceSlot name="mobile">{categoryList(true)}</WorkspaceSlot>
 
-              <div className="hidden md:block">
-                <ThemeToggle />
-              </div>
-
-              <HeaderActions />
-            </div>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1">
-          {/* Categories Sidebar - Desktop */}
-          <div className={`hidden shrink-0 border-r border-indigo-100 bg-white/75 shadow-sm backdrop-blur-xl transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-900/80 md:block ${categoriesCollapsed ? "w-[68px]" : "w-64"}`}>
-            <CategorySidebar
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              selectedFilter={selectedFilter}
-              onFilterChange={setSelectedFilter}
-              collapsed={categoriesCollapsed}
-              onToggleCollapse={toggleCategoriesCollapse}
-            />
-          </div>
-
-          {/* Categories Sidebar - Mobile Overlay */}
-          {showCategories && (
-            <div className="fixed inset-0 z-50 md:hidden">
-              <div className="absolute inset-0 bg-black/50" onClick={() => setShowCategories(false)} />
-              <div className="absolute left-0 top-0 h-full w-64 bg-background border-r">
-                <div className="flex items-center justify-between p-4 border-b">
-                  <h2 className="font-semibold">Menú</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setShowCategories(false)} aria-label="Cerrar menú">
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CategorySidebar
-                  selectedCategory={selectedCategory}
-                  onCategoryChange={(category) => {
-                    setSelectedCategory(category)
-                    setShowCategories(false)
-                  }}
-                  selectedFilter={selectedFilter}
-                  onFilterChange={(filter) => {
-                    setSelectedFilter(filter)
-                    setShowCategories(false)
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
+        <div className="flex h-full min-h-0">
           {/* Main Content */}
           <div className="min-w-0 flex-1 overflow-y-auto bg-gradient-to-br from-indigo-50/60 via-slate-50/70 to-cyan-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
             <div className="flex flex-wrap gap-3 px-3 pt-3 sm:px-6 sm:pt-5">
@@ -483,7 +422,6 @@ export default function POSPage() {
           </DialogContent>
         </Dialog>
         <CodeCamera open={showScanner} onClose={() => { setShowScanner(false); requestAnimationFrame(() => searchRef.current?.focus()) }} onResult={addProductFromSearch} />
-      </div>
     </ProtectedRoute>
   )
 }

@@ -70,8 +70,9 @@ export default function RestaurantMenu({ restaurant, products }: { restaurant: M
     <main className="pb-28">
       <section className="relative overflow-hidden text-white">
         <div className="absolute inset-0">
-          {restaurant.cover ? <img src={restaurant.cover} alt="" className="h-full w-full scale-110 object-cover blur-sm" /> : null}
-          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${restaurant.color}ee, #0f172aee 70%)` }} />
+          {restaurant.cover ? <img src={restaurant.cover} alt="" className="h-full w-full object-cover" /> : null}
+          <div className="absolute inset-0" style={{ background: restaurant.cover ? `linear-gradient(90deg, ${restaurant.color}f2 0%, ${restaurant.color}b3 38%, #0f172a66 75%, #0f172a33 100%)` : `linear-gradient(135deg, ${restaurant.color}, #0f172a 70%)` }} />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
         </div>
         <div className="relative mx-auto max-w-6xl px-4 pb-8 pt-6 sm:px-6 sm:pb-10">
           <Link href="/marketplace" className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white"><ArrowLeft className="h-4 w-4" /> Todos los restaurantes</Link>

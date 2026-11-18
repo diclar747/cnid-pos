@@ -4,7 +4,7 @@ import type { MetadataRoute } from "next"
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "RestoPOS · Gestión de restaurantes",
+    name: "RestoPOS · Tu restaurante en línea",
     short_name: "RestoPOS",
     description: "Punto de venta, mesas con QR, cocina en tiempo real, caja, delivery y pedidos por WhatsApp para tu restaurante.",
     start_url: "/welcome",
@@ -13,13 +13,14 @@ export default function manifest(): MetadataRoute.Manifest {
     display_override: ["standalone", "minimal-ui"],
     orientation: "any",
     background_color: "#020617",
-    theme_color: "#0f172a",
+    theme_color: "#4f46e5",
     lang: "es-PY",
     categories: ["business", "food", "productivity"],
     icons: [
       { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/pwa-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
     ],
     screenshots: [
       { src: "/landing/panel.webp", sizes: "2880x1800", type: "image/webp", form_factor: "wide", label: "Panel con las ventas del día" },

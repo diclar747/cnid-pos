@@ -139,3 +139,13 @@ RestoPOS se instala como app (Android, iPhone y escritorio) desde **Instalar app
 `/marketplace` es la vitrina pública de todos los restaurantes activos de RestoPOS (enlazada desde la portada). Cada restaurante muestra su logo, foto, si está abierto ahora según sus horarios, dirección, teléfono, WhatsApp, modalidades (delivery, retiro, en el local), promociones y el menú completo por categorías con buscador.
 
 El cliente arma su pedido en la página y lo envía por **WhatsApp** al restaurante con el detalle y el total estimado; si el asistente Niro está activo, lo toma desde ahí. Los datos salen de **Empresa → Ficha** (descripción, WhatsApp, Google Maps, horarios, modalidades) y del catálogo activo; nunca se muestran stock, costos ni clientes. Con **Mostrar en el marketplace** desmarcado, el restaurante deja de aparecer. Los restaurantes suspendidos no se listan.
+
+## Pantalla única y apariencia
+
+El POS, WhatsApp, Pedidos, Órdenes, Cocina, Tarjetas QR, Mesas y Caja se abren dentro de la misma pantalla: el encabezado y la columna **Opciones** quedan fijos (se puede minimizar) y cada sección se carga adentro, sin cambiar de página. En el celular, **Opciones** se abre con el botón de menú.
+
+En **Empresa → Apariencia** el dueño sube su **logo** y una **foto de portada**, elige el **color** de la marca y el **estilo del encabezado** (claro, con su color u oscuro), con vista previa. Se aplica al encabezado del sistema, al marketplace y a la página pública del restaurante.
+
+## App instalable
+
+En el teléfono aparece un aviso **Instalá RestoPOS** (si se descarta, vuelve a los 5 días). En Android instala con un toque; en iPhone muestra los dos pasos (Compartir → Agregar a inicio). La bienvenida muestra platos reales y «Bienvenido a RestoPOS · Tu restaurante en línea».

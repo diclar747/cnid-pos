@@ -42,6 +42,9 @@ export interface CompanyConfig {
   openingHours: OpeningDay[]
   /** Aparece en el marketplace público de RestoPOS (por defecto sí). */
   showInMarketplace: boolean
+  /** Foto de portada (página pública y marketplace) y estilo del encabezado del sistema. */
+  coverImage: string
+  appearance: { headerStyle: "light" | "brand" | "dark" }
 }
 
 export interface OpeningDay {
@@ -96,6 +99,8 @@ const defaultCompanyConfig: CompanyConfig = {
   serviceModes: { dineIn: true, delivery: true, pickup: true },
   openingHours: defaultHours,
   showInMarketplace: true,
+  coverImage: "",
+  appearance: { headerStyle: "light" },
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined)
@@ -114,6 +119,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         colors: { ...defaultCompanyConfig.colors, ...item.colors },
         socialMedia: { ...defaultCompanyConfig.socialMedia, ...item.socialMedia },
         serviceModes: { ...defaultCompanyConfig.serviceModes, ...item.serviceModes },
+        appearance: { ...defaultCompanyConfig.appearance, ...item.appearance },
         openingHours: Array.isArray(item.openingHours) && item.openingHours.length === 7 ? item.openingHours : defaultHours,
       }))
       .catch((error) => console.error("No se pudo cargar la empresa", error))
