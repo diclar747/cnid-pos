@@ -33,6 +33,7 @@ export function mapOrder(row: OrderRow): ServiceOrder {
     deliveryZoneId: row.delivery_zone_id == null ? null : Number(row.delivery_zone_id),
     deliveryZoneName: row.delivery_zone_name ?? "", deliveryFee: Number(row.delivery_fee ?? 0),
     deliveryAddress: row.delivery_address ?? "",
+    deliveryLocation: row.delivery_lat != null && row.delivery_lng != null ? { lat: Number(row.delivery_lat), lng: Number(row.delivery_lng) } : null,
     courierId: row.courier_id == null ? null : Number(row.courier_id), courierName: row.courier_name ?? "",
     grandTotal: Number(row.total) + Number(row.delivery_fee ?? 0),
   }

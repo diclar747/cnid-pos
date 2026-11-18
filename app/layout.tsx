@@ -11,6 +11,7 @@ import { SuppliersProvider } from "./context/suppliers-context"
 import { CompanyProvider } from "./context/company-context"
 import { PwaRegistration } from "./components/pwa-registration"
 import { TableCallsListener } from "./components/table-calls-listener"
+import { WhatsAppDrawer } from "./components/whatsapp-drawer"
 
 export const metadata: Metadata = {
   title: "RestoPOS",
@@ -37,7 +38,7 @@ export default function RootLayout({
                 <PurchasesProvider>
                   <SuppliersProvider>
                     <CartProvider>
-                      <NotificationsProvider>{children}<TableCallsListener /></NotificationsProvider>
+                      <NotificationsProvider>{children}<TableCallsListener /><WhatsAppDrawer /></NotificationsProvider>
                     </CartProvider>
                   </SuppliersProvider>
                 </PurchasesProvider>

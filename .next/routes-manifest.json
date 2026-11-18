@@ -192,12 +192,28 @@
       "namedRegex": "^/api/users/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/whatsapp/avatar/[id]",
+      "regex": "^/api/whatsapp/avatar/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/whatsapp/avatar/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/whatsapp/conversations/[id]",
       "regex": "^/api/whatsapp/conversations/([^/]+?)(?:/)?$",
       "routeKeys": {
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/api/whatsapp/conversations/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/api/whatsapp/media/[id]",
+      "regex": "^/api/whatsapp/media/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/whatsapp/media/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
       "page": "/card/[code]",

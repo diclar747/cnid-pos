@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import ProtectedRoute from "../components/protected-route"
 import { StaffPushButton } from "../components/table-calls-listener"
+import { OrderFlowGuide } from "../components/order-flow-guide"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
 import { eventLabel, sourceLabel, ticketLabel, typeLabel } from "@/lib/order-labels"
@@ -141,6 +142,7 @@ export default function CrmPage() {
           <Kpi label="En delivery" value={String(totals.delivery)} tone="text-violet-700" />
           <Kpi label="Cobrado en el día" value={money(totals.sales)} tone="text-emerald-700" />
         </div>
+        <div className="mt-3"><OrderFlowGuide /></div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-x-auto p-3 sm:p-4">
@@ -278,7 +280,7 @@ function OrderDetail({ item, canManage, onClose, onChanged, onAdvance, onCancel 
             <p className="mt-1 text-sm">{order.customerName || "Sin nombre"}{order.tableLabel ? ` · ${order.tableLabel}` : ""}</p>
             {order.customerPhone && <p className="mt-1 flex flex-wrap items-center gap-2 text-sm"><Phone className="h-3.5 w-3.5" />{order.customerPhone}
               {order.source === "whatsapp" && <Link href={`/admin/whatsapp?phone=${phoneDigits}`} className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline"><MessageCircle className="h-3.5 w-3.5" />Ver conversación</Link>}</p>}
-            {order.orderType === "delivery" && <p className="mt-1 flex items-start gap-1 text-sm"><MapPin className="mt-0.5 h-3.5 w-3.5" />{order.deliveryAddress || "Sin dirección"}{order.deliveryZoneName ? ` · ${order.deliveryZoneName}` : ""}</p>}
+            {order.orderType === "delivery" && <p className="mt-1 flex items-start gap-1 text-sm"><MapPin className="mt-0.5 h-3.5 w-3.5" />{order.deliveryAddress || "Sin dirección"}{order.deliveryLocation && <a href={`https://maps.google.com/?q=${order.deliveryLocation.lat},${order.deliveryLocation.lng}`} target="_blank" rel="noreferrer" className="ml-1 shrink-0 font-semibold text-sky-700 underline">Ver en el mapa</a>}{order.deliveryZoneName ? ` · ${order.deliveryZoneName}` : ""}</p>}
           </section>
           <section className="rounded-xl border p-3">
             <h3 className="text-sm font-bold">Productos</h3>

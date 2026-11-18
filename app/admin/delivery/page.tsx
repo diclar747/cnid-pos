@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/api-client"
 import type { Courier, DeliveryZone } from "@/lib/service-order-types"
 
 const money = (value: number) => `Gs ${Math.round(value).toLocaleString("es-PY")}`
-const emptyZone = { name: "", areas: "", fee: "", freeOver: "", etaMinutes: "", isActive: true, sortOrder: "0" }
+const emptyZone = { name: "", areas: "", fee: "", freeOver: "", etaMinutes: "", maxKm: "", isActive: true, sortOrder: "0" }
 const emptyCourier = { name: "", phone: "", vehicle: "", isActive: true }
 const digits = (value: string) => value.replace(/\D/g, "")
 
@@ -39,7 +39,7 @@ export default function DeliveryPage() {
     try {
       const f = zoneForm.form
       const body = { name: f.name, areas: f.areas, fee: Number(digits(f.fee) || 0), freeOver: f.freeOver ? Number(digits(f.freeOver)) : null,
-        etaMinutes: f.etaMinutes ? Number(digits(f.etaMinutes)) : null, isActive: f.isActive, sortOrder: Number(f.sortOrder) || 0 }
+        etaMinutes: f.etaMinutes ? Number(digits(f.etaMinutes)) : null, maxKm: f.maxKm ? Number(f.maxKm.replace(",", ".")) : null, isActive: f.isActive, sortOrder: Number(f.sortOrder) || 0 }
       await apiRequest(zoneForm.id ? `/api/delivery/zones/${zoneForm.id}` : "/api/delivery/zones", { method: zoneForm.id ? "PUT" : "POST", body: JSON.stringify(body) })
       toast.success("Zona guardada")
       setZoneForm(null)
@@ -93,9 +93,10 @@ export default function DeliveryPage() {
                   <div><dt className="text-xs text-muted-foreground">Envío</dt><dd className="font-semibold">{zone.fee ? money(zone.fee) : "Gratis"}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Gratis desde</dt><dd className="font-semibold">{zone.freeOver != null ? money(zone.freeOver) : "—"}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Demora</dt><dd className="font-semibold">{zone.etaMinutes ? `${zone.etaMinutes} min` : "—"}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Radio</dt><dd className="font-semibold">{zone.maxKm ? `hasta ${zone.maxKm} km` : "—"}</dd></div>
                 </dl>
                 <div className="mt-4 flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setZoneForm({ id: zone.id, form: { name: zone.name, areas: zone.areas, fee: String(zone.fee), freeOver: zone.freeOver == null ? "" : String(zone.freeOver), etaMinutes: zone.etaMinutes == null ? "" : String(zone.etaMinutes), isActive: zone.isActive, sortOrder: String(zone.sortOrder) } })}><Pencil className="mr-1 h-3 w-3" /> Editar</Button>
+                  <Button variant="outline" size="sm" onClick={() => setZoneForm({ id: zone.id, form: { name: zone.name, areas: zone.areas, fee: String(zone.fee), freeOver: zone.freeOver == null ? "" : String(zone.freeOver), etaMinutes: zone.etaMinutes == null ? "" : String(zone.etaMinutes), maxKm: zone.maxKm == null ? "" : String(zone.maxKm), isActive: zone.isActive, sortOrder: String(zone.sortOrder) } })}><Pencil className="mr-1 h-3 w-3" /> Editar</Button>
                   <Button variant="ghost" size="sm" className="text-red-600" onClick={() => void remove("zones", zone.id, zone.name)}><Trash2 className="mr-1 h-3 w-3" /> Eliminar</Button>
                 </div>
               </article>
@@ -132,6 +133,8 @@ export default function DeliveryPage() {
               <label className="block text-sm font-medium">Costo de envío (Gs)<Input inputMode="numeric" value={zoneForm.form.fee} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, fee: digits(e.target.value) } })} className="mt-1" /></label>
               <label className="block text-sm font-medium">Gratis desde (Gs)<Input inputMode="numeric" value={zoneForm.form.freeOver} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, freeOver: digits(e.target.value) } })} placeholder="Opcional" className="mt-1" /></label>
               <label className="block text-sm font-medium">Demora (min)<Input inputMode="numeric" value={zoneForm.form.etaMinutes} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, etaMinutes: digits(e.target.value) } })} placeholder="Opcional" className="mt-1" /></label>
+              <label className="block text-sm font-medium">Radio desde el local (km)<Input inputMode="decimal" value={zoneForm.form.maxKm} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, maxKm: e.target.value.replace(/[^d.,]/g, "").slice(0, 6) } })} placeholder="Ej.: 3 (opcional)" className="mt-1" />
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">Cuando el cliente comparte su ubicación por WhatsApp, se elige la zona más chica que la cubra. Requiere la ubicación del local en Configuración → Ficha.</span></label>
               <label className="block text-sm font-medium">Orden<Input inputMode="numeric" value={zoneForm.form.sortOrder} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, sortOrder: digits(e.target.value) } })} className="mt-1" /></label>
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={zoneForm.form.isActive} onChange={(e) => setZoneForm({ ...zoneForm, form: { ...zoneForm.form, isActive: e.target.checked } })} /> Zona activa</label>

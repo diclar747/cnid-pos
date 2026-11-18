@@ -16,6 +16,7 @@ export const mapZone = (row: Row): DeliveryZone => ({
   id: Number(row.id), name: row.name, areas: row.areas, fee: Number(row.fee),
   freeOver: row.free_over == null ? null : Number(row.free_over),
   etaMinutes: row.eta_minutes == null ? null : Number(row.eta_minutes),
+  maxKm: row.max_km == null ? null : Number(row.max_km),
   isActive: row.is_active, sortOrder: Number(row.sort_order),
 })
 
@@ -51,7 +52,9 @@ export function validateZone(body: any) {
   if (!name) throw new RecordError("Indicá el nombre de la zona.")
   const eta = body?.etaMinutes === null || body?.etaMinutes === undefined || body?.etaMinutes === "" ? null : Number(body.etaMinutes)
   if (eta !== null && (!Number.isSafeInteger(eta) || eta < 1 || eta > 600)) throw new RecordError("Tiempo estimado inválido.")
-  return {
+  const maxKm = body?.maxKm === null || body?.maxKm === undefined || body?.maxKm === "" ? null : Number(body.maxKm)
+  if (maxKm !== null && (!Number.isFinite(maxKm) || maxKm <= 0 || maxKm > 500)) throw new RecordError("Distancia máxima inválida (km).")
+  return { maxKm: maxKm === null ? null : Math.round(maxKm * 100) / 100,
     name, areas: cleanText(body?.areas, 500), fee: money(body?.fee ?? 0, "Costo de envío")!,
     freeOver: money(body?.freeOver, "Monto para envío gratis", true), etaMinutes: eta,
     isActive: body?.isActive !== false, sortOrder: Number.isSafeInteger(Number(body?.sortOrder)) ? Number(body.sortOrder) : 0,

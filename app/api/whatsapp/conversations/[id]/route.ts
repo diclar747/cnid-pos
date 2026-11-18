@@ -3,7 +3,7 @@ import { getSessionUser, hasPermission } from "@/lib/auth"
 import { currentSchema, db } from "@/lib/db"
 import { mapOrder } from "@/lib/service-order-server"
 import { sendText } from "@/lib/whatsapp/session"
-import { conversationRow, messageRow } from "@/lib/whatsapp/rows"
+import { CONVERSATION_COLUMNS, conversationRow, messageRow } from "@/lib/whatsapp/rows"
 
 export const runtime = "nodejs"
 type Context = { params: Promise<{ id: string }> }
@@ -20,10 +20,11 @@ export async function GET(request: NextRequest, { params }: Context) {
   if (!hasPermission(user, "access_pos")) return NextResponse.json({ error: "Sin permiso." }, { status: 403 })
   const id = await conversationId(params)
   if (!id) return NextResponse.json({ error: "Conversación inválida." }, { status: 400 })
-  const row = (await db.query("SELECT * FROM wa_conversations WHERE id = $1 AND jid NOT LIKE 'simulator:%'", [id])).rows[0]
+  const row = (await db.query(`SELECT ${CONVERSATION_COLUMNS} FROM wa_conversations c WHERE c.id = $1 AND c.jid NOT LIKE 'simulator:%'`, [id])).rows[0]
   if (!row) return NextResponse.json({ error: "Conversación no encontrada." }, { status: 404 })
   const [messages, orders] = await Promise.all([
-    db.query("SELECT * FROM (SELECT * FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT 300) m ORDER BY created_at, id", [id]),
+    db.query(`SELECT m.*, md.mime AS media_mime, md.seconds AS media_seconds FROM (SELECT * FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT 300) m
+      LEFT JOIN wa_media md ON md.id = m.media_id ORDER BY m.created_at, m.id`, [id]),
     db.query("SELECT o.*, NULL AS card_code FROM service_orders o WHERE o.wa_conversation_id = $1 ORDER BY o.id DESC LIMIT 20", [id]),
   ])
   if (Number(row.unread) > 0) await db.query("UPDATE wa_conversations SET unread = 0 WHERE id = $1", [id])

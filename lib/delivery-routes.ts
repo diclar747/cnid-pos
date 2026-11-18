@@ -20,9 +20,9 @@ type Resource = {
 export const resources: Record<"zones" | "couriers", Resource> = {
   zones: {
     table: "delivery_zones", order: "sort_order, name", map: mapZone,
-    values: (body) => { const v = validateZone(body); return [v.name, v.areas, v.fee, v.freeOver, v.etaMinutes, v.isActive, v.sortOrder] },
-    insert: "(name, areas, fee, free_over, eta_minutes, is_active, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-    update: "name=$2, areas=$3, fee=$4, free_over=$5, eta_minutes=$6, is_active=$7, sort_order=$8",
+    values: (body) => { const v = validateZone(body); return [v.name, v.areas, v.fee, v.freeOver, v.etaMinutes, v.isActive, v.sortOrder, v.maxKm] },
+    insert: "(name, areas, fee, free_over, eta_minutes, is_active, sort_order, max_km) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+    update: "name=$2, areas=$3, fee=$4, free_over=$5, eta_minutes=$6, is_active=$7, sort_order=$8, max_km=$9",
   },
   couriers: {
     table: "couriers", order: "is_active DESC, name", map: mapCourier,
