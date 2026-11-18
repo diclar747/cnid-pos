@@ -160,3 +160,16 @@ El consumidor entra en **Mi cuenta** (`/cuenta`, también desde el marketplace, 
 - **Historial**: pedidos en curso y anteriores, con detalle, total y botones para llamar o escribir al restaurante.
 - **Escanear mesa**: abre la cámara, lee el QR de la mesa y lleva a su carta; con la sesión iniciada, ese pedido también queda en su historial y recibe los avisos.
 - **Mis datos**: nombre, dirección para delivery, email y cambio de contraseña.
+
+## Mesas: cuenta de cada mesa
+
+En **Mesas**, tocar una mesa abre su cuenta al costado: lo que pidió (por enviar a cocina y ya en cocina), el total, desde cuándo está abierta y el mesero. A la derecha está el catálogo con buscador y categorías: se agregan productos (con sus opciones) a medida que la mesa pide, con **Agregar** o **Agregar y enviar** a cocina. Una mesa libre abre su cuenta al agregarle el primer producto.
+
+- **Precuenta** imprime la cuenta; **Cobrar** abre el cobro (efectivo, tarjeta, pago dividido o a cuenta) y al cobrar la mesa queda **libre**.
+- **Liberar mesa sin cobrar** (caja) cancela la cuenta con un motivo y devuelve el stock reservado.
+- El botón **QR** de cada mesa muestra su tarjeta para imprimir o descargar: quien la escanea ve la carta, pide y el pedido llega a esa mesa.
+- Las tarjetas de las mesas se actualizan solas (libre / orden abierta).
+
+## RUC o cédula en el ticket
+
+Al cobrar, en **Cliente y RUC** se escribe la cédula o el RUC: se consulta sola en la SET y completa el nombre completo y el RUC con dígito verificador para el ticket. Si no figura, se escribe el nombre a mano.

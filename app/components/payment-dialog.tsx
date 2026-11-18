@@ -137,17 +137,27 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
     return next.length === 1 ? [{ ...next[0], amount: "" }] : next
   })
 
-  const lookupRuc = async () => {
-    if (!invoice.ruc.trim()) return
+  const lookedUp = useRef("")
+  const lookupRuc = async (quiet = false) => {
+    const base = invoice.ruc.trim().split("-")[0].replace(/\D/g, "")
+    if (base.length < 5) return
+    lookedUp.current = base
     setInvoice((current) => ({ ...current, checking: true }))
     try {
       const result = await consultarRuc(invoice.ruc)
       if (result.isValid && result.data) {
-        setInvoice((current) => ({ ...current, ruc: formatRuc(current.ruc), name: result.data!.name }))
-        toast.success(`RUC válido: ${result.data.name}`)
+        setInvoice((current) => ({ ...current, ruc: result.data!.ruc || formatRuc(current.ruc), name: result.data!.name }))
+        if (!quiet) toast.success(`RUC válido: ${result.data.name}`)
       } else toast.error(result.error || "RUC no encontrado")
     } catch { toast.error("No se pudo consultar el RUC") } finally { setInvoice((current) => ({ ...current, checking: false })) }
   }
+  // Consulta sola al dejar de escribir la cédula o el RUC (6 dígitos o más).
+  useEffect(() => {
+    const base = invoice.ruc.trim().split("-")[0].replace(/\D/g, "")
+    if (!invoice.open || base.length < 6 || base === lookedUp.current) return
+    const timer = window.setTimeout(() => void lookupRuc(true), 800)
+    return () => window.clearTimeout(timer)
+  }, [invoice.ruc, invoice.open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const charge = async () => {
     if (problem || busy || !target) return
@@ -288,7 +298,7 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
               </button>
               {invoice.open && <div className="grid gap-2 border-t p-3 sm:grid-cols-[1fr_1.4fr]">
                 <div className="flex gap-1">
-                  <Input value={invoice.ruc} onChange={(event) => setInvoice((current) => ({ ...current, ruc: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupRuc() } }} placeholder="RUC 80000000-0" />
+                  <Input value={invoice.ruc} onChange={(event) => setInvoice((current) => ({ ...current, ruc: event.target.value }))} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupRuc() } }} placeholder="RUC o cédula" />
                   <Button type="button" variant="outline" size="icon" onClick={() => void lookupRuc()} disabled={invoice.checking || !invoice.ruc.trim()} aria-label="Consultar RUC">
                     {invoice.checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}</Button>
                 </div>
