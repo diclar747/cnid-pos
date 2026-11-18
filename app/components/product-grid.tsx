@@ -10,6 +10,7 @@ import { useCart } from "../context/cart-context"
 import { useSales } from "../context/sales-context"
 import type { Product } from "../data/products"
 import Image from "next/image"
+import { basePrice, effectivePrice, hasPromo } from "@/lib/product-price"
 import Link from "next/link"
 import RestaurantNavigation from "./restaurant-navigation"
 
@@ -176,7 +177,7 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
 
                 {/* Price */}
                 <div className="absolute bottom-3 right-3 rounded-full bg-slate-950/85 px-3 py-1.5 text-sm font-bold text-white shadow-lg backdrop-blur-sm">
-                  {formatPrice(product.pricesByOrderType?.[orderType] ?? product.price)}
+                  {hasPromo(product, orderType) && <span className="mr-1 text-xs line-through opacity-70">{formatPrice(basePrice(product, orderType))}</span>}{formatPrice(effectivePrice(product, orderType))}
                 </div>
               </div>
 

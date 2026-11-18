@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { loadOrder, logOrderEvent, recordCustomerPurchase, ServiceOrderError, upsertCustomer, validOrderType } from "@/lib/service-order-server"
 import type { OrderLine } from "@/lib/service-order-types"
 import { findPaymentMethod, recordSalePayment } from "@/lib/cash"
+import { effectivePrice } from "@/lib/product-price"
 
 export const runtime = "nodejs"
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       if (product.trackStock !== false && (!Number.isSafeInteger(product.stock) || product.stock < quantityToDeduct)) {
         throw new CheckoutError(`Stock insuficiente para ${product.name}.`)
       }
-      const basePrice = product.pricesByOrderType?.[orderType] ?? product.price
+      const basePrice = effectivePrice(product, orderType)
       if (!serviceOrder && (!Number.isSafeInteger(basePrice) || basePrice < 0)) throw new CheckoutError("Precio de producto inválido.")
 
       for (const line of lines.get(id) ?? []) {

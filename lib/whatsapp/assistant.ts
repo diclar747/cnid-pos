@@ -7,6 +7,7 @@ import { ticketLabel, typeLabel } from "../order-labels"
 import { deliveryFeeFor, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, ServiceOrderError, upsertCustomer } from "../service-order-server"
 import type { OrderLine, ServiceOrderType } from "../service-order-types"
 import { notifyStaff } from "../web-push"
+import { basePrice, effectivePrice } from "../product-price"
 import { sendText } from "./session"
 
 // Asistente de pedidos por WhatsApp con Niro IA.
@@ -16,7 +17,8 @@ import { sendText } from "./session"
 export type CartItem = { productId: number; quantity: number; optionIds: number[]; note: string }
 export type Cart = { items: CartItem[]; orderType?: ServiceOrderType; address?: string; zoneId?: number | null; name?: string; notes?: string }
 type Action = { type: string; [key: string]: unknown }
-type Product = { id: number; name: string; category: string; price: number; description: string; modifierGroups: any[]; pricesByOrderType?: Record<string, number> }
+type Product = { id: number; name: string; category: string; price: number; description: string; modifierGroups: any[]; pricesByOrderType?: Record<string, number>
+  promoPrice?: number | null; prepMinutes?: number | null; ingredients?: string }
 
 const money = (value: number) => `Gs ${value.toLocaleString("es-PY")}`
 const MAX_HISTORY = 14
@@ -81,8 +83,12 @@ function menuText(products: Product[]) {
     for (const product of items) {
       const groups = (product.modifierGroups ?? []).map((group: any) => `${group.name}${group.required ? "*" : ""}${group.multiple ? " (varias)" : ""}: ${(group.options ?? [])
         .map((option: any) => `[${option.legacyId}] ${option.name}${option.price ? ` +${option.price}` : ""}`).join(", ")}`).join(" | ")
-      const delivery = product.pricesByOrderType?.delivery && product.pricesByOrderType.delivery !== product.price ? ` (delivery Gs ${product.pricesByOrderType.delivery})` : ""
-      lines.push(`[${product.id}] ${product.name} — Gs ${product.price}${delivery}${product.description ? ` · ${product.description.slice(0, 70)}` : ""}${groups ? ` · Opciones: ${groups}` : ""}`)
+      const price = effectivePrice(product, "pickup")
+      const promo = price < basePrice(product, "pickup") ? ` (PROMO, antes Gs ${basePrice(product, "pickup")})` : ""
+      const deliveryPrice = effectivePrice(product, "delivery")
+      const delivery = deliveryPrice !== price ? ` (delivery Gs ${deliveryPrice})` : ""
+      const details = [product.description?.slice(0, 70), product.ingredients ? `ingredientes: ${product.ingredients.slice(0, 80)}` : "", product.prepMinutes ? `~${product.prepMinutes} min` : ""].filter(Boolean).join(" · ")
+      lines.push(`[${product.id}] ${product.name} — Gs ${price}${promo}${delivery}${details ? ` · ${details}` : ""}${groups ? ` · Opciones: ${groups}` : ""}`)
     }
   }
   return lines.join("\n")
@@ -113,7 +119,8 @@ async function loadContext(schema: string, query: SchemaQuery, conversationId: n
   const products: Product[] = productRows.rows.map((row) => ({ ...row.data, id: Number(row.id) }))
     .filter((product: any) => product.trackStock === false || Number(product.stock) > 0)
     .map((product: any) => ({ id: product.id, name: product.name, category: product.category ?? "", price: Number(product.price), description: product.description ?? "",
-      modifierGroups: product.modifierGroups ?? [], pricesByOrderType: product.pricesByOrderType }))
+      modifierGroups: product.modifierGroups ?? [], pricesByOrderType: product.pricesByOrderType, promoPrice: product.promoPrice ?? null,
+      prepMinutes: product.prepMinutes ?? null, ingredients: product.ingredients ?? "" }))
   return { conversation, settings, company, restaurant: String(restaurant), zones: zones.rows, products, history: history.rows, orders: orders.rows }
 }
 
