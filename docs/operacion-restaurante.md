@@ -170,6 +170,12 @@ En **Mesas**, tocar una mesa abre su cuenta al costado: lo que pidió (por envia
 - El botón **QR** de cada mesa muestra su tarjeta para imprimir o descargar: quien la escanea ve la carta, pide y el pedido llega a esa mesa.
 - Las tarjetas de las mesas se actualizan solas (libre / orden abierta).
 
+### Mesas desde el carrito del POS
+
+- Con productos en el carrito, **Enviar a una mesa** abre el mapa de mesas: libres en verde y ocupadas en amarillo, con el total, los productos, desde cuándo está abierta, el mesero y lo que falta enviar a cocina. Al elegir una mesa, el carrito la muestra; **Mesa y cocina** guarda el pedido en esa mesa y lo manda a cocina (o **Guardar en …** sin cocina). Si la mesa ya tenía cuenta, el pedido se suma a lo que consumió. El carrito queda libre para el siguiente cliente.
+- El botón **Mesas** del carrito (o **Ver mesas y cobrar una cuenta** con el carrito vacío) abre una mesa ocupada: el carrito muestra **Consumo de la cuenta** con cada producto, lo que falta enviar a cocina y el total, y **Cobrar cuenta completa**. Se pueden agregar más productos a esa cuenta.
+- Con una cuenta abierta, **Asignar mesa** le pone mesa a una orden que no tenía; **cambiar** la pasa a otra mesa libre.
+
 ## RUC o cédula en el ticket
 
 Al cobrar, en **Cliente y RUC** se escribe la cédula o el RUC: se consulta sola en la SET y completa el nombre completo y el RUC con dígito verificador para el ticket. Si no figura, se escribe el nombre a mano.
