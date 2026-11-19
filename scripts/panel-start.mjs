@@ -7,7 +7,7 @@
 //   3. importa la carta de De la Casa si existe el archivo y todavía no se cargó;
 //   4. inicia Next.js en 0.0.0.0:$PORT (el panel usa PORT=8080).
 import { spawn, spawnSync } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -27,6 +27,24 @@ function run(script, args = []) {
     process.exit(1)
   }
 }
+
+// El sistema de archivos del sitio es de solo lectura y /tmp puede no aceptar escritura: WhatsApp (Baileys) cifra
+// fotos, audios y videos en un archivo temporal antes de enviarlos. Se elige la primera carpeta que acepte escritura.
+function writableTmp() {
+  const candidates = [process.env.TMPDIR, "/tmp", "/dev/shm", "/var/tmp", "/run/shm", resolve(".tmp"), process.env.HOME && resolve(process.env.HOME, ".tmp")].filter(Boolean)
+  for (const dir of candidates) {
+    try {
+      mkdirSync(dir, { recursive: true })
+      const probe = resolve(dir, `.restopos-probe-${process.pid}`)
+      writeFileSync(probe, "ok"); unlinkSync(probe)
+      return dir
+    } catch { /* probar la siguiente */ }
+  }
+  return null
+}
+const tmp = writableTmp()
+if (tmp) { process.env.TMPDIR = tmp; process.env.TMP = tmp; process.env.TEMP = tmp; console.log(`Carpeta temporal: ${tmp}`) }
+else console.warn("Ninguna carpeta temporal acepta escritura: WhatsApp no podrá enviar fotos, audios ni videos.")
 
 run("scripts/setup-local-db.mjs")
 // Sin SUPERADMIN_PASSWORD, create-superadmin genera una contraseña y la muestra una sola vez.
