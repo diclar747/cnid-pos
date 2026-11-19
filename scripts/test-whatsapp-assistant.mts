@@ -163,6 +163,24 @@ try {
   await incoming("Hola? sigo esperando")
   check(seen.length === calls2, "Con el asistente pausado no responde la IA")
 
+  // 9b) Chat tomado por el personal: mientras responde hace poco, el asistente no contesta; si nadie del local
+  // respondió en el tiempo configurado (30 min por defecto), vuelve solo al asistente.
+  await db.query("UPDATE ai_settings SET resume_after_minutes = 30 WHERE id = 1")
+  await db.query("UPDATE wa_conversations SET bot_enabled = FALSE, handoff_requested = FALSE, assigned_name = 'Caja' WHERE id = $1", [conversation.id])
+  await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '5 minutes' WHERE conversation_id = $1", [conversation.id])
+  const staffMessage = (await db.query(`INSERT INTO wa_messages (conversation_id, direction, author, author_name, kind, body, status, created_at)
+    VALUES ($1, 'out', 'staff', 'Caja', 'text', 'Ya te atiendo', 'sent', NOW() - INTERVAL '2 minutes') RETURNING id`, [conversation.id])).rows[0].id
+  const calls4 = seen.length
+  await incoming("¿Siguen ahí?")
+  check(seen.length === calls4 && (await db.query("SELECT bot_enabled FROM wa_conversations WHERE id = $1", [conversation.id])).rows[0].bot_enabled === false, "Con el personal atendiendo, el asistente no responde")
+  await db.query("UPDATE wa_messages SET created_at = NOW() - INTERVAL '45 minutes' WHERE id = $1", [staffMessage])
+  await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '45 minutes' WHERE conversation_id = $1 AND author = 'system'", [conversation.id])
+  script = () => ({ content: JSON.stringify({ reply: "¡Hola de nuevo! ¿Te ayudo con tu pedido?", actions: [] }) })
+  await incoming("Hola, ¿alguien?")
+  state = (await db.query("SELECT bot_enabled, assigned_name FROM wa_conversations WHERE id = $1", [conversation.id])).rows[0]
+  check(state.bot_enabled === true && state.assigned_name === "" && sent.at(-1)?.text === "¡Hola de nuevo! ¿Te ayudo con tu pedido?", `Vuelve al asistente si nadie responde (bot ${state.bot_enabled}, último: ${sent.at(-1)?.text})`)
+  check((await db.query("SELECT 1 FROM wa_messages WHERE conversation_id = $1 AND author = 'system' AND body LIKE 'La conversación volvió al asistente (nadie%'", [conversation.id])).rows[0], "Queda el aviso en el chat")
+
   // 10) Error de Niro (sin saldo): se deriva al personal y se registra el error.
   await db.query("UPDATE wa_conversations SET bot_enabled = TRUE, handoff_requested = FALSE WHERE id = $1", [conversation.id])
   // La prueba manda muchos mensajes seguidos: se «envejecen» para no activar el freno de ráfagas (10 por minuto).

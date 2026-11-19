@@ -13,7 +13,7 @@ import { sourceLabel, typeLabel } from "@/lib/order-labels"
 import { WhatsAppInbox } from "../../components/whatsapp-inbox"
 
 type Status = { session: { enabled: boolean; status: string; live: boolean; phone: string; pushName: string; qr: string | null; qrAt: string | null; connectedAt: string | null; lastError: string }
-  logs: { event: string; detail: string; createdAt: string }[]; ai: { enabled: boolean; instructions: string; greeting: string; transcribeAudio: boolean; configured: boolean }
+  logs: { event: string; detail: string; createdAt: string }[]; ai: { enabled: boolean; instructions: string; greeting: string; transcribeAudio: boolean; resumeAfterMinutes: number; configured: boolean }
   usage: { replies: number; errors: number; transcriptions: number; tokens: number; latencyMs: number }; counts: { conversations: number; unread: number; handoffs: number }; canManage: boolean }
 type Conversation = { id: number; phone: string; name: string; botEnabled: boolean; handoffRequested: boolean; assignedName: string; unread: number; lastMessage: string
   lastMessageAt: string | null; cartItems: number; openOrders: number }
@@ -103,6 +103,7 @@ function ConnectionPanel({ status, onChanged }: { status: Status; onChanged: () 
 function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () => Promise<void> }) {
   const [enabled, setEnabled] = useState(status.ai.enabled)
   const [transcribeAudio, setTranscribeAudio] = useState(status.ai.transcribeAudio)
+  const [resumeAfterMinutes, setResumeAfterMinutes] = useState(status.ai.resumeAfterMinutes ?? 30)
   const [instructions, setInstructions] = useState(status.ai.instructions)
   const [greeting, setGreeting] = useState(status.ai.greeting)
   const [saving, setSaving] = useState(false)
@@ -118,7 +119,7 @@ function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () =
   }, [status.ai.configured, status.canManage])
   const save = async () => {
     setSaving(true)
-    try { await apiRequest("/api/whatsapp/ai", { method: "PUT", body: JSON.stringify({ enabled, instructions, greeting, transcribeAudio }) }); toast.success("Asistente guardado"); await onChanged() }
+    try { await apiRequest("/api/whatsapp/ai", { method: "PUT", body: JSON.stringify({ enabled, instructions, greeting, transcribeAudio, resumeAfterMinutes }) }); toast.success("Asistente guardado"); await onChanged() }
     catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo guardar") }
     finally { setSaving(false) }
   }
@@ -141,6 +142,11 @@ function AssistantPanel({ status, onChanged }: { status: Status; onChanged: () =
       <p className="text-sm text-muted-foreground">El asistente usa siempre la carta, precios, opciones, zonas de delivery y horarios cargados en el sistema. No puede cambiar precios, confirmar pagos ni avanzar estados: los pedidos entran como <strong>Nuevos</strong> en el tablero para que el local los confirme.</p>
       <label className="flex items-start gap-2 rounded-xl border p-3 text-sm"><input type="checkbox" checked={transcribeAudio} onChange={(event) => setTranscribeAudio(event.target.checked)} className="mt-0.5 h-4 w-4" />
         <span><strong>Transcribir audios automáticamente</strong><span className="block text-xs text-muted-foreground">El audio siempre llega y se puede escuchar en Conversaciones. Con esta opción, Niro también lo pasa a texto (usa créditos) para que el asistente lo entienda.</span></span></label>
+      <label className="flex items-start justify-between gap-3 rounded-xl border p-3 text-sm">
+        <span><strong>Volver al asistente si nadie responde</strong><span className="block text-xs text-muted-foreground">Cuando alguien del local toma un chat (o le escribe), el asistente se pausa en ese chat. Si el cliente escribe y nadie del local respondió en este tiempo, el asistente vuelve a atenderlo.</span></span>
+        <select value={resumeAfterMinutes} onChange={(event) => setResumeAfterMinutes(Number(event.target.value))} className="h-9 shrink-0 rounded-md border bg-background px-2 text-sm">
+          {[[10, "10 min"], [15, "15 min"], [30, "30 min"], [60, "1 hora"], [120, "2 horas"], [240, "4 horas"], [0, "Nunca"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select></label>
       <label className="block text-sm font-semibold">Saludo inicial
         <Input value={greeting} onChange={(event) => setGreeting(event.target.value)} maxLength={600} placeholder="¡Hola! Bienvenido a … ¿Qué te gustaría pedir hoy?" className="mt-1" /></label>
       <label className="block text-sm font-semibold">Instrucciones del restaurante

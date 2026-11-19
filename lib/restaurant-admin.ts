@@ -36,7 +36,7 @@ export async function createRestaurant(body: unknown) {
   const input = restaurantInput(body, true)
   const sql = await readFile(resolve(process.cwd(), "scripts/03-local-postgres.sql"), "utf8")
   const diningSql = await readFile(resolve(process.cwd(), "scripts/05-dining.sql"), "utf8")
-  const tenantSql = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql", "09-cash-payments.sql", "10-realtime.sql", "11-whatsapp-ai.sql", "12-whatsapp-media.sql", "13-customer-credit.sql", "14-brand-assets.sql", "15-customer-accounts.sql", "16-kitchen-board.sql", "17-whatsapp-attachments.sql", "18-table-requests.sql", "19-customer-guests.sql", "20-product-images.sql"]
+  const tenantSql = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql", "09-cash-payments.sql", "10-realtime.sql", "11-whatsapp-ai.sql", "12-whatsapp-media.sql", "13-customer-credit.sql", "14-brand-assets.sql", "15-customer-accounts.sql", "16-kitchen-board.sql", "17-whatsapp-attachments.sql", "18-table-requests.sql", "19-customer-guests.sql", "20-product-images.sql", "21-whatsapp-resume.sql"]
     .map((file) => readFile(resolve(process.cwd(), "scripts", file), "utf8")))
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS products")
   if (start < 0) throw new Error("No se encontró el esquema de datos.")

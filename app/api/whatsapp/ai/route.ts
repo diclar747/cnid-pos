@@ -25,7 +25,9 @@ export async function PUT(request: NextRequest) {
   const greeting = typeof body.greeting === "string" ? body.greeting.trim().slice(0, 600) : null
   const enabled = typeof body.enabled === "boolean" ? body.enabled : null
   const transcribe = typeof body.transcribeAudio === "boolean" ? body.transcribeAudio : null
+  const resume = Number.isInteger(body.resumeAfterMinutes) && body.resumeAfterMinutes >= 0 && body.resumeAfterMinutes <= 1440 ? body.resumeAfterMinutes : null
   await db.query(`UPDATE ai_settings SET enabled = COALESCE($1, enabled), instructions = COALESCE($2, instructions), greeting = COALESCE($3, greeting),
-    transcribe_audio = COALESCE($4, transcribe_audio), updated_at = NOW() WHERE id = 1`, [enabled, instructions, greeting, transcribe])
+    transcribe_audio = COALESCE($4, transcribe_audio), resume_after_minutes = COALESCE($5, resume_after_minutes), updated_at = NOW() WHERE id = 1`,
+    [enabled, instructions, greeting, transcribe, resume])
   return NextResponse.json({ ok: true })
 }
