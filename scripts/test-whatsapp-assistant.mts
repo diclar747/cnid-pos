@@ -114,8 +114,13 @@ try {
   check(sent.at(-1)?.text.includes(`Envío (Zona WA ${suffix}): Gs 9.000`) && sent.at(-1)?.text.includes("Total: Gs 79.000"), `Envío por zona: ${sent.at(-1)?.text}`)
 
   // 6) Confirmar: se registra un pedido «Nuevo» pendiente de confirmación, vinculado a la conversación.
+  // Pedido completo: un solo resumen y las opciones 1 / 2.
+  check(sent.at(-1)?.text.includes("Respondé *1* para confirmar") && (sent.at(-1)?.text.match(/Tu pedido/g) ?? []).length === 1, `Resumen único con opciones: ${sent.at(-1)?.text}`)
+  check((await db.query("SELECT cart FROM wa_conversations WHERE id = $1", [conversation.id])).rows[0].cart.awaitingConfirm === true, "Queda esperando 1 o 2")
   script = () => ({ content: JSON.stringify({ reply: "¡Ya está en cocina!", actions: [{ type: "confirm_order" }] }) })
+  const aiCalls = seen.length
   await incoming("Sí, confirmo")
+  check(seen.length === aiCalls, "«Sí, confirmo» cierra la venta sin pasar por la IA")
   const order = (await db.query("SELECT * FROM service_orders WHERE wa_conversation_id = $1 ORDER BY id DESC LIMIT 1", [conversation.id])).rows[0]
   check(order, "Se registró el pedido")
   created.orders.push(Number(order.id))
@@ -137,6 +142,15 @@ try {
   await incoming("¿Cómo va mi pedido?")
   check(seen.at(-1)?.system.includes(`#${order.id} (Delivery`) && seen.at(-1)?.system.includes("confirmado"), "Estados reales en el contexto")
 
+  // 8b) Opción 2: cancela el pedido armado sin registrar nada.
+  script = () => ({ content: JSON.stringify({ reply: "Anotado.", actions: [{ type: "add_item", productId, quantity: 1, optionIds: [990012] }, { type: "set_order_type", value: "pickup" }] }) })
+  await incoming("Una hamburguesa bien cocida para retirar")
+  check(sent.at(-1)?.text.includes("Respondé *1* para confirmar"), `Retiro completo pide 1 o 2: ${sent.at(-1)?.text}`)
+  const ordersBefore = Number((await db.query("SELECT COUNT(*) AS n FROM service_orders WHERE wa_conversation_id = $1", [conversation.id])).rows[0].n)
+  await incoming("2")
+  check(sent.at(-1)?.text.includes("cancelé el pedido") && ((await db.query("SELECT cart FROM wa_conversations WHERE id = $1", [conversation.id])).rows[0].cart.items ?? []).length === 0, `Opción 2 cancela: ${sent.at(-1)?.text}`)
+  check(Number((await db.query("SELECT COUNT(*) AS n FROM service_orders WHERE wa_conversation_id = $1", [conversation.id])).rows[0].n) === ordersBefore, "Cancelar no registra pedido")
+
   // 9) Pide una persona: el asistente se pausa en esa conversación.
   script = () => ({ content: JSON.stringify({ reply: "Te paso con una persona del local.", actions: [{ type: "handoff", reason: "Quiere hablar con alguien" }] }) })
   await incoming("Quiero hablar con una persona")
@@ -148,16 +162,20 @@ try {
 
   // 10) Error de Niro (sin saldo): se deriva al personal y se registra el error.
   await db.query("UPDATE wa_conversations SET bot_enabled = TRUE, handoff_requested = FALSE WHERE id = $1", [conversation.id])
+  // La prueba manda muchos mensajes seguidos: se «envejecen» para no activar el freno de ráfagas (10 por minuto).
+  await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '5 minutes' WHERE conversation_id = $1", [conversation.id])
   script = () => ({ status: 402 })
   await incoming("Hola de nuevo")
   state = (await db.query("SELECT bot_enabled FROM wa_conversations WHERE id = $1", [conversation.id])).rows[0]
-  check(state.bot_enabled === false && sent.at(-1)?.text.includes("te atiende una persona"), "Sin créditos: deriva a una persona")
+  check(state.bot_enabled === false && sent.at(-1)?.text.includes("te atiende una persona"), `Sin créditos: deriva a una persona (bot ${state.bot_enabled}, último: ${sent.at(-1)?.text})`)
   const errors = (await db.query("SELECT COUNT(*) FILTER (WHERE status = 'error') AS e, COUNT(*) FILTER (WHERE status = 'ok') AS ok FROM ai_interactions WHERE conversation_id = $1", [conversation.id])).rows[0]
   check(Number(errors.e) === 1 && Number(errors.ok) >= 6 && JSON.stringify((await db.query("SELECT actions FROM ai_interactions WHERE conversation_id = $1 AND status = 'ok' ORDER BY id DESC LIMIT 1", [conversation.id])).rows[0]?.actions) !== undefined, "Registro de consumo de IA")
 
   // Freno antirráfagas: con más de 10 mensajes por minuto la IA no responde.
   const calls3 = seen.length
   await db.query("UPDATE wa_conversations SET bot_enabled = TRUE WHERE id = $1", [conversation.id])
+  await db.query(`INSERT INTO wa_messages (conversation_id, wa_id, direction, author, author_name, kind, body, status, created_at)
+    SELECT $1, $2 || n, 'in', 'customer', 'Cliente Prueba', 'text', 'spam', 'received', NOW() FROM generate_series(1, 11) AS n`, [conversation.id, `SPAM-${suffix}-`])
   await incoming("hola?")
   check(seen.length === calls3, "Ráfaga de mensajes: no se llama a la IA")
   await db.query("UPDATE wa_messages SET created_at = created_at - INTERVAL '2 minutes' WHERE conversation_id = $1", [conversation.id])
