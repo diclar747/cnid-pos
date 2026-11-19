@@ -2,13 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
-import { Bell, BellOff, BellRing, HandPlatter, Receipt } from "lucide-react"
+import Link from "next/link"
+import { Bell, BellOff, BellRing, ChefHat, HandPlatter, MessageSquareMore, Receipt } from "lucide-react"
 import { useAuth } from "@/app/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { beep, pushSupport, subscribePush } from "@/lib/push-client"
 import { useLiveTables } from "@/lib/use-live"
 
-type TableCall = { id: number; tableId: number; tableLabel: string; kind: "waiter" | "bill"; createdAt: string; orderId: number | null; waiterName: string }
+type TableCall = { id: number; tableId: number; tableLabel: string; kind: "waiter" | "bill" | "request" | "order"; note: string; createdAt: string; orderId: number | null; waiterName: string }
+const STYLE = {
+  waiter: { box: "border-amber-400 bg-amber-50 text-amber-950", icon: "bg-amber-500", button: "bg-amber-600 hover:bg-amber-700" },
+  bill: { box: "border-emerald-400 bg-emerald-50 text-emerald-950", icon: "bg-emerald-600", button: "bg-emerald-700 hover:bg-emerald-800" },
+  request: { box: "border-sky-400 bg-sky-50 text-sky-950", icon: "bg-sky-600", button: "bg-sky-700 hover:bg-sky-800" },
+  order: { box: "border-indigo-400 bg-indigo-50 text-indigo-950", icon: "bg-indigo-600", button: "bg-indigo-700 hover:bg-indigo-800" },
+}
 
 const PUBLIC_PREFIXES = ["/table/", "/landing", "/login", "/card/", "/welcome"]
 const minutesAgo = (iso: string) => {
@@ -64,18 +71,38 @@ export function TableCallsListener() {
     finally { setAttending(null) }
   }
 
+  // Aceptar el pedido de la mesa: se envía a cocina (y el aviso se cierra solo).
+  const accept = async (call: TableCall) => {
+    if (!call.orderId) return
+    setAttending(call.id)
+    try {
+      const response = await fetch(`/api/service-orders/${call.orderId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send" }) })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error || "No se pudo aceptar")
+      attended.current.add(call.id)
+      setCalls((current) => current.filter((item) => item.id !== call.id))
+    } catch (error) { window.alert(error instanceof Error ? error.message : "No se pudo aceptar el pedido") }
+    finally { setAttending(null) }
+  }
+
   if (!active) return null
   return <><LiveCalls onChange={load} />{calls.length > 0 && <div aria-live="assertive" className="pointer-events-none fixed bottom-4 right-4 z-[70] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 print:hidden">
     {calls.map((call) => {
-      const bill = call.kind === "bill"
-      return <div key={call.id} role="alert" className={`pointer-events-auto flex items-center gap-3 rounded-2xl border-2 p-3 shadow-2xl animate-in slide-in-from-right-8 ${bill ? "border-emerald-400 bg-emerald-50 text-emerald-950" : "border-amber-400 bg-amber-50 text-amber-950"}`}>
-        <div className={`flex h-11 w-11 shrink-0 animate-pulse items-center justify-center rounded-xl text-white ${bill ? "bg-emerald-600" : "bg-amber-500"}`}>{bill ? <Receipt className="h-6 w-6" /> : <HandPlatter className="h-6 w-6" />}</div>
+      const style = STYLE[call.kind] ?? STYLE.waiter
+      const Icon = call.kind === "bill" ? Receipt : call.kind === "request" ? MessageSquareMore : call.kind === "order" ? ChefHat : HandPlatter
+      const title = call.kind === "bill" ? "Pide la cuenta" : call.kind === "request" ? `Pide: ${call.note}` : call.kind === "order" ? "Pedido nuevo por aceptar" : "Llama al mozo"
+      return <div key={call.id} role="alert" className={`pointer-events-auto flex items-center gap-3 rounded-2xl border-2 p-3 shadow-2xl animate-in slide-in-from-right-8 ${style.box}`}>
+        <div className={`flex h-11 w-11 shrink-0 animate-pulse items-center justify-center rounded-xl text-white ${style.icon}`}><Icon className="h-6 w-6" /></div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-black">{call.tableLabel}</p>
-          <p className="text-sm font-semibold">{bill ? "Pide la cuenta" : "Llama al mozo"} · {minutesAgo(call.createdAt)}</p>
-          {(call.orderId || call.waiterName) && <p className="truncate text-xs opacity-75">{call.orderId ? `Orden #${call.orderId}` : ""}{call.waiterName ? ` · ${call.waiterName}` : ""}</p>}
+          <p className="text-sm font-semibold">{title} · {minutesAgo(call.createdAt)}</p>
+          {call.kind === "order" && call.note && <p className="line-clamp-2 text-xs opacity-80">{call.note}</p>}
+          {call.kind !== "order" && (call.orderId || call.waiterName) && <p className="truncate text-xs opacity-75">{call.orderId ? `Orden #${call.orderId}` : ""}{call.waiterName ? ` · ${call.waiterName}` : ""}</p>}
         </div>
-        <Button size="sm" onClick={() => void attend(call)} disabled={attending === call.id} className={bill ? "bg-emerald-700 hover:bg-emerald-800" : "bg-amber-600 hover:bg-amber-700"}>{attending === call.id ? "…" : "Atender"}</Button>
+        {call.kind === "order" ? <div className="flex flex-col gap-1">
+          <Button size="sm" onClick={() => void accept(call)} disabled={attending === call.id || !call.orderId} className={style.button}>{attending === call.id ? "…" : "Aceptar"}</Button>
+          <Link href="/mesas" className="text-center text-xs font-semibold underline">Ver mesa</Link></div>
+          : <Button size="sm" onClick={() => void attend(call)} disabled={attending === call.id} className={style.button}>{attending === call.id ? "…" : call.kind === "request" ? "Llevado" : "Atender"}</Button>}
       </div>
     })}
   </div>}</>

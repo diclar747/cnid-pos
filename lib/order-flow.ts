@@ -22,15 +22,34 @@ export const nextTicketStatus = (status: KitchenStatus, type: ServiceOrderType):
 }
 
 /** Avanza una comanda al estado indicado si sigue el flujo. Debe llamarse dentro de una transacción. */
-export async function advanceTicket(client: PoolClient, ticketId: number, target: KitchenStatus, actor: OrderActor) {
+/** Estados posibles de una comanda según el tipo de pedido, en orden. */
+export function ticketPath(type: ServiceOrderType): KitchenStatus[] {
+  return type === "delivery" ? ["pending", "preparing", "ready", "out_for_delivery", "delivered"]
+    : type === "dineIn" ? ["pending", "preparing", "ready", "served"] : ["pending", "preparing", "ready", "delivered"]
+}
+
+/**
+ * Cambia el estado de la comanda. Por defecto solo el paso siguiente; con `jump` (arrastrar en el tablero)
+ * va a cualquier estado válido del tipo de pedido, hacia adelante o hacia atrás. Devuelve si avanzó.
+ */
+export async function advanceTicket(client: PoolClient, ticketId: number, target: KitchenStatus, actor: OrderActor, options: { jump?: boolean; column?: string | null } = {}) {
   const result = await client.query(`SELECT t.status, t.order_id, o.order_type, o.status AS order_status FROM kitchen_tickets t
     JOIN service_orders o ON o.id = t.order_id WHERE t.id = $1 FOR UPDATE OF t`, [ticketId])
   const row = result.rows[0]
   if (!row) throw new FlowError("Comanda no encontrada.", 404)
-  if (target !== nextTicketStatus(row.status, row.order_type)) throw new FlowError("El cambio de estado no sigue el flujo de esta comanda.")
-  await client.query("UPDATE kitchen_tickets SET status = $1, updated_at = NOW() WHERE id = $2", [target, ticketId])
+  const path = ticketPath(row.order_type)
+  if (row.status === "cancelled" || row.order_status === "cancelled") throw new FlowError("La comanda está cancelada.", 409)
+  if (options.jump) {
+    if (!path.includes(target)) throw new FlowError(target === "out_for_delivery" ? "Solo los pedidos de delivery van a reparto." : "Ese estado no corresponde a este pedido.")
+  } else if (target !== nextTicketStatus(row.status, row.order_type)) throw new FlowError("El cambio de estado no sigue el flujo de esta comanda.")
+  const column = options.column === undefined ? null : options.column
+  if (row.status === target) {
+    await client.query("UPDATE kitchen_tickets SET board_column = $1, updated_at = NOW() WHERE id = $2", [column, ticketId])
+    return { orderId: Number(row.order_id), orderType: row.order_type as ServiceOrderType, forward: false }
+  }
+  await client.query("UPDATE kitchen_tickets SET status = $1, board_column = $2, updated_at = NOW() WHERE id = $3", [target, column, ticketId])
   await logOrderEvent(client, Number(row.order_id), "ticket_status", { status: target, ticketId, actor })
-  return { orderId: Number(row.order_id), orderType: row.order_type as ServiceOrderType }
+  return { orderId: Number(row.order_id), orderType: row.order_type as ServiceOrderType, forward: path.indexOf(target) > path.indexOf(row.status) }
 }
 
 export type CustomerEvent = "confirmed" | "preparing" | "ready" | "served" | "out_for_delivery" | "delivered" | "cancelled" | "rejected" | "bill" | "delay" | "missing"

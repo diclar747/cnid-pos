@@ -1,4 +1,4 @@
-// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\build-1795045995\app\marketplace\page.tsx
+// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\build-1795049696\app\marketplace\page.tsx
 import * as entry from '../../../../app/marketplace/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

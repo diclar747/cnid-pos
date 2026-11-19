@@ -134,7 +134,7 @@ export function mapTicket(row: OrderRow): KitchenTicket {
     courierName: row.courier_name ?? "", deliveryAddress: row.delivery_address ?? "",
     items: row.items ?? [], notes: row.notes, priority: row.priority === "high" ? "high" : "normal",
     delayMinutes: row.delay_minutes == null ? null : Number(row.delay_minutes),
-    createdAt: iso(row.created_at)!, updatedAt: iso(row.updated_at)!,
+    createdAt: iso(row.created_at)!, updatedAt: iso(row.updated_at)!, boardColumn: row.board_column ?? null,
   }
 }
 

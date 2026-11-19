@@ -45,6 +45,10 @@ export interface CompanyConfig {
   /** Foto de portada (página pública y marketplace) y estilo del encabezado del sistema. */
   coverImage: string
   appearance: { headerStyle: "light" | "brand" | "dark" }
+  /** Columnas del tablero de cocina (editables por el restaurante). */
+  kitchenBoard?: { columns: import("@/lib/kitchen-board").BoardColumn[] }
+  /** Pedidos del QR de la mesa: si esperan que el personal los acepte (por defecto sí). */
+  tableOrders?: { requireApproval: boolean }
 }
 
 export interface OpeningDay {

@@ -6,7 +6,7 @@ import { beep, isStandalone, pushSupport, subscribePush, type PushSupport } from
 
 export type TicketStatus = "pending" | "preparing" | "ready" | "served" | "out_for_delivery" | "delivered" | "cancelled"
 export type TableTicket = { id: number; status: TicketStatus; updatedAt: string }
-export type TableCall = { kind: "waiter" | "bill"; createdAt: string }
+export type TableCall = { kind: "waiter" | "bill" | "request" | "order"; createdAt: string; note?: string }
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
@@ -76,6 +76,42 @@ export function OrderProgress({ tickets }: { tickets: TableTicket[] }) {
           <span className={`mt-1 block text-[11px] font-semibold ${stepNumber <= current ? "text-indigo-700" : "text-slate-400"}`}>{step.label}</span></li>)}</ol>}
       </div>
     })}</div>
+  </section>
+}
+
+const QUICK = ["Servilletas", "Hielo", "Cubiertos", "Sal", "Limón", "Agua", "Sorbete", "Un plato más"]
+
+/** Pedir algo puntual al mozo (servilletas, hielo…) sin pasar por la carta. */
+export function QuickRequest({ code, calls, onSent, notify }: { code: string; calls: TableCall[]; onSent: () => void; notify: (text: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState("")
+  const [busy, setBusy] = useState(false)
+  const pending = calls.filter((call) => call.kind === "request")
+  const send = async (value: string) => {
+    const note = value.trim()
+    if (!note || busy) return
+    setBusy(true)
+    try {
+      const response = await fetch(`/api/table/${encodeURIComponent(code)}/call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "request", note }) })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || "No se pudo avisar al personal.")
+      notify(`Listo, pedimos: ${note}`); navigator.vibrate?.(80)
+      setText(""); setOpen(false); onSent()
+    } catch (cause) { notify(cause instanceof Error ? cause.message : "No se pudo avisar al personal.") }
+    finally { setBusy(false) }
+  }
+  return <section className="mt-3 rounded-2xl border border-indigo-100 bg-white p-3 shadow-sm">
+    <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between text-left">
+      <span className="font-bold">Pedir algo al mozo</span><span className="text-xs font-semibold text-indigo-600">{open ? "Cerrar" : "Servilletas, hielo…"}</span></button>
+    {pending.length > 0 && <p className="mt-1 text-xs text-amber-700">Pedido: {pending.map((call) => call.note).filter(Boolean).join(" · ")} · enseguida te lo traen</p>}
+    {open && <div className="mt-3 space-y-2">
+      <div className="flex flex-wrap gap-1.5">{QUICK.map((item) => <button key={item} type="button" disabled={busy} onClick={() => void send(item)}
+        className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-800 active:scale-95">{item}</button>)}</div>
+      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void send(text) }}>
+        <input value={text} onChange={(event) => setText(event.target.value)} maxLength={140} placeholder="Otra cosa…" className="h-10 min-w-0 flex-1 rounded-xl border px-3 text-sm" />
+        <button type="submit" disabled={busy || !text.trim()} className="rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-50">Pedir</button>
+      </form>
+    </div>}
   </section>
 }
 

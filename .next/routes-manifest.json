@@ -265,6 +265,14 @@
       "namedRegex": "^/api/whatsapp/conversations/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/whatsapp/conversations/[id]/media",
+      "regex": "^/api/whatsapp/conversations/([^/]+?)/media(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/whatsapp/conversations/(?<nxtPid>[^/]+?)/media(?:/)?$"
+    },
+    {
       "page": "/api/whatsapp/media/[id]",
       "regex": "^/api/whatsapp/media/([^/]+?)(?:/)?$",
       "routeKeys": {

@@ -57,7 +57,7 @@ export default function DiningPage() {
   const [baseUrl, setBaseUrl] = useState("")
   const [qrTable, setQrTable] = useState<DiningTable | null>(null)
   const [sheetId, setSheetId] = useState<number | null>(null)
-  const { companyConfig } = useCompany()
+  const { companyConfig, updateCompanyConfig } = useCompany()
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
@@ -111,6 +111,11 @@ export default function DiningPage() {
           { label: "Mesas con cuenta", value: activeTables.filter((table) => table.openOrderId).length, icon: QrCode, color: "from-amber-500 to-orange-600" }]
           .map(({ label, value, icon: Icon, color }) => <div key={label} className={`rounded-2xl bg-gradient-to-br ${color} p-5 text-white shadow-lg`}><Icon className="mb-2 h-5 w-5 opacity-80" /><p className="text-sm opacity-85">{label}</p><strong className="text-3xl">{value}</strong></div>)}
       </div>
+      {user?.permissions.includes("manage_company") && <label className="screen-only mb-3 flex items-start gap-3 rounded-2xl border bg-white/85 p-4 text-sm shadow-sm dark:bg-slate-900/80">
+        <input type="checkbox" className="mt-0.5 h-4 w-4" checked={companyConfig?.tableOrders?.requireApproval !== false}
+          onChange={(event) => void updateCompanyConfig({ tableOrders: { requireApproval: event.target.checked } }).then(() => toast.success(event.target.checked ? "Los pedidos del QR esperan que los aceptes" : "Los pedidos del QR van directo a cocina")).catch(() => toast.error("No se pudo guardar"))} />
+        <span><span className="font-bold">Aceptar los pedidos que llegan por el QR de la mesa</span><span className="block text-muted-foreground">Cada pedido llega como aviso «por aceptar» y pasa a cocina cuando lo aceptás. Desmarcado: van directo a cocina.</span></span>
+      </label>}
       <div className="screen-only mb-5 rounded-2xl border bg-white/85 p-4 shadow-sm dark:bg-slate-900/80"><label htmlFor="dining-base-url" className="text-sm font-bold">Dirección para los QR en teléfonos</label><Input id="dining-base-url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} className="mt-2" /><p className="mt-1 text-xs text-muted-foreground">Usá la dirección segura de la red local. Los QR impresos conservarán esta dirección.</p></div>
       {loading ? <p className="py-10 text-center">Cargando…</p> : activeRooms.length === 0 ? <div className="screen-only rounded-2xl border border-dashed p-12 text-center"><p>Creá el primer salón para agregar mesas.</p></div> :
         <div className="space-y-7">{activeRooms.map((room) => <section key={room.id} className="overflow-hidden rounded-3xl border border-indigo-100 bg-white/90 shadow-lg shadow-indigo-100/40 dark:border-slate-800 dark:bg-slate-900/90">

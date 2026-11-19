@@ -16,7 +16,22 @@ import { sendText } from "./session"
 
 export type CartItem = { productId: number; quantity: number; optionIds: number[]; note: string }
 export type Cart = { items: CartItem[]; orderType?: ServiceOrderType; address?: string; zoneId?: number | null; name?: string; notes?: string
-  location?: { lat: number; lng: number; label?: string } }
+  location?: { lat: number; lng: number; label?: string }
+  /** El sistema mostró el resumen final y espera «1» (confirmar) o «2» (cancelar). */
+  awaitingConfirm?: boolean }
+
+// Respuestas del cliente al resumen final: se resuelven sin IA para cerrar la venta sin vueltas.
+const CONFIRM = /^(1|1️⃣|si|sí|sii+|confirmo|confirmar|confirmado|dale|ok|okey|listo|de una|perfecto|correcto|está bien|esta bien|va)(?=\s|$)/iu
+const CANCEL = /^(2|2️⃣|no|cancelar|cancela|cancelo|cancelá|anular|anulá)(?=\s|$)/iu
+const cleanAnswer = (text: string) => text.trim().toLowerCase().replace(/[!¡.,👍✅🙌😊🙂]+/gu, " ").trim()
+export const CONFIRM_PROMPT = "Respondé *1* para confirmar ✅ · *2* para cancelar ❌\no escribime qué querés cambiar."
+
+/** ¿El pedido tiene todo para registrarse? (productos, modalidad y, para delivery, dirección o ubicación y zona). */
+export function readyToConfirm(cart: Cart, zones: any[]) {
+  if (!cart.items.length || !cart.orderType) return false
+  if (cart.orderType === "delivery") return Boolean((cart.address || cart.location) && (cart.zoneId || !zones.length))
+  return true
+}
 
 /** Distancia en km entre dos coordenadas (fórmula del haversine). */
 export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -151,7 +166,7 @@ async function loadContext(schema: string, query: SchemaQuery, conversationId: n
     authDb.query("SELECT name FROM public.restaurants WHERE schema_name = $1", [schema]).then((result) => result.rows[0]?.name ?? "el restaurante"),
     query("SELECT id, name, areas, fee, free_over, eta_minutes, max_km FROM delivery_zones WHERE is_active ORDER BY sort_order, name"),
     query("SELECT id, data FROM products WHERE COALESCE((data->>'isActive')::boolean, TRUE) ORDER BY data->>'category', data->>'name'"),
-    query(`SELECT author, body FROM (SELECT author, body, created_at, id FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT ${MAX_HISTORY}) recent ORDER BY created_at, id`, [conversationId]),
+    query(`SELECT id, author, body FROM (SELECT author, body, created_at, id FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT ${MAX_HISTORY}) recent ORDER BY created_at, id`, [conversationId]),
     query(`SELECT o.id, o.status, o.confirmation, o.order_type, o.total, o.delivery_fee, o.created_at,
         (SELECT string_agg(t.status, ',' ORDER BY t.id) FROM kitchen_tickets t WHERE t.order_id = o.id) AS tickets
       FROM service_orders o WHERE (o.wa_conversation_id = $1 OR ($2 <> '' AND regexp_replace(o.customer_phone, '\\D', '', 'g') = $2))
@@ -190,7 +205,8 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
     "",
     "REGLAS ESTRICTAS",
     "- Usá SOLO los productos, precios, opciones y zonas de los datos de abajo. Nunca inventes productos, precios, promociones, tiempos ni costos de envío.",
-    "- No escribas subtotales ni totales: el sistema agrega solo el resumen con los precios reales.",
+    "- No escribas el resumen del pedido, subtotales ni totales, ni preguntes «¿confirmás?»: cuando el pedido está completo el sistema envía el resumen con los precios reales y las opciones 1 (confirmar) y 2 (cancelar).",
+    "- Si el cliente responde 1, sí o confirma después del resumen, usá confirm_order. Si responde 2 o cancela, usá clear_cart.",
     "- Nunca digas que un pedido está confirmado, en cocina, listo o entregado salvo que figure así en PEDIDOS DEL CLIENTE.",
     "- Usá confirm_order únicamente cuando el cliente confirmó explícitamente el pedido después de ver el resumen, y ya están la modalidad, el nombre y, para delivery, la dirección y la zona.",
     "- No confirmes pagos ni transferencias: el local los verifica.",
@@ -337,6 +353,34 @@ export async function runAssistant(schema: string, conversationId: number, optio
   if (burst > 10 && options.mode === "live") return { replies, orderId: null, handoff: false, error: "rate_limited" }
 
   let priced = await priceCart(schema, cart, products).catch(() => null)
+  // Solo cuenta si es el último mensaje y es corto («1», «sí», «dale»): «no, cambiame la pizza» va a la IA.
+  // El último mensaje guardado (por orden de llegada: la hora de WhatsApp viene redondeada al segundo).
+  const lastIn = ctx.history.reduce((latest: any, row: any) => (!latest || Number(row.id) > Number(latest.id) ? row : latest), null as any)
+  const answer = lastIn?.author === "customer" ? cleanAnswer(String(lastIn.body ?? "")) : ""
+  const shortAnswer = answer.length > 0 && answer.length <= 20 && answer.split(/\s+/).length <= 3
+  if (cart.awaitingConfirm && priced && priced.lines.length && shortAnswer && (CONFIRM.test(answer) || CANCEL.test(answer))) {
+    let orderId: number | null = null
+    let text: string
+    let nextCart: Cart = { items: [] }
+    if (CANCEL.test(answer)) text = "Listo, cancelé el pedido ❌ ¿Querés pedir otra cosa? Te paso la carta cuando quieras 🙂"
+    else if (options.mode === "simulator") text = "🧪 (Prueba) Acá se registraría el pedido como pendiente de confirmación y se vaciaría el carrito."
+    else {
+      try {
+        const order = await createOrder(schema, ctx.conversation, cart, products)
+        orderId = order.id
+        text = [`✅ ¡Listo! Registramos tu pedido *#${order.id}*.`, cartSummary(priced, cart), "El local lo va a confirmar en breve y te avisamos por acá cada novedad."].join("\n\n")
+        void notifyStaff(query, { title: `Nuevo pedido por WhatsApp #${order.id}`, body: `${order.customerName} · ${typeLabel[order.orderType]} · Gs ${order.grandTotal.toLocaleString("es-PY")}`, url: "/crm", tag: `wa-order-${order.id}` })
+      } catch (error) {
+        text = error instanceof ServiceOrderError ? error.message : "No pude registrar el pedido; te atiende una persona del local."
+        nextCart = { ...cart, awaitingConfirm: false }
+      }
+    }
+    await query("UPDATE wa_conversations SET cart = $2::jsonb, updated_at = NOW() WHERE id = $1", [conversationId, JSON.stringify(nextCart)])
+    await query(`INSERT INTO ai_interactions (conversation_id, kind, status, latency_ms, actions) VALUES ($1, $2, 'ok', 0, $3::jsonb)`,
+      [conversationId, options.mode === "simulator" ? "simulator" : "chat", JSON.stringify([{ type: CANCEL.test(answer) ? "clear_cart" : "confirm_order", via: "opciones 1/2" }])])
+    await send(text, orderId)
+    return { replies, orderId, handoff: false, error: null }
+  }
   const chat: ChatMessage[] = [{ role: "system", content: systemPrompt(ctx, priced ? cartSummary(priced, cart) : "") },
     ...ctx.history.map((row: any) => ({ role: row.author === "customer" ? "user" as const : "assistant" as const, content: String(row.body).slice(0, 1500) }))]
   const started = Date.now()
@@ -406,7 +450,17 @@ export async function runAssistant(schema: string, conversationId: number, optio
         extra.push(error instanceof ServiceOrderError ? error.message : "No pude registrar el pedido; te atiende una persona del local.")
       }
     }
-  } else if (applied.changed && priced && priced.lines.length) extra.push(cartSummary(priced, finalCart))
+  } else if (priced && priced.lines.length && readyToConfirm(finalCart, ctx.zones) && (applied.changed || !cart.awaitingConfirm)) {
+    // Pedido completo: el sistema muestra el resumen una sola vez y pide 1 o 2 (sin el resumen que haya escrito la IA).
+    if (/gs\s?[\d.]|subtotal|total|confirm/i.test(reply)) reply = reply.split("\n")[0].replace(/[:：]\s*$/, "").slice(0, 160)
+    if (/gs\s?[\d.]|subtotal|total|confirm/i.test(reply)) reply = "¡Perfecto! 🙌"
+    extra.push(cartSummary(priced, finalCart), CONFIRM_PROMPT)
+    finalCart = { ...finalCart, awaitingConfirm: true }
+  } else if (applied.changed && priced && priced.lines.length) {
+    extra.push(cartSummary(priced, finalCart))
+    finalCart = { ...finalCart, awaitingConfirm: false }
+  }
+  if (applied.confirm === false && !readyToConfirm(finalCart, ctx.zones) && finalCart.awaitingConfirm) finalCart = { ...finalCart, awaitingConfirm: false }
 
   if (applied.handoff && options.mode === "live") {
     await query("UPDATE wa_conversations SET bot_enabled = FALSE, handoff_requested = TRUE, updated_at = NOW() WHERE id = $1", [conversationId])

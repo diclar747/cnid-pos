@@ -42,10 +42,13 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const client = await db.connect()
   try {
     await client.query("BEGIN")
-    const moved = await advanceTicket(client, id, body.status as KitchenStatus, { id: user.id, name: user.name })
+    // jump: arrastrar en el tablero (cualquier estado válido); column: columna propia del restaurante.
+    const column = typeof body.column === "string" && /^[a-z0-9-]{1,40}$/.test(body.column) ? body.column : null
+    const moved = await advanceTicket(client, id, body.status as KitchenStatus, { id: user.id, name: user.name }, { jump: body.jump === true, column })
     if (body.status === "ready") await client.query("UPDATE kitchen_tickets SET delay_minutes = NULL WHERE id = $1", [id])
     await client.query("COMMIT")
-    const event = ticketEvent(body.status as KitchenStatus)
+    // Solo se avisa al cliente cuando el pedido avanza (no al corregir hacia atrás).
+    const event = moved.forward ? ticketEvent(body.status as KitchenStatus) : null
     if (event) void notifyCustomer(schema, moved.orderId, event)
     return NextResponse.json({ ticket: await findTicket(id) })
   } catch (error) {

@@ -173,3 +173,25 @@ En **Mesas**, tocar una mesa abre su cuenta al costado: lo que pidió (por envia
 ## RUC o cédula en el ticket
 
 Al cobrar, en **Cliente y RUC** se escribe la cédula o el RUC: se consulta sola en la SET y completa el nombre completo y el RUC con dígito verificador para el ticket. Si no figura, se escribe el nombre a mano.
+
+## Tableros: arrastrar a cualquier columna
+
+En **Pedidos** y en **Cocina** cada tarjeta se arrastra y se suelta en cualquier columna, sin pasar por todos los pasos (por ejemplo de Pendiente directo a Listo) y también hacia atrás para corregir. En el celular, cada comanda tiene **Mover a…**. El cliente recibe aviso solo cuando su pedido avanza.
+
+**Editar tablero** (Cocina, administración): renombrar columnas, cambiar color y orden, ocultar las que no se usan y **agregar columnas propias** (por ejemplo «Esperando bebidas»), cada una apoyada en un estado real: al soltar una comanda ahí toma ese estado.
+
+## WhatsApp: confirmar con 1 o 2
+
+Cuando el pedido está completo, el asistente envía un solo resumen con «Respondé *1* para confirmar · *2* para cancelar». «1», «sí», «dale» o «confirmo» registran el pedido al instante; «2», «no» o «cancelar» lo descartan.
+
+## Mesa desde el teléfono: pedidos por aceptar
+
+Desde el QR de la mesa el cliente pide lo que quiera cuando quiera y ve **Lo que pediste** con el estado de cada producto: *Esperando que el mozo lo acepte → En cocina → Preparando → ¡Listo! → Servido*. Con **Pedir algo al mozo** pide algo puntual (servilletas, hielo, cubiertos…) o lo escribe.
+
+El personal recibe el aviso en cualquier pantalla: **Pedido nuevo por aceptar** con el botón **Aceptar** (lo manda a cocina y queda en la cuenta de esa mesa) y **Pide: servilletas** con **Llevado**. En **Mesas**, la cuenta de la mesa muestra lo **por aceptar** con **Aceptar y enviar a cocina** y un botón para **quitar** cada producto pedido por error. Al aceptar, el cliente recibe el aviso en su teléfono.
+
+En **Mesas** está la opción **Aceptar los pedidos que llegan por el QR** (activada por defecto); desmarcada, los pedidos del QR van directo a cocina.
+
+## Chat de WhatsApp
+
+La lista de chats se **minimiza** a los avatares para ampliar la conversación. Las imágenes se **amplían** en el mismo chat (con anterior/siguiente y descarga); los videos se ven ahí y los documentos se descargan. Se responde con **emojis**, **imágenes, videos y documentos** (botón del clip o pegando) y **notas de voz** (botón del micrófono: graba, se ve el tiempo y se envía o descarta). Las notas de voz se envían como audio de WhatsApp.

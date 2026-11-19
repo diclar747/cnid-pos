@@ -212,6 +212,37 @@ export async function sendText(schema: string, conversationId: number, text: str
   return status !== "failed"
 }
 
+export type OutgoingMedia = { kind: "image" | "video" | "document" | "audio"; buffer: Buffer; mime: string; fileName?: string; caption?: string; seconds?: number | null; voice?: boolean }
+
+/** Envía un adjunto por WhatsApp y lo guarda en la conversación (con el archivo, para verlo en el chat). */
+export async function sendMedia(schema: string, conversationId: number, media: OutgoingMedia, meta: SendMeta): Promise<boolean> {
+  const query = await schemaQuery(schema)
+  const conversation = (await query("SELECT jid FROM wa_conversations WHERE id = $1", [conversationId])).rows[0]
+  if (!conversation) return false
+  const caption = (media.caption ?? "").slice(0, 1000)
+  const sock = sessionSocket(schema)
+  let waId: string | null = null
+  let status: "sent" | "failed" | "simulated" = "failed"
+  const content = media.kind === "image" ? { image: media.buffer, mimetype: media.mime, caption: caption || undefined }
+    : media.kind === "video" ? { video: media.buffer, mimetype: media.mime, caption: caption || undefined }
+    : media.kind === "audio" ? { audio: media.buffer, mimetype: media.voice ? "audio/ogg; codecs=opus" : media.mime, ptt: Boolean(media.voice), seconds: media.seconds ?? undefined }
+    : { document: media.buffer, mimetype: media.mime, fileName: media.fileName || "archivo", caption: caption || undefined }
+  if (conversation.jid.startsWith("simulator:")) status = "simulated"
+  else if (sock) {
+    try { waId = (await sock.sendMessage(conversation.jid, content as any))?.key?.id ?? null; status = "sent" }
+    catch (error) { console.error("WhatsApp: no se pudo enviar el adjunto", error instanceof Error ? error.message : error) }
+  }
+  const label = media.kind === "image" ? "🖼️ [imagen]" : media.kind === "video" ? "🎬 [video]" : media.kind === "audio" ? "🎤 [audio]" : `📄 ${media.fileName || "archivo"}`
+  const body = caption ? `${label} ${caption}` : label
+  const inserted = await query(`INSERT INTO wa_messages (conversation_id, wa_id, direction, author, author_name, kind, body, status, order_id)
+    VALUES ($1, $2, 'out', $3, $4, $5, $6, $7, $8) RETURNING id`, [conversationId, waId, meta.author, meta.authorName ?? "", media.kind, body, status, meta.orderId ?? null])
+  const stored = await query(`INSERT INTO wa_media (message_id, mime, size, seconds, data, file_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [inserted.rows[0].id, media.mime, media.buffer.length, media.seconds ?? null, media.buffer, media.fileName ?? ""])
+  await query("UPDATE wa_messages SET media_id = $2 WHERE id = $1", [inserted.rows[0].id, stored.rows[0].id])
+  await query("UPDATE wa_conversations SET last_message = $2, last_message_at = NOW(), updated_at = NOW() WHERE id = $1", [conversationId, body.slice(0, 200)])
+  return status !== "failed"
+}
+
 /** Conversación de un número (la crea si no existe). */
 export async function conversationForPhone(query: SchemaQuery, phone: string) {
   const digits = phone.replace(/\D/g, "")
