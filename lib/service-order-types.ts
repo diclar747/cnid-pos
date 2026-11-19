@@ -138,6 +138,8 @@ export interface KitchenTicket {
   delayMinutes: number | null
   createdAt: string
   updatedAt: string
+  /** Columna propia del tablero de cocina (null = la columna de su estado). */
+  boardColumn: string | null
 }
 
 export interface OrderCard {

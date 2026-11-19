@@ -84,10 +84,12 @@ export default function CrmPage() {
   /** Ejecuta el cambio de columna con las mismas reglas que Órdenes y Cocina (el servidor valida cada paso). */
   const move = async (item: Item, to: Stage) => {
     if (to === "cancelled") { setCancelling(item); setReason(""); return }
-    if (to !== nextStage(item)) { toast.error("Ese pedido no puede pasar a esa columna todavía."); return }
+    if (to === item.stage) return
     setBusy(item.order.id)
     try {
-      if (item.stage === "new") await apiRequest(`/api/service-orders/${item.order.id}`, { method: "PATCH", body: JSON.stringify({ action: "confirm", sendToKitchen: true }) })
+      // Soltar en otra columna que no sea la siguiente: el servidor hace todos los pasos de una vez.
+      if (to !== nextStage(item)) await apiRequest(`/api/service-orders/${item.order.id}`, { method: "PATCH", body: JSON.stringify({ action: "move", to }) })
+      else if (item.stage === "new") await apiRequest(`/api/service-orders/${item.order.id}`, { method: "PATCH", body: JSON.stringify({ action: "confirm", sendToKitchen: true }) })
       else if (item.stage === "pending") await apiRequest(`/api/service-orders/${item.order.id}`, { method: "PATCH", body: JSON.stringify({ action: "send" }) })
       else {
         const from = item.stage === "confirmed" ? "pending" : item.stage === "kitchen" ? "preparing" : item.stage === "ready" ? "ready" : "out_for_delivery"

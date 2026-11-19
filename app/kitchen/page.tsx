@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { AlertTriangle, ArrowLeft, Check, ChefHat, Clock3, Flame, Printer, RefreshCw, Truck } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Check, ChefHat, Clock3, Flame, GripVertical, MoveRight, Printer, RefreshCw, Settings2, Truck } from "lucide-react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import ProtectedRoute from "../components/protected-route"
@@ -10,6 +10,10 @@ import { StaffPushButton } from "../components/table-calls-listener"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
 import type { KitchenStatus, KitchenTicket } from "@/lib/service-order-types"
+import { BOARD_COLORS, boardColumns, columnOf, targetStatus, type BoardColumn } from "@/lib/kitchen-board"
+import { useCompany } from "../context/company-context"
+import { useAuth } from "../context/auth-context"
+import { BoardEditor } from "./board-editor"
 
 const typeLabel = { dineIn: "En el local", delivery: "Delivery", pickup: "Retiro" }
 const nextStatus = (ticket: KitchenTicket): { status: KitchenStatus; label: string } | null => {
@@ -21,19 +25,20 @@ const nextStatus = (ticket: KitchenTicket): { status: KitchenStatus; label: stri
   if (ticket.status === "out_for_delivery") return { status: "delivered", label: "Confirmar entrega" }
   return null
 }
-const columns: { status: KitchenStatus[]; title: string; subtitle: string; color: string; icon: typeof Clock3 }[] = [
-  { status: ["pending"], title: "Pendiente", subtitle: "Esperando preparación", color: "border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30", icon: Clock3 },
-  { status: ["preparing"], title: "Preparando", subtitle: "En cocina", color: "border-blue-300 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30", icon: ChefHat },
-  { status: ["ready"], title: "Listo", subtitle: "Para servir o despachar", color: "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30", icon: Check },
-  { status: ["out_for_delivery"], title: "En reparto", subtitle: "Camino al cliente", color: "border-violet-300 bg-violet-50 dark:border-violet-900 dark:bg-violet-950/30", icon: Truck },
-  { status: ["served", "delivered"], title: "Entregado", subtitle: "Servido o recibido", color: "border-slate-300 bg-slate-100 dark:border-slate-800 dark:bg-slate-900", icon: Check },
-]
+const iconFor = (column: BoardColumn) => column.status === "pending" ? Clock3 : column.status === "preparing" ? ChefHat : column.status === "out_for_delivery" ? Truck : Check
 
 export default function KitchenPage() {
   const router = useRouter()
   const [tickets, setTickets] = useState<KitchenTicket[]>([])
   const [busy, setBusy] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const { companyConfig, updateCompanyConfig } = useCompany()
+  const { hasPermission } = useAuth()
+  const columns = useMemo(() => boardColumns(companyConfig?.kitchenBoard), [companyConfig?.kitchenBoard])
+  const visibleColumns = columns.filter((column) => !column.hidden)
+  const [editing, setEditing] = useState(false)
+  const [dragId, setDragId] = useState<number | null>(null)
+  const [overColumn, setOverColumn] = useState<string | null>(null)
   const load = useCallback(async () => {
     try { setTickets((await apiRequest<{ items: KitchenTicket[] }>("/api/kitchen-tickets")).items) }
     catch (error) { toast.error(error instanceof Error ? error.message : "No se cargaron las comandas") }
@@ -55,6 +60,26 @@ export default function KitchenPage() {
     finally { setBusy(null) }
   }
 
+  // Arrastrar y soltar (o «Mover a…»): la comanda va directo a esa columna, saltando pasos o volviendo atrás.
+  const moveTo = async (ticket: KitchenTicket, column: BoardColumn) => {
+    const status = targetStatus(column, ticket)
+    if (!status) { toast.error("Solo los pedidos de delivery van a reparto."); return }
+    const custom = column.builtIn ? null : column.id
+    if (status === ticket.status && (ticket.boardColumn ?? null) === custom) return
+    setBusy(ticket.id)
+    setTickets((current) => current.map((item) => item.id === ticket.id ? { ...item, status, boardColumn: custom } : item))
+    try {
+      const result = await apiRequest<{ ticket: KitchenTicket }>(`/api/kitchen-tickets/${ticket.id}`, { method: "PATCH", body: JSON.stringify({ status, jump: true, column: custom }) })
+      setTickets((current) => current.map((item) => item.id === ticket.id ? result.ticket : item))
+      toast.success(`Comanda #${ticket.id} → ${column.title}`)
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo mover"); void load() }
+    finally { setBusy(null) }
+  }
+  const saveBoard = async (next: BoardColumn[]) => {
+    await updateCompanyConfig({ kitchenBoard: { columns: next } })
+    toast.success("Tablero guardado")
+  }
+
   // Avisos de cocina al cliente y al tablero: demora, falta de producto y prioridad.
   const notice = async (ticket: KitchenTicket, body: Record<string, unknown>, done: string) => {
     setBusy(ticket.id)
@@ -68,18 +93,27 @@ export default function KitchenPage() {
   const [missingFor, setMissingFor] = useState<number | null>(null)
   const [missingText, setMissingText] = useState("")
 
-  return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="min-h-full bg-gradient-to-br from-slate-50 via-sky-50 to-violet-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 sm:p-6">
-    <div className="mx-auto max-w-[1800px]">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><ChefHat className="h-8 w-8 text-amber-600" /> Cocina y delivery</h1><p className="text-muted-foreground">Las comandas aparecen automáticamente y avanzan hasta la entrega.</p></div><div className="flex flex-wrap gap-2"><StaffPushButton /><Button variant="outline" onClick={() => router.push("/orders")}>Ver órdenes</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div></header>
-      <div className="mb-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-800 p-5 text-white shadow-lg"><span className="text-sm text-indigo-100">Comandas activas</span><strong className="ml-4 text-3xl">{activeCount}</strong><span className="ml-4 text-xs text-indigo-200">Se actualiza en vivo</span></div>
-      {loading ? <p className="py-12 text-center text-muted-foreground">Cargando cocina…</p> : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">{columns.map((column) => {
-        const Icon = column.icon
-        const items = tickets.filter((ticket) => column.status.includes(ticket.status)).sort((a, b) => Number(b.priority === "high") - Number(a.priority === "high"))
-        return <section key={column.title} className={`min-h-64 rounded-2xl border p-3 ${column.color}`}>
-          <div className="mb-4 flex items-start justify-between"><div><h2 className="flex items-center gap-2 font-bold"><Icon className="h-5 w-5" />{column.title}</h2><p className="text-xs text-muted-foreground">{column.subtitle}</p></div><span className="rounded-full bg-white px-2.5 py-1 text-sm font-bold text-slate-900 dark:bg-slate-800 dark:text-white">{items.length}</span></div>
-          <div className="space-y-3">{items.length === 0 && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">Sin comandas</div>}{items.map((ticket) => <article key={ticket.id} className={`rounded-xl border bg-card p-4 shadow-sm ${ticket.priority === "high" ? "border-red-400 ring-2 ring-red-200" : ""}`}>
+  return <ProtectedRoute requiredPermissions={["access_pos"]}><main className="flex h-full min-h-[34rem] flex-col bg-gradient-to-br from-slate-50 via-sky-50 to-violet-50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+    <div className="shrink-0 px-4 pt-4 sm:px-6">
+      <header className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight"><ChefHat className="h-8 w-8 text-amber-600" /> Cocina y delivery</h1><p className="text-muted-foreground">Arrastrá cada comanda a la columna que quieras · <span className="font-semibold text-indigo-700 dark:text-indigo-300">{activeCount} activas</span> · en vivo</p></div><div className="flex flex-wrap gap-2"><StaffPushButton />{hasPermission("manage_company") && <Button variant="outline" onClick={() => setEditing(true)}><Settings2 className="mr-2 h-4 w-4" />Editar tablero</Button>}<Button variant="outline" onClick={() => router.push("/orders")}>Ver órdenes</Button><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button></div></header>
+    </div>
+    {loading ? <p className="py-12 text-center text-muted-foreground">Cargando cocina…</p> : <div className="min-h-0 flex-1 overflow-x-auto px-4 pb-4 sm:px-6"><div className="flex h-full gap-3">{visibleColumns.map((column) => {
+        const Icon = iconFor(column)
+        const items = tickets.filter((ticket) => columnOf(ticket, columns)?.id === column.id).sort((a, b) => Number(b.priority === "high") - Number(a.priority === "high"))
+        const dragged = tickets.find((ticket) => ticket.id === dragId)
+        const allowed = !dragged || targetStatus(column, dragged) !== null
+        return <section key={column.id} aria-label={column.title}
+          onDragOver={(event) => { if (dragId !== null && allowed) { event.preventDefault(); setOverColumn(column.id) } }}
+          onDragLeave={() => setOverColumn((current) => current === column.id ? null : current)}
+          onDrop={(event) => { event.preventDefault(); setOverColumn(null); const ticket = tickets.find((item) => item.id === dragId); setDragId(null); if (ticket) void moveTo(ticket, column) }}
+          className={`flex h-full w-80 shrink-0 flex-col rounded-2xl border transition ${BOARD_COLORS[column.color] ?? BOARD_COLORS.slate} ${overColumn === column.id ? "ring-4 ring-indigo-300 dark:ring-indigo-700" : ""} ${dragId !== null && !allowed ? "opacity-50" : ""}`}>
+          <div className="flex shrink-0 items-start justify-between p-3"><div><h2 className="flex items-center gap-2 font-bold"><Icon className="h-5 w-5" />{column.title}</h2><p className="text-xs text-muted-foreground">{column.subtitle}</p></div><span className="rounded-full bg-white px-2.5 py-1 text-sm font-bold text-slate-900 dark:bg-slate-800 dark:text-white">{items.length}</span></div>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3">{items.length === 0 && <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">{dragId !== null && allowed ? "Soltá acá" : "Sin comandas"}</div>}{items.map((ticket) => <article key={ticket.id} draggable={busy !== ticket.id}
+            onDragStart={(event) => { setDragId(ticket.id); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(ticket.id)) }}
+            onDragEnd={() => { setDragId(null); setOverColumn(null) }}
+            className={`cursor-grab rounded-xl border bg-card p-4 shadow-sm active:cursor-grabbing ${dragId === ticket.id ? "opacity-40" : ""} ${ticket.priority === "high" ? "border-red-400 ring-2 ring-red-200" : ""}`}>
             {(ticket.priority === "high" || ticket.delayMinutes) && <div className="mb-2 flex flex-wrap gap-1">{ticket.priority === "high" && <span className="inline-flex items-center gap-1 rounded-md bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700"><Flame className="h-3.5 w-3.5" />Prioridad</span>}{ticket.delayMinutes && <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800"><Clock3 className="h-3.5 w-3.5" />Demora +{ticket.delayMinutes} min</span>}</div>}
-            <div className="flex items-start justify-between gap-2"><div><p className="text-lg font-extrabold">#{ticket.orderId} <span className="text-xs font-medium text-muted-foreground">/ comanda {ticket.id}</span></p><p className="text-xs text-muted-foreground">{typeLabel[ticket.orderType]} · {new Date(ticket.createdAt).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</p></div><Button variant="ghost" size="icon" title="Imprimir comanda" aria-label={`Imprimir comanda ${ticket.id}`} onClick={() => window.open(`/kitchen/print/${ticket.id}`, "_blank")}><Printer className="h-4 w-4" /></Button></div>
+            <div className="flex items-start justify-between gap-2"><div><p className="text-lg font-extrabold">#{ticket.orderId} <span className="text-xs font-medium text-muted-foreground">/ comanda {ticket.id}</span></p><p className="text-xs text-muted-foreground">{typeLabel[ticket.orderType]} · {new Date(ticket.createdAt).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</p></div><div className="flex items-center gap-0.5"><Button variant="ghost" size="icon" title="Imprimir comanda" aria-label={`Imprimir comanda ${ticket.id}`} onClick={() => window.open(`/kitchen/print/${ticket.id}`, "_blank")}><Printer className="h-4 w-4" /></Button><GripVertical className="h-4 w-4 text-muted-foreground" aria-hidden /></div></div>
             <div className="mt-3 flex flex-wrap gap-1 text-xs">{ticket.tableLabel && <span className="rounded bg-indigo-100 px-2 py-1 font-semibold text-indigo-800">{ticket.tableLabel}</span>}{ticket.customerName && <span className="rounded bg-slate-100 px-2 py-1 dark:bg-slate-800">{ticket.customerName}</span>}{ticket.cardCode && <span className="rounded bg-violet-100 px-2 py-1 text-violet-800">QR {ticket.cardCode.slice(-6)}</span>}{ticket.courierName && <span className="rounded bg-emerald-100 px-2 py-1 text-emerald-800">🛵 {ticket.courierName}</span>}</div>{ticket.orderType === "delivery" && ticket.deliveryAddress && <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">📍 {ticket.deliveryAddress}</p>}
             <div className="my-3 space-y-2 border-y py-3">{ticket.items.map((line) => <div key={line.lineId} className="text-sm"><strong>{line.quantity} × {line.productName}</strong>{line.modifiers.length > 0 && <p className="pl-4 text-xs text-muted-foreground">{line.modifiers.map((option) => option.name).join(", ")}</p>}</div>)}</div>
             {ticket.notes && <p className="mb-3 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{ticket.notes}</p>}
@@ -92,9 +126,13 @@ export default function KitchenPage() {
             {missingFor === ticket.id && <form className="mt-2 flex gap-1" onSubmit={(event) => { event.preventDefault(); if (missingText.trim()) void notice(ticket, { action: "missing", note: missingText }, "Falta avisada").then(() => setMissingFor(null)) }}>
               <input autoFocus value={missingText} onChange={(event) => setMissingText(event.target.value)} maxLength={200} placeholder="¿Qué falta?" className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2 text-xs" />
               <Button size="sm" className="h-8 text-xs" type="submit" disabled={!missingText.trim()}>Avisar</Button></form>}
+            <label className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground"><MoveRight className="h-3.5 w-3.5 shrink-0" />
+              <select value="" onChange={(event) => { const column = visibleColumns.find((item) => item.id === event.target.value); if (column) void moveTo(ticket, column) }} disabled={busy === ticket.id}
+                className="h-7 min-w-0 flex-1 rounded-md border bg-background px-1.5 text-xs" aria-label={`Mover comanda ${ticket.id}`}>
+                <option value="">Mover a…</option>{visibleColumns.filter((item) => item.id !== column.id && targetStatus(item, ticket) !== null).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
           </article>)}</div>
         </section>
-      })}</div>}
-    </div>
+      })}</div></div>}
+    <BoardEditor open={editing} columns={columns} onClose={() => setEditing(false)} onSave={saveBoard} />
   </main></ProtectedRoute>
 }

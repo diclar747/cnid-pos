@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { canTakeOrders, getSessionUser, hasPermission } from "@/lib/auth"
 import { currentSchema, db } from "@/lib/db"
-import { notifyCustomer } from "@/lib/order-flow"
+import { advanceTicket, notifyCustomer, ticketEvent } from "@/lib/order-flow"
+import type { KitchenStatus } from "@/lib/service-order-types"
 import { cleanText, deliveryFeeFor, loadOrder, logOrderEvent, refreshDeliveryFee, resolveWaiter, sendDraftToKitchen, ServiceOrderError, upsertCustomer } from "@/lib/service-order-server"
 
 export const runtime = "nodejs"
@@ -29,11 +30,11 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   }
   const id = Number((await params).id)
   const body = await request.json().catch(() => null)
-  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill", "confirm", "reject"].includes(body?.action)) {
+  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill", "confirm", "reject", "move"].includes(body?.action)) {
     return NextResponse.json({ error: "Orden o acción inválida." }, { status: 400 })
   }
   // Cancelar o rechazar devuelve stock y anula la cuenta: queda reservado a quien puede cobrar.
-  if ((body.action === "cancel" || body.action === "reject") && !hasPermission(user, "manage_sales")) {
+  if ((body.action === "cancel" || body.action === "reject" || body.action === "move") && !hasPermission(user, "manage_sales")) {
     return NextResponse.json({ error: "Solo caja puede cancelar o rechazar una orden." }, { status: 403 })
   }
   const actor = { id: user.id, name: user.name }
@@ -41,9 +42,36 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   try {
     await client.query("BEGIN")
     let order = await loadOrder(client, id, true)
-    if (order.status !== "open") throw new ServiceOrderError("La orden ya fue cerrada.", 409)
+    if (order.status === "cancelled" || (order.status !== "open" && body.action !== "move")) throw new ServiceOrderError("La orden ya fue cerrada.", 409)
     let ticket = null
-    if (body.action === "confirm") {
+    const moveEvents: KitchenStatus[] = []
+    if (body.action === "move") {
+      // Tablero de Pedidos: soltar en cualquier columna. Confirma si hacía falta, manda a cocina lo pendiente
+      // y pone todas las comandas en el estado de esa columna (hacia adelante o atrás).
+      const stages: Record<string, KitchenStatus> = { confirmed: "pending", kitchen: "preparing", ready: "ready", delivery: "out_for_delivery",
+        done: order.orderType === "dineIn" ? "served" : "delivered" }
+      const target = stages[String(body.to)]
+      if (!target) throw new ServiceOrderError("Columna inválida.")
+      if (target === "out_for_delivery" && order.orderType !== "delivery") throw new ServiceOrderError("Solo los pedidos de delivery van a «En delivery».")
+      if (!order.items.length) throw new ServiceOrderError("El pedido no tiene productos.")
+      if (order.confirmation === "pending") {
+        await client.query("UPDATE service_orders SET confirmation = 'confirmed', updated_at = NOW() WHERE id = $1", [id])
+        await logOrderEvent(client, id, "confirmed", { actor })
+        moveEvents.push("pending")
+      }
+      if (order.items.some((line) => line.ticketId == null)) {
+        const sent = await sendDraftToKitchen(client, { ...order, confirmation: "confirmed" }, Number(user.id))
+        ticket = sent.ticket
+        await logOrderEvent(client, id, "sent_to_kitchen", { status: "pending", ticketId: ticket.id, actor })
+      }
+      const tickets = await client.query("SELECT id FROM kitchen_tickets WHERE order_id = $1 AND status <> 'cancelled' ORDER BY id", [id])
+      let forward = false
+      for (const row of tickets.rows) {
+        const moved = await advanceTicket(client, Number(row.id), target, actor, { jump: true })
+        forward ||= moved.forward
+      }
+      if (forward) moveEvents.push(target)
+    } else if (body.action === "confirm") {
       if (order.confirmation !== "pending") throw new ServiceOrderError("La orden no está pendiente de confirmación.", 409)
       await client.query("UPDATE service_orders SET confirmation = 'confirmed', updated_at = NOW() WHERE id = $1", [id])
       await logOrderEvent(client, id, "confirmed", { note: cleanText(body.note, 300), actor })
@@ -145,6 +173,12 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     // Avisa al cliente (push en la mesa o WhatsApp) de la confirmación, la cuenta o la cancelación.
     const event = body.action === "bill" ? "bill" : body.action === "cancel" ? "cancelled" : body.action === "reject" ? "rejected" : body.action === "confirm" ? "confirmed" : null
     if (event) { const schema = await currentSchema(); void notifyCustomer(schema, id, event, { note: cleanText(body.reason ?? body.note, 200) || undefined }) }
+    if (moveEvents.length) {
+      const schema = await currentSchema()
+      if (moveEvents.includes("pending")) void notifyCustomer(schema, id, "confirmed")
+      const last = ticketEvent(moveEvents[moveEvents.length - 1])
+      if (last) void notifyCustomer(schema, id, last)
+    }
     return NextResponse.json({ order, ticket })
   } catch (error) {
     await client.query("ROLLBACK")

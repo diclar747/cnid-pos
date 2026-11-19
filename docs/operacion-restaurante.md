@@ -173,3 +173,13 @@ En **Mesas**, tocar una mesa abre su cuenta al costado: lo que pidió (por envia
 ## RUC o cédula en el ticket
 
 Al cobrar, en **Cliente y RUC** se escribe la cédula o el RUC: se consulta sola en la SET y completa el nombre completo y el RUC con dígito verificador para el ticket. Si no figura, se escribe el nombre a mano.
+
+## Tableros: arrastrar a cualquier columna
+
+En **Pedidos** y en **Cocina** cada tarjeta se arrastra y se suelta en cualquier columna, sin pasar por todos los pasos (por ejemplo de Pendiente directo a Listo) y también hacia atrás para corregir. En el celular, cada comanda tiene **Mover a…**. El cliente recibe aviso solo cuando su pedido avanza.
+
+**Editar tablero** (Cocina, administración): renombrar columnas, cambiar color y orden, ocultar las que no se usan y **agregar columnas propias** (por ejemplo «Esperando bebidas»), cada una apoyada en un estado real: al soltar una comanda ahí toma ese estado.
+
+## WhatsApp: confirmar con 1 o 2
+
+Cuando el pedido está completo, el asistente envía un solo resumen con «Respondé *1* para confirmar · *2* para cancelar». «1», «sí», «dale» o «confirmo» registran el pedido al instante; «2», «no» o «cancelar» lo descartan.
