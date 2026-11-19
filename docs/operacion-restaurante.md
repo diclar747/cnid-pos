@@ -204,3 +204,10 @@ La lista de chats se **minimiza** a los avatares para ampliar la conversación. 
 - El QR de cada mesa también deja la sesión abierta.
 - Para retiro o delivery hace falta teléfono: el invitado «guarda su cuenta» (nombre, teléfono y contraseña) y conserva todos sus pedidos; con eso puede entrar desde otro teléfono.
 - Como cualquiera puede elegir una mesa desde el QR general, conviene dejar activada la aprobación de pedidos de mesa.
+
+## Productos: páginas, fotos y opciones
+
+- La lista de productos se muestra de a 20 (se puede elegir 15, 50 o 100 por página), con buscador y filtro por categoría.
+- Foto del producto: «Subir desde la computadora» (PNG, JPG, WEBP o GIF), arrastrar la imagen, pegarla con Ctrl+V, pegar una imagen en base64 (`data:image/…`) o la dirección de una imagen (también enlaces largos de Google Imágenes). La imagen se achica a 1000 px y se guarda aparte (`product_images`), así el POS carga rápido. Si un sitio no deja descargar su imagen, se puede usar el enlace igual.
+- Opciones: cada grupo es «Elige 1» (tamaño, punto) o «Elige varias» (guarniciones, agregados: se marcan varias y se suman sus precios). Los grupos nuevos empiezan en «Elige varias».
+- Productos → «Opciones»: lista los grupos repetidos (Guarniciones, Agregados…) para cambiarlos en todos los productos de una vez o quitarlos (por ejemplo el grupo viejo «DELIVERY»).

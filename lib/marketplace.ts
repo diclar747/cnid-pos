@@ -56,7 +56,7 @@ function imageUrl(value: unknown, fallback: string) {
   const image = typeof value === "string" ? value : ""
   if (!image || image.includes("placeholder")) return ""
   if (image.startsWith("data:image/")) return image.length <= MAX_INLINE_IMAGE ? image : fallback
-  if (image.startsWith("/") || /^https:\/\//.test(image)) return image.slice(0, 500)
+  if (image.startsWith("/") || /^https:\/\//.test(image)) return image.length <= 4000 ? image : ""
   return ""
 }
 

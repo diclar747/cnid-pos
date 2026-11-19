@@ -13,8 +13,9 @@ Next.js 15, React 19, TypeScript, Tailwind CSS y PostgreSQL local. El paquete se
 - `lib/auth.ts`: sesiones y contraseñas.
 - `app/context`: estado de la interfaz y llamadas a las API.
 - `app/admin`, `app/pos`, `app/checkout`: pantallas principales; `app/crm` (tablero en vivo), `app/cash` (caja), `app/kitchen`, `app/table/[code]` (QR de mesa).
-- Un esquema PostgreSQL por restaurante; migraciones por restaurante en `scripts/06…19-*.sql`, registradas en `scripts/setup-local-db.mjs` y `lib/restaurant-admin.ts`.
+- Un esquema PostgreSQL por restaurante; migraciones por restaurante en `scripts/06…20-*.sql`, registradas en `scripts/setup-local-db.mjs` y `lib/restaurant-admin.ts`.
 - `app/components/workspace-shell.tsx`: marco único (encabezado + «Opciones») para POS, WhatsApp, Pedidos, Órdenes, Cocina, Tarjetas QR, Mesas y Caja; las secciones ponen buscador o categorías con `WorkspaceSlot`. Apariencia del restaurante (logo, portada, color, encabezado) en `app/admin/company/branding-panel.tsx` y `/api/brand/[kind]`.
+- Productos: fotos aparte en `product_images` (`lib/product-images.ts`, `/api/product-images`, descarga segura de URLs), grupos de opciones compartidos en `/api/product-groups`.
 - `lib/cash.ts` (caja y pagos) y `lib/credit.ts` (cuenta corriente: cargos, abonos y ajustes); el cobro se hace en `app/components/payment-dialog.tsx`.
 - `lib/marketplace.ts` + `app/marketplace`: vitrina pública de restaurantes activos con ficha y menú (pedido por WhatsApp).
 - Cuenta del cliente (consumidor): `lib/customer-account.ts` (sesión `restopos_customer`, aparte del personal), `lib/customer-orders.ts` (pedido web como «Nuevo» en Pedidos, historial y seguimiento), páginas `/cuenta` y `/cuenta/pedidos/[ref]`. QR del restaurante `/r/[slug]`: entra como invitado sin registrarse (cookie de 400 días que se renueva), elige su mesa y pide; después puede guardar su cuenta con teléfono; tablas en public (`customer_accounts`, `customer_order_links`, `customer_push`).

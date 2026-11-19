@@ -80,6 +80,13 @@ try {
   const publicMenu = await request(`/api/table/${tableCode}`)
   assert(publicMenu.status === 200 && publicMenu.body.products.length === 1 && publicMenu.body.products[0].id === productId,
     "El menú público no muestra el catálogo correcto")
+  // Por defecto el pedido de la mesa queda «por aceptar» (el mozo lo acepta); acá se prueba el envío directo a cocina.
+  const approval = await request(`/api/table/${tableCode}`, { method: "POST", body: JSON.stringify({ requestId: randomUUID(), customerName: "Cliente prueba", items: [{ id: productId, quantity: 1, selectedModifiers: [] }] }) })
+  assert(approval.status === 201 && approval.body.pendingApproval === true && !approval.body.ticketId, `Pedido por aceptar: ${approval.status} ${JSON.stringify(approval.body)}`)
+  await pool.query(`DELETE FROM "restaurant_${createdId}".table_calls`); await pool.query(`DELETE FROM "restaurant_${createdId}".order_status_history`)
+  await pool.query(`DELETE FROM "restaurant_${createdId}".guest_order_requests`).catch(() => undefined); await pool.query(`DELETE FROM "restaurant_${createdId}".service_orders`)
+  await pool.query(`INSERT INTO "restaurant_${createdId}".company_config (id, data) VALUES (1, '{"tableOrders":{"requireApproval":false}}')
+    ON CONFLICT (id) DO UPDATE SET data = "restaurant_${createdId}".company_config.data || '{"tableOrders":{"requireApproval":false}}'`)
   const requestId = randomUUID()
   const guestBody = JSON.stringify({ requestId, customerName: "Cliente prueba", items: [{ id: productId, quantity: 2, selectedModifiers: [] }] })
   const guestOrder = await request(`/api/table/${tableCode}`, { method: "POST", body: guestBody })
