@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: Context) {
   const row = (await db.query(`SELECT ${CONVERSATION_COLUMNS} FROM wa_conversations c WHERE c.id = $1 AND c.jid NOT LIKE 'simulator:%'`, [id])).rows[0]
   if (!row) return NextResponse.json({ error: "Conversación no encontrada." }, { status: 404 })
   const [messages, orders] = await Promise.all([
-    db.query(`SELECT m.*, md.mime AS media_mime, md.seconds AS media_seconds FROM (SELECT * FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT 300) m
+    db.query(`SELECT m.*, md.mime AS media_mime, md.seconds AS media_seconds, md.file_name AS media_file_name, md.size AS media_size FROM (SELECT * FROM wa_messages WHERE conversation_id = $1 ORDER BY created_at DESC, id DESC LIMIT 300) m
       LEFT JOIN wa_media md ON md.id = m.media_id ORDER BY m.created_at, m.id`, [id]),
     db.query("SELECT o.*, NULL AS card_code FROM service_orders o WHERE o.wa_conversation_id = $1 ORDER BY o.id DESC LIMIT 20", [id]),
   ])

@@ -9,10 +9,11 @@ import { notifyStaff } from "../web-push"
 // (o al personal cuando la conversación está tomada por una persona).
 
 type Media = { buffer: Buffer; mime: string; seconds: number | null }
-type Incoming = { kind: "text" | "audio" | "image" | "location" | "other"; body: string; media?: Media; location?: { lat: number; lng: number; label: string } }
+type Incoming = { kind: "text" | "audio" | "image" | "location" | "other" | "video" | "document" | "sticker"; body: string; media?: Media & { fileName?: string }; location?: { lat: number; lng: number; label: string } }
 const queues = new Map<string, Promise<void>>()
 const MAX_AUDIO = 16 * 1024 * 1024
 const MAX_IMAGE = 5 * 1024 * 1024
+const MAX_FILE = 16 * 1024 * 1024
 
 function unwrap(message: any): any {
   let content = message
@@ -69,7 +70,24 @@ async function readContent(baileys: any, sock: any, msg: any, query: SchemaQuery
     return { kind: "image", body: `🖼️ [imagen]${m.imageMessage.caption ? ` ${m.imageMessage.caption}` : ""}`,
       media: buffer && buffer.length <= MAX_IMAGE && /^image\/(jpeg|png|webp|gif)$/.test(mime) ? { buffer, mime, seconds: null } : undefined }
   }
-  if (m.videoMessage || m.documentMessage || m.stickerMessage || m.contactMessage) return { kind: "other", body: "[archivo adjunto]" }
+  if (m.videoMessage) {
+    const buffer = await download(baileys, sock, msg)
+    const mime = String(m.videoMessage.mimetype ?? "video/mp4").split(";")[0] || "video/mp4"
+    return { kind: "video", body: `🎬 [video]${m.videoMessage.caption ? ` ${m.videoMessage.caption}` : ""}`,
+      media: buffer && buffer.length <= MAX_FILE ? { buffer, mime, seconds: Number(m.videoMessage.seconds) || null } : undefined }
+  }
+  if (m.stickerMessage) {
+    const buffer = await download(baileys, sock, msg)
+    return { kind: "sticker", body: "🏷️ [sticker]", media: buffer && buffer.length <= MAX_IMAGE ? { buffer, mime: "image/webp", seconds: null } : undefined }
+  }
+  const doc = m.documentMessage ?? m.documentWithCaptionMessage?.message?.documentMessage
+  if (doc) {
+    const buffer = await download(baileys, sock, msg)
+    const fileName = String(doc.fileName ?? doc.title ?? "archivo").slice(0, 160)
+    return { kind: "document", body: `📄 ${fileName}${doc.caption ? ` · ${doc.caption}` : ""}`,
+      media: buffer && buffer.length <= MAX_FILE ? { buffer, mime: String(doc.mimetype ?? "application/octet-stream").split(";")[0], seconds: null, fileName } : undefined }
+  }
+  if (m.contactMessage) return { kind: "other", body: `👤 Contacto: ${String(m.contactMessage.displayName ?? "").slice(0, 80)}` }
   return null
 }
 
@@ -129,8 +147,8 @@ export async function handleUpsert(schema: string, sock: any, event: { messages:
     if (!inserted.rows[0]) continue
     const messageId = Number(inserted.rows[0].id)
     if (content.media) {
-      const media = await query(`INSERT INTO wa_media (message_id, mime, size, seconds, data) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [messageId, content.media.mime, content.media.buffer.length, content.media.seconds, content.media.buffer])
+      const media = await query(`INSERT INTO wa_media (message_id, mime, size, seconds, data, file_name) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [messageId, content.media.mime, content.media.buffer.length, content.media.seconds, content.media.buffer, content.media.fileName ?? ""])
       await query("UPDATE wa_messages SET media_id = $2 WHERE id = $1", [messageId, media.rows[0].id])
     }
     await query(`UPDATE wa_conversations SET last_message = $2, last_message_at = NOW(), unread = unread + $3, updated_at = NOW() WHERE id = $1`,
