@@ -38,11 +38,11 @@ export async function GET(_request: NextRequest, { params }: Context) {
         modifierGroups: p.modifierGroups ?? [] }))
     const order = table.order_id ? await loadOrder(client, Number(table.order_id)) : null
     const tickets = order ? (await client.query("SELECT id, status, created_at, updated_at FROM kitchen_tickets WHERE order_id = $1 ORDER BY id", [order.id])).rows : []
-    const calls = (await client.query("SELECT kind, created_at FROM table_calls WHERE table_id = $1 AND status = 'open'", [table.id])).rows
+    const calls = (await client.query("SELECT kind, note, created_at FROM table_calls WHERE table_id = $1 AND status = 'open'", [table.id])).rows
     await client.query("COMMIT")
     return NextResponse.json({ restaurant: place.name, table: { id: Number(table.id), label: table.label,
       seats: Number(table.seats), roomName: table.room_name, imageData: table.image_data }, products,
-      calls: calls.map((call) => ({ kind: call.kind, createdAt: new Date(call.created_at).toISOString() })),
+      calls: calls.map((call) => ({ kind: call.kind, note: call.kind === "request" ? call.note : "", createdAt: new Date(call.created_at).toISOString() })),
       order: order ? { id: order.id, total: order.total, billedAt: order.billedAt,
         tickets: tickets.map((ticket) => ({ id: Number(ticket.id), status: ticket.status, updatedAt: new Date(ticket.updated_at).toISOString() })),
         items: order.items.map((line) => ({ lineId: line.lineId, ticketId: line.ticketId,
@@ -94,11 +94,25 @@ export async function POST(request: NextRequest, { params }: Context) {
     }
     const lines = await makeOrderLines(client, body.items, "dineIn")
     order = await saveOrderItems(client, order, lines)
-    const sent = await sendDraftToKitchen(client, order, null)
+    const config = (await client.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}
+    const approval = config.tableOrders?.requireApproval !== false
     const guest = { id: 0, name: "Cliente (QR de mesa)" }
-    if (!existing.rows[0]) await logOrderEvent(client, sent.order.id, "created", { status: "dineIn", note: "Pedido desde el QR de la mesa", actor: guest })
-    await logOrderEvent(client, sent.order.id, "items_added", { note: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor: guest })
-    await logOrderEvent(client, sent.order.id, "sent_to_kitchen", { status: "pending", ticketId: sent.ticket.id, actor: guest })
+    const summary = lines.map((line) => `${line.quantity} × ${line.productName}`).join(", ")
+    if (!existing.rows[0]) await logOrderEvent(client, order.id, "created", { status: "dineIn", note: "Pedido desde el QR de la mesa", actor: guest })
+    await logOrderEvent(client, order.id, "items_added", { note: summary, actor: guest })
+    let sent: { order: typeof order; ticket: { id: number } | null } = { order, ticket: null }
+    if (approval) {
+      // Queda «por aceptar»: aviso al personal con el botón Aceptar (un aviso abierto por mesa, se actualiza el detalle).
+      const pending = order.items.filter((line) => line.ticketId == null).reduce((sum, line) => sum + line.quantity, 0)
+      const note = `${pending} producto${pending === 1 ? "" : "s"} por aceptar: ${summary}`.slice(0, 240)
+      await client.query(`INSERT INTO table_calls (table_id, table_label, kind, note) VALUES ($1, $2, 'order', $3)
+        ON CONFLICT (table_id, kind) WHERE status = 'open' AND kind IN ('waiter', 'bill', 'order') DO UPDATE SET note = EXCLUDED.note`,
+        [table.id, `${table.room_name} · ${table.label}`, note])
+    } else {
+      const done = await sendDraftToKitchen(client, order, null)
+      sent = done
+      await logOrderEvent(client, done.order.id, "sent_to_kitchen", { status: "pending", ticketId: done.ticket.id, actor: guest })
+    }
     // Si el cliente ingresó a su cuenta, el pedido de la mesa queda en su historial y recibe los avisos.
     const account = await getCustomer(request)
     if (account) {
@@ -107,10 +121,11 @@ export async function POST(request: NextRequest, { params }: Context) {
         [sent.order.id, account.phone, account.name])
     }
     if (requestId) await client.query("UPDATE guest_order_requests SET order_id=$1, ticket_id=$2 WHERE request_id=$3",
-      [sent.order.id, sent.ticket.id, requestId])
+      [sent.order.id, sent.ticket?.id ?? null, requestId])
     await client.query("COMMIT")
-    void schemaQuery(place.schema_name).then((query) => notifyStaff(query, { title: `Nuevo pedido · ${table.label}`, body: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", ").slice(0, 160), url: "/kitchen", tag: `table-order-${table.id}` }))
-    return NextResponse.json({ orderId: sent.order.id, ticketId: sent.ticket.id, total: sent.order.total }, { status: 201 })
+    void schemaQuery(place.schema_name).then((query) => notifyStaff(query, { title: approval ? `${table.label} pidió · por aceptar` : `Nuevo pedido · ${table.label}`,
+      body: summary.slice(0, 160), url: approval ? "/mesas" : "/kitchen", tag: `table-order-${table.id}` }))
+    return NextResponse.json({ orderId: sent.order.id, ticketId: sent.ticket?.id ?? null, total: sent.order.total, pendingApproval: approval }, { status: 201 })
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined)
     if (error instanceof ServiceOrderError) return NextResponse.json({ error: error.message }, { status: error.status })

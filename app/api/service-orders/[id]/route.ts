@@ -30,7 +30,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   }
   const id = Number((await params).id)
   const body = await request.json().catch(() => null)
-  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill", "confirm", "reject", "move"].includes(body?.action)) {
+  if (!Number.isSafeInteger(id) || id <= 0 || !["details", "send", "cancel", "bill", "confirm", "reject", "move", "remove_lines"].includes(body?.action)) {
     return NextResponse.json({ error: "Orden o acción inválida." }, { status: 400 })
   }
   // Cancelar o rechazar devuelve stock y anula la cuenta: queda reservado a quien puede cobrar.
@@ -138,10 +138,22 @@ export async function PATCH(request: NextRequest, { params }: Context) {
       if (!order.items.length) throw new ServiceOrderError("La cuenta no tiene consumos para la precuenta.")
       await client.query("UPDATE service_orders SET billed_at = NOW(), bill_count = bill_count + 1, updated_at = NOW() WHERE id = $1", [id])
       await logOrderEvent(client, id, "billed", { status: String(order.billCount + 1), actor })
+    } else if (body.action === "remove_lines") {
+      // Quitar productos que todavía no se enviaron a cocina (por ejemplo, algo que la mesa pidió por error).
+      const ids = new Set(Array.isArray(body.lineIds) ? body.lineIds.filter((value: unknown) => typeof value === "string") : [])
+      const removed = order.items.filter((line) => ids.has(line.lineId) && line.ticketId == null)
+      if (!removed.length) throw new ServiceOrderError("Solo se pueden quitar productos que todavía no fueron a cocina.")
+      const items = order.items.filter((line) => !removed.includes(line))
+      const total = items.reduce((sum, line) => sum + line.subtotal, 0)
+      await client.query("UPDATE service_orders SET items = $1::jsonb, total = $2, updated_at = NOW() WHERE id = $3", [JSON.stringify(items), total, id])
+      await refreshDeliveryFee(client, id)
+      await logOrderEvent(client, id, "items_removed", { note: removed.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor })
+      if (!items.some((line) => line.ticketId == null) && order.tableId) await client.query("UPDATE table_calls SET status = 'attended' WHERE table_id = $1 AND kind = 'order' AND status = 'open'", [order.tableId])
     } else if (body.action === "send") {
       const sent = await sendDraftToKitchen(client, order, Number(user.id))
       ticket = sent.ticket
       await logOrderEvent(client, id, "sent_to_kitchen", { status: "pending", ticketId: ticket.id, actor })
+      if (order.tableId) await client.query("UPDATE table_calls SET status = 'attended' WHERE table_id = $1 AND kind = 'order' AND status = 'open'", [order.tableId])
     } else {
       const tickets = await client.query("SELECT status FROM kitchen_tickets WHERE order_id = $1 FOR UPDATE", [id])
       if (tickets.rows.some((row) => ["ready", "served", "out_for_delivery", "delivered"].includes(row.status))) {
@@ -171,7 +183,9 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     order = await loadOrder(client, id)
     await client.query("COMMIT")
     // Avisa al cliente (push en la mesa o WhatsApp) de la confirmación, la cuenta o la cancelación.
-    const event = body.action === "bill" ? "bill" : body.action === "cancel" ? "cancelled" : body.action === "reject" ? "rejected" : body.action === "confirm" ? "confirmed" : null
+    // Pedido de la mesa aceptado: el cliente se entera en su teléfono.
+    const event = body.action === "bill" ? "bill" : body.action === "cancel" ? "cancelled" : body.action === "reject" ? "rejected" : body.action === "confirm" ? "confirmed"
+      : body.action === "send" && order.source === "table_qr" ? "confirmed" : null
     if (event) { const schema = await currentSchema(); void notifyCustomer(schema, id, event, { note: cleanText(body.reason ?? body.note, 200) || undefined }) }
     if (moveEvents.length) {
       const schema = await currentSchema()

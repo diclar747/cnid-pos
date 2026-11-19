@@ -76,7 +76,7 @@ export function TableSheet({ table, onClose, onChanged }: { table: DiningTable |
       onChanged()
     } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo agregar") } finally { setBusy(null) }
   }
-  const act = async (action: "send" | "bill" | "cancel", extra: Record<string, unknown> = {}) => {
+  const act = async (action: "send" | "bill" | "cancel" | "remove_lines", extra: Record<string, unknown> = {}) => {
     if (!order) return
     const printWindow = action === "bill" ? window.open("", "_blank") : null
     setBusy(action)
@@ -85,7 +85,7 @@ export function TableSheet({ table, onClose, onChanged }: { table: DiningTable |
       if (printWindow) printWindow.location.href = `/receipt/bill/${order.id}?auto=1`
       if (action === "cancel") { toast.success(`${table?.label} liberada`); onChanged(); onClose(); return }
       setOrder(result.order); onChanged()
-      toast.success(action === "send" ? "Enviado a cocina" : "Precuenta lista")
+      toast.success(action === "send" ? "Enviado a cocina" : action === "remove_lines" ? "Producto quitado" : "Precuenta lista")
     } catch (error) { printWindow?.close(); toast.error(error instanceof Error ? error.message : "No se pudo completar") } finally { setBusy(null) }
   }
   const release = () => {
@@ -127,7 +127,8 @@ export function TableSheet({ table, onClose, onChanged }: { table: DiningTable |
               </div>
               : <div className="space-y-4">
                 {order.customerName && <p className="text-sm text-muted-foreground">Cliente: <span className="font-medium text-foreground">{order.customerName}</span></p>}
-                {drafts.length > 0 && <Lines title="Por enviar a cocina" tone="text-amber-700" lines={drafts} />}
+                {drafts.length > 0 && <Lines title={order.source === "table_qr" ? "Por aceptar (pedido de la mesa)" : "Por enviar a cocina"} tone="text-amber-700" lines={drafts}
+                  onRemove={(lineId) => void act("remove_lines", { lineIds: [lineId] })} />}
                 {sent.length > 0 && <Lines title="En cocina / servido" tone="text-emerald-700" lines={sent} />}
                 {!order.items.length && <p className="text-sm text-muted-foreground">Cuenta abierta sin productos todavía.</p>}
               </div>}
@@ -137,7 +138,7 @@ export function TableSheet({ table, onClose, onChanged }: { table: DiningTable |
             <p className="flex items-center justify-between text-lg font-black"><span>Total</span><span className="tabular-nums">{money(order.grandTotal)}</span></p>
             {order.billedAt && <p className="text-xs text-indigo-700">Precuenta impresa {new Date(order.billedAt).toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}</p>}
             <div className="grid grid-cols-2 gap-2">
-              {drafts.length > 0 && <Button onClick={() => void act("send")} disabled={busy !== null} className="col-span-2 bg-amber-600 text-white hover:bg-amber-700"><ChefHat className="mr-1 h-4 w-4" />Enviar a cocina ({drafts.reduce((s, l) => s + l.quantity, 0)})</Button>}
+              {drafts.length > 0 && <Button onClick={() => void act("send")} disabled={busy !== null} className="col-span-2 bg-amber-600 text-white hover:bg-amber-700"><ChefHat className="mr-1 h-4 w-4" />{order.source === "table_qr" ? "Aceptar y enviar a cocina" : "Enviar a cocina"} ({drafts.reduce((s, l) => s + l.quantity, 0)})</Button>}
               <Button variant="outline" onClick={() => void act("bill")} disabled={busy !== null || !order.items.length}><ReceiptText className="mr-1 h-4 w-4" />Precuenta</Button>
               {canCharge ? <Button onClick={() => setPay({ kind: "order", orderId: order.id })} disabled={busy !== null || !order.items.length} className="bg-emerald-600 text-white hover:bg-emerald-700"><CreditCard className="mr-1 h-4 w-4" />Cobrar</Button>
                 : <Link href={`/pos?order=${order.id}`} className="inline-flex items-center justify-center rounded-md border text-sm font-medium"><ShoppingCart className="mr-1 h-4 w-4" />Abrir en POS</Link>}
@@ -186,12 +187,12 @@ export function TableSheet({ table, onClose, onChanged }: { table: DiningTable |
   </>
 }
 
-function Lines({ title, tone, lines }: { title: string; tone: string; lines: ServiceOrder["items"] }) {
+function Lines({ title, tone, lines, onRemove }: { title: string; tone: string; lines: ServiceOrder["items"]; onRemove?: (lineId: string) => void }) {
   return <div>
     <p className={`mb-1 flex items-center gap-1 text-xs font-bold uppercase tracking-wide ${tone}`}>{tone.includes("emerald") ? <CircleCheck className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}{title}</p>
     <ul className="divide-y text-sm dark:divide-slate-800">{lines.map((line) => <li key={line.lineId} className="flex justify-between gap-2 py-1.5">
       <span><span className="font-semibold">{line.quantity} ×</span> {line.productName}{line.modifiers.length > 0 && <span className="block text-xs text-muted-foreground">{line.modifiers.map((m) => m.name).join(", ")}</span>}</span>
-      <span className="shrink-0 tabular-nums">{money(line.subtotal)}</span></li>)}</ul>
+      <span className="flex shrink-0 items-center gap-1 tabular-nums">{money(line.subtotal)}{onRemove && <button type="button" onClick={() => onRemove(line.lineId)} className="rounded p-1 text-red-600 hover:bg-red-50" aria-label={`Quitar ${line.productName}`} title="Quitar"><Trash2 className="h-3.5 w-3.5" /></button>}</span></li>)}</ul>
   </div>
 }
 

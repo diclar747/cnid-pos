@@ -61,10 +61,25 @@ try {
   check((await guest(`/api/table/${code}/push`, "POST", { subscription: fakeSubscription("https://fcm.googleapis.com/fcm/send/prueba") }, guestHeaders)).status === 409, "Push sin pedido")
   check((await guest(`/api/table/${code}/push`, "POST", { subscription: fakeSubscription("https://127.0.0.1/interno") }, guestHeaders)).status === 400, "Push a dirección interna")
 
-  // Pedido desde el QR: llega a cocina con ticket pendiente.
-  const sent = await guest(`/api/table/${code}`, "POST", { requestId: crypto.randomUUID(), customerName: "Cliente QR", notes: "", items: [{ id: product.body.item.id, quantity: 2, selectedModifiers: [] }] })
-  check(sent.status === 201, `Pedido QR: ${sent.status} ${JSON.stringify(sent.body)}`)
-  created.orders.push(sent.body.orderId)
+  // Pedido desde el QR: queda «por aceptar» (sin comanda) y el personal recibe el aviso.
+  const placed = await guest(`/api/table/${code}`, "POST", { requestId: crypto.randomUUID(), customerName: "Cliente QR", notes: "", items: [{ id: product.body.item.id, quantity: 2, selectedModifiers: [] }] })
+  check(placed.status === 201 && placed.body.pendingApproval === true && placed.body.ticketId === null, `Pedido QR por aceptar: ${placed.status} ${JSON.stringify(placed.body)}`)
+  created.orders.push(placed.body.orderId)
+  menu = await guest(`/api/table/${code}`)
+  check(menu.body.order?.items.every((item) => item.ticketId === null) && menu.body.order.tickets.length === 0, "El cliente lo ve esperando que lo acepten")
+  let alerts = (await staff("/api/table-calls")).body.items
+  check(alerts.some((call) => call.kind === "order" && call.orderId === placed.body.orderId && call.note.includes("2 productos")), `Aviso «por aceptar» al personal: ${JSON.stringify(alerts)}`)
+  // Pedido puntual: servilletas.
+  check((await guest(`/api/table/${code}/call`, "POST", { kind: "request", note: "Servilletas" }, guestHeaders)).status === 201, "Pedir servilletas")
+  alerts = (await staff("/api/table-calls")).body.items
+  check(alerts.some((call) => call.kind === "request" && call.note === "Servilletas"), "El personal ve qué pidió la mesa")
+  const napkins = alerts.find((call) => call.kind === "request" && call.note === "Servilletas")
+  check((await staff(`/api/table-calls/${napkins.id}`, "PATCH")).status === 200, "Servilletas llevadas")
+  // El personal acepta: se crea la comanda y se cierra el aviso.
+  const accepted = await staff(`/api/service-orders/${placed.body.orderId}`, "PATCH", { action: "send" })
+  check(accepted.status === 200 && accepted.body.ticket?.id, `Aceptar el pedido: ${accepted.status} ${JSON.stringify(accepted.body).slice(0, 200)}`)
+  check(!(await staff("/api/table-calls")).body.items.some((call) => call.kind === "order" && call.orderId === placed.body.orderId), "El aviso se cierra al aceptar")
+  const sent = { body: { orderId: placed.body.orderId, ticketId: accepted.body.ticket.id } }
   menu = await guest(`/api/table/${code}`)
   check(menu.body.order?.id === sent.body.orderId && menu.body.order.tickets.length === 1 && menu.body.order.tickets[0].status === "pending", "Estado inicial del pedido")
   check(menu.body.order.items.every((item) => item.ticketId === sent.body.ticketId), "Ítems vinculados al ticket")
