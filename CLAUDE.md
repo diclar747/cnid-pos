@@ -14,6 +14,7 @@ Next.js 15, React 19, TypeScript, Tailwind CSS y PostgreSQL local. El paquete se
 - `app/context`: estado de la interfaz y llamadas a las API.
 - `app/admin`, `app/pos`, `app/checkout`: pantallas principales; `app/crm` (tablero en vivo), `app/cash` (caja), `app/kitchen`, `app/table/[code]` (QR de mesa).
 - Un esquema PostgreSQL por restaurante; migraciones por restaurante en `scripts/06…21-*.sql`, registradas en `scripts/setup-local-db.mjs` y `lib/restaurant-admin.ts`.
+- `app/components/table-picker.tsx`: mapa de mesas del carrito del POS (enviar el pedido a una mesa, abrir la cuenta y cobrar).
 - `app/components/workspace-shell.tsx`: marco único (encabezado + «Opciones») para POS, WhatsApp, Pedidos, Órdenes, Cocina, Tarjetas QR, Mesas y Caja; las secciones ponen buscador o categorías con `WorkspaceSlot`. Apariencia del restaurante (logo, portada, color, encabezado) en `app/admin/company/branding-panel.tsx` y `/api/brand/[kind]`.
 - Productos: fotos aparte en `product_images` (`lib/product-images.ts`, `/api/product-images`, descarga segura de URLs), grupos de opciones compartidos en `/api/product-groups`.
 - Delivery: `lib/delivery-pricing.ts` (por zonas, por km o fijo; `deliveryQuoteFor`/`refreshDeliveryFee` en `lib/service-order-server.ts`). Empresa: «Ficha y mapa» (`location-picker.tsx`, `/api/maps/resolve`), «Delivery» y «Cuenta y avisos».

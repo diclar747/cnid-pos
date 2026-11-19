@@ -19,6 +19,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import ProtectedRoute from "../components/protected-route"
 import { apiRequest } from "@/lib/api-client"
 import type { KitchenTicket, ServiceOrder } from "@/lib/service-order-types"
+import type { DiningTable } from "@/lib/dining-types"
+import TablePicker, { type PickedTable } from "../components/table-picker"
+import { useLiveTables } from "@/lib/use-live"
 
 const cardPattern = /^CNID-CARD-[A-F0-9]{24}$/
 const cardCodeFromScan = (value: string) => parseScannedCode(value).code.toUpperCase().match(/CNID-CARD-[A-F0-9]{24}/)?.[0] ?? ""
@@ -39,6 +42,9 @@ export default function POSPage() {
   const [selectedOptions, setSelectedOptions] = useState<Record<number, number[]>>({})
   const [activeOrder, setActiveOrder] = useState<ServiceOrder | null>(null)
   const [orderSaving, setOrderSaving] = useState(false)
+  // Mesa elegida para el carrito antes de guardar (sin orden abierta en el POS).
+  const [pendingTable, setPendingTable] = useState<PickedTable | null>(null)
+  const [tablesOpen, setTablesOpen] = useState(false)
   const { cart, products, addToCart, clearCart, refreshProducts, getCartTotal, orderType, setOrderType } = useCart()
   const searchRef = useRef<HTMLInputElement>(null)
   const { user } = useAuth()
@@ -88,25 +94,78 @@ export default function POSPage() {
     if (activeOrderKey) sessionStorage.removeItem(activeOrderKey)
     if (window.location.search) window.history.replaceState(null, "", "/pos")
   }
+  // La cuenta abierta se mantiene al día si cocina, caja u otro mesero la cambian.
+  useLiveTables(activeOrder ? ["service_orders", "kitchen_tickets"] : ["__none__"], () => {
+    if (!activeOrder) return
+    apiRequest<{ order: ServiceOrder }>(`/api/service-orders/${activeOrder.id}`).then(({ order }) => {
+      if (order.status === "open") { setActiveOrder(order); return }
+      setActiveOrder(null)
+      if (activeOrderKey) sessionStorage.removeItem(activeOrderKey)
+      toast(`La orden #${order.id} se cerró${order.status === "paid" ? " (cobrada)" : ""}.`)
+    }).catch(() => undefined)
+  }, 30000)
+  const tableHint = activeOrder
+    ? cart.length ? `Elegí una mesa libre para pasar la orden #${activeOrder.id} (lo del carrito se suma al guardar).`
+      : activeOrder.tableId ? `Tocá una mesa ocupada para ver su cuenta y cobrar, o una libre para mover la orden #${activeOrder.id}.`
+      : `Elegí la mesa de la orden #${activeOrder.id}, o tocá una ocupada para ver su cuenta.`
+    : cart.length ? "Elegí la mesa de este pedido. Si ya tiene cuenta, se suma a lo que consumió."
+    : "Tocá una mesa ocupada para ver lo que consumió y cobrar, o una libre para empezar su pedido."
+  const pickTable = async (table: DiningTable, listed: ServiceOrder | null) => {
+    const name = `${table.roomName} · ${table.label}`
+    const openId = listed?.id ?? table.openOrderId
+    try {
+      if (activeOrder?.tableId === table.id || (!activeOrder && pendingTable?.id === table.id)) { setTablesOpen(false); return }
+      if (activeOrder && openId && openId !== activeOrder.id && cart.length) {
+        toast.error("Esa mesa tiene otra cuenta. Guardá o vaciá el carrito antes de cambiar.")
+        return
+      }
+      if (openId && openId !== activeOrder?.id && !cart.length) {
+        // Mesa ocupada: abrir su cuenta para ver el consumo, agregar o cobrar.
+        const { order } = await apiRequest<{ order: ServiceOrder }>(`/api/service-orders/${openId}`)
+        setPendingTable(null)
+        rememberOrder(order)
+        toast.success(`${name} · cuenta #${order.id}`)
+      } else if (activeOrder) {
+        // Orden abierta sin mesa (o en otra): pasarla a esta mesa libre.
+        const { order } = await apiRequest<{ order: ServiceOrder }>(`/api/service-orders/${activeOrder.id}`, {
+          method: "PATCH", body: JSON.stringify({ action: "details", tableId: table.id }) })
+        rememberOrder(order)
+        toast.success(`Orden #${order.id} en ${name}`)
+      } else {
+        // Carrito nuevo: queda apuntado a la mesa; se guarda con «Guardar», «Cocina» o «Enviar e imprimir».
+        setPendingTable({ id: table.id, label: name, orderId: openId ?? null, orderTotal: listed?.total ?? 0 })
+        if (orderType !== "dineIn") setOrderType("dineIn")
+        if (!cart.length) toast.success(`${name}: agregá los productos y enviá`)
+      }
+      setTablesOpen(false)
+    } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo usar esa mesa") }
+  }
   const saveOrder = async (details: Partial<OrderDetails>, send: boolean, print: boolean) => {
     if (orderSaving) return
     const printWindow = print ? window.open("", "_blank") : null
+    // Pedido apuntado a una mesa: se guarda en su cuenta y el POS queda libre para el siguiente cliente.
+    const toTable = !activeOrder && pendingTable ? pendingTable : null
     setOrderSaving(true)
     try {
       const { order, ticket } = await apiRequest<{ order: ServiceOrder; ticket: KitchenTicket | null }>("/api/service-orders", {
         method: "POST",
-        body: JSON.stringify({ orderId: activeOrder?.id, orderType, ...details,
+        body: JSON.stringify({ orderId: activeOrder?.id, orderType: toTable ? "dineIn" : orderType, ...details, ...(toTable ? { tableId: toTable.id } : {}),
           items: cart.map((item) => ({ id: item.id, quantity: item.quantity, selectedModifiers: item.selectedModifiers })),
           sendToKitchen: send }),
       })
-      rememberOrder(order)
+      if (toTable) {
+        setPendingTable(null)
+        setActiveOrder(null)
+        if (activeOrderKey) sessionStorage.removeItem(activeOrderKey)
+      } else rememberOrder(order)
       clearCart()
       if (send) void refreshProducts()
       if (printWindow) {
         if (ticket) printWindow.location.href = `/kitchen/print/${ticket.id}?auto=1`
         else printWindow.close()
       }
-      toast.success(ticket ? `Orden #${order.id} enviada a cocina` : `Orden #${order.id} guardada`)
+      toast.success(toTable ? `${toTable.label} · orden #${order.id} ${ticket ? "enviada a cocina" : "guardada"}. Cuenta: ${guarani(order.total)}`
+        : ticket ? `Orden #${order.id} enviada a cocina` : `Orden #${order.id} guardada`)
     } catch (error) {
       printWindow?.close()
       toast.error(error instanceof Error ? error.message : "No se pudo guardar la orden")
@@ -147,6 +206,7 @@ export default function POSPage() {
       const order = result.order ?? (await apiRequest<{ order: ServiceOrder }>("/api/service-orders", {
         method: "POST", body: JSON.stringify({ orderId: activeOrder?.id, tableId: result.table.id, orderType: "dineIn", items: [] }),
       })).order
+      setPendingTable(null)
       rememberOrder(order)
       setSearchTerm("")
       toast.success(`${result.table.roomName} · ${result.table.label} · orden #${order.id}`)
@@ -307,7 +367,7 @@ export default function POSPage() {
           <div className="min-w-0 flex-1 overflow-y-auto bg-gradient-to-br from-indigo-50/60 via-slate-50/70 to-cyan-50/40 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
             <div className="flex flex-wrap gap-3 px-3 pt-3 sm:px-6 sm:pt-5">
               <div><label htmlFor="pos-order-type" className="mb-1 block text-xs font-medium text-muted-foreground">Tipo de pedido</label>
-                <select id="pos-order-type" value={orderType} disabled={Boolean(activeOrder)} onChange={(event) => setOrderType(event.target.value as typeof orderType)}
+                <select id="pos-order-type" value={orderType} disabled={Boolean(activeOrder)} onChange={(event) => { setOrderType(event.target.value as typeof orderType); if (event.target.value !== "dineIn") setPendingTable(null) }}
                   className="h-10 min-w-40 rounded-xl border bg-background px-3 text-sm shadow-sm">
                   <option value="dineIn">En el local</option><option value="delivery">Delivery</option><option value="pickup">Retiro</option>
                 </select></div>
@@ -335,8 +395,10 @@ export default function POSPage() {
                 {totalItems > 0 && <Badge className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center p-0 text-[10px]">{totalItems}</Badge>}
               </Button>
               <span className="text-[10px] font-semibold text-muted-foreground">Carrito</span>
+              {!activeOrder && pendingTable && <span className="max-w-full truncate rounded-full bg-emerald-100 px-1.5 py-1 text-[10px] font-bold text-emerald-800" title={pendingTable.label}>{pendingTable.label.split(" · ").pop()}</span>}
               {activeOrder && <span className="max-w-full truncate rounded-full bg-indigo-100 px-1.5 py-1 text-[10px] font-bold text-indigo-700" title={`Orden #${activeOrder.id} abierta`}>#{activeOrder.id}</span>}
-            </div> : <CartSidebar activeOrder={activeOrder} onSaveOrder={saveOrder} onClearActive={clearActiveOrder} orderSaving={orderSaving} onToggleCollapse={toggleCartCollapse} />}
+            </div> : <CartSidebar activeOrder={activeOrder} onSaveOrder={saveOrder} onClearActive={clearActiveOrder} orderSaving={orderSaving} onToggleCollapse={toggleCartCollapse}
+              pendingTable={pendingTable} onOpenTables={() => setTablesOpen(true)} onClearPendingTable={() => setPendingTable(null)} />}
           </div>
 
           {/* Cart Sidebar - Mobile Overlay */}
@@ -344,12 +406,15 @@ export default function POSPage() {
             <div className="fixed inset-0 z-50 lg:hidden">
               <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
               <div className="absolute right-0 top-0 h-full w-80 max-w-full border-l bg-background">
-                <CartSidebar onClose={() => setShowCart(false)} activeOrder={activeOrder} onSaveOrder={saveOrder} onClearActive={clearActiveOrder} orderSaving={orderSaving} />
+                <CartSidebar onClose={() => setShowCart(false)} activeOrder={activeOrder} onSaveOrder={saveOrder} onClearActive={clearActiveOrder} orderSaving={orderSaving}
+                  pendingTable={pendingTable} onOpenTables={() => setTablesOpen(true)} onClearPendingTable={() => setPendingTable(null)} />
               </div>
             </div>
           )}
         </div>
 
+        <TablePicker open={tablesOpen} onClose={() => setTablesOpen(false)} hint={tableHint} onPick={(table, order) => void pickTable(table, order)}
+          currentTableId={activeOrder?.tableId ?? pendingTable?.id ?? null} />
         <Dialog open={Boolean(configuring)} onOpenChange={(open) => { if (!open) { setConfiguring(null); setModifierSearch("") } }}>
           <DialogContent className="flex max-h-[85dvh] w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
             <DialogHeader className="shrink-0 border-b px-5 pb-4 pt-5 pr-12 text-left">
