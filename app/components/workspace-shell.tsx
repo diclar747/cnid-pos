@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
-import { Menu, PanelLeftClose, PanelLeftOpen, Sparkles, X } from "lucide-react"
+import { ChevronDown, Menu, PanelLeftClose, PanelLeftOpen, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "../context/auth-context"
 import { useCompany } from "../context/company-context"
@@ -19,6 +19,7 @@ import { headerTheme } from "@/lib/brand-theme"
 export const WORKSPACE_ROUTES = ["/pos", "/whatsapp", "/crm", "/orders", "/orders/cards", "/kitchen", "/mesas", "/cash"]
 const OPEN_CHAT = "restopos:open-chat"
 const COLLAPSE_KEY = "restopos:options-collapsed"
+const LIST_KEY = "restopos:options-list"
 
 type Slots = {
   header: HTMLElement | null; headerEnd: HTMLElement | null; sidebar: HTMLElement | null; mobile: HTMLElement | null
@@ -64,6 +65,10 @@ function Shell({ children }: { children: ReactNode }) {
     window.addEventListener(OPEN_CHAT, open)
     return () => window.removeEventListener(OPEN_CHAT, open)
   }, [router])
+  // Lista de «Opciones» plegable dentro del menú abierto, para dejar lugar a las categorías.
+  const [listOpen, setListOpen] = useState(true)
+  useEffect(() => { try { setListOpen(localStorage.getItem(LIST_KEY) !== "0") } catch { /* opcional */ } }, [])
+  const toggleList = () => setListOpen((value) => { try { localStorage.setItem(LIST_KEY, value ? "0" : "1") } catch { /* opcional */ } return !value })
   const toggle = () => setCollapsed((value) => { try { localStorage.setItem(COLLAPSE_KEY, value ? "0" : "1") } catch { /* opcional */ } return !value })
 
   const brand = companyConfig?.name || user?.restaurantName || "RestoPOS"
@@ -100,14 +105,16 @@ function Shell({ children }: { children: ReactNode }) {
 
         <div className="flex min-h-0 flex-1">
           <aside className={`hidden shrink-0 flex-col border-r border-indigo-100 bg-white/75 shadow-sm backdrop-blur-xl transition-[width] duration-200 print:hidden dark:border-slate-800 dark:bg-slate-900/80 md:flex ${collapsed ? "w-[68px]" : "w-64"}`}>
-            <div className={`border-b ${collapsed ? "flex flex-col items-center gap-2 px-2 py-3" : "p-3"}`}>
+            <div className={`max-h-[55%] shrink-0 overflow-y-auto border-b ${collapsed ? "flex flex-col items-center gap-1.5 px-2 py-2" : "px-2.5 py-2"}`}>
               {collapsed
-                ? <Button variant="ghost" size="icon" onClick={toggle} aria-label="Expandir opciones" title="Expandir opciones"><PanelLeftOpen className="h-5 w-5" /></Button>
-                : <div className="mb-2 flex items-center justify-between pl-1">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Opciones</h2>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggle} aria-label="Minimizar opciones" title="Minimizar opciones"><PanelLeftClose className="h-4 w-4" /></Button>
+                ? <Button variant="ghost" size="icon" className="h-9 w-9" onClick={toggle} aria-label="Expandir opciones" title="Expandir opciones"><PanelLeftOpen className="h-5 w-5" /></Button>
+                : <div className={`flex items-center justify-between ${listOpen ? "mb-1.5" : ""}`}>
+                  <button type="button" onClick={toggleList} aria-expanded={listOpen} className="flex items-center gap-1 rounded-md px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground" title={listOpen ? "Plegar la lista" : "Mostrar la lista"}>
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${listOpen ? "" : "-rotate-90"}`} /> Opciones
+                  </button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggle} aria-label="Minimizar menú" title="Minimizar menú"><PanelLeftClose className="h-4 w-4" /></Button>
                 </div>}
-              <RestaurantNavigation variant={collapsed ? "rail" : "sidebar"} />
+              {(collapsed || listOpen) && <RestaurantNavigation variant={collapsed ? "rail" : "sidebar"} />}
             </div>
             <div ref={setSidebar} className="flex min-h-0 flex-1 flex-col" />
           </aside>
