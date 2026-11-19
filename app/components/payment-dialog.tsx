@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { AlertCircle, Banknote, CheckCircle2, CreditCard, Loader2, Lock, Plus, Printer, QrCode, Search, Smartphone, Split, Trash2, UserPlus, UserRound,
+import { AlertCircle, Banknote, CheckCircle2, CreditCard, Loader2, Lock, Plus, QrCode, Search, Smartphone, Split, Trash2, UserPlus, UserRound,
   Wallet, X, BookUser } from "lucide-react"
 import toast from "react-hot-toast"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -20,7 +20,6 @@ import { useSales } from "../context/sales-context"
 type Method = { code: string; name: string; kind: string; needsVerification: boolean }
 type Line = { key: number; method: string; amount: string; reference: string }
 type Cycle = Customer["billingCycle"]
-type Done = { id: number; change: number; creditBalance: number | null; customer: string; methodName: string; pending: boolean }
 
 const money = (value: number) => `Gs ${Math.round(value).toLocaleString("es-PY")}`
 const digits = (value: string) => Number(value.replace(/\D/g, "")) || 0
@@ -62,7 +61,6 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [invoice, setInvoice] = useState({ open: false, ruc: "", name: "", checking: false })
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<Done | null>(null)
   const [printOnPay, setPrintOnPay] = useState(true)
   const keyRef = useRef(1)
   const open = target !== null
@@ -73,7 +71,7 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
   // Al abrir: medios de pago, la orden (si corresponde) y estado inicial.
   useEffect(() => {
     if (!target) return
-    setDone(null); setCustomer(null); setReceived(""); setInvoice({ open: false, ruc: "", name: "", checking: false })
+    setCustomer(null); setReceived(""); setInvoice({ open: false, ruc: "", name: "", checking: false })
     try { setPrintOnPay(localStorage.getItem(PRINT_KEY) !== "0") } catch { /* sin almacenamiento */ }
     apiRequest<{ items: Method[]; cashOpen: boolean }>("/api/payment-methods")
       .then((result) => { setMethods(result.items); setCashOpen(result.cashOpen) })
@@ -181,9 +179,15 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
         if (user) sessionStorage.removeItem(`pos:activeOrder:${user.id}`)
         window.dispatchEvent(new Event("orders:changed"))
       }
-      setDone({ id, change: cashDue > 0 ? change : 0, creditBalance: sale.creditBalance ?? null, customer: customer?.name ?? "",
-        methodName: lines.map((line) => methodOf(line.method)?.name ?? line.method).join(" + "), pending: lines.some((line) => methodOf(line.method)?.needsVerification) })
+      // Sin pantalla intermedia: se abre el ticket (si está marcado) y el POS queda listo para la siguiente venta.
+      const due = cashDue > 0 ? change : 0
+      const credit = sale.creditBalance ?? null
+      const pending = lines.some((line) => methodOf(line.method)?.needsVerification)
+      toast.success([`Venta #${id} cobrada`, due > 0 ? `Vuelto ${money(due)}` : "",
+        credit !== null ? `Saldo de ${customer?.name ?? "la cuenta"}: ${money(credit)}` : "", pending ? "pago por verificar" : ""].filter(Boolean).join(" · "),
+        { duration: due > 0 ? 8000 : 4000 })
       onPaid?.(id)
+      onClose()
     } catch (error) {
       printWindow?.close()
       toast.error(error instanceof Error ? error.message : "No se pudo cobrar.")
@@ -200,7 +204,7 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value && !busy) onClose() }}>
       <DialogContent className="flex max-h-[94dvh] w-[calc(100vw-1.5rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-2xl border-0 p-0 sm:rounded-2xl">
-        {done ? <Success done={done} onPrint={() => window.open(`/receipt/sale/${done.id}?auto=1`, "_blank")} onClose={onClose} /> : <>
+        <>
           <div className="relative shrink-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-900 px-5 pb-4 pt-5 text-white sm:px-6 sm:pb-5 sm:pt-6">
             <DialogTitle className="text-sm font-medium uppercase tracking-wider text-indigo-200">{title}</DialogTitle>
             <DialogDescription className="mt-0.5 text-xs text-indigo-200/80">{loading ? "Cargando la orden…" : subtitle}</DialogDescription>
@@ -319,31 +323,10 @@ export default function PaymentDialog({ target, onClose, onPaid }: { target: Pay
               {creditDue === total && total > 0 ? "Cargar a cuenta" : `Cobrar ${money(total)}`}
             </Button>
           </div>
-        </>}
+        </>
       </DialogContent>
     </Dialog>
   )
-}
-
-function Success({ done, onPrint, onClose }: { done: Done; onPrint: () => void; onClose: () => void }) {
-  return <div className="flex flex-col items-center px-6 py-10 text-center">
-    <DialogTitle className="sr-only">Venta cobrada</DialogTitle>
-    <DialogDescription className="sr-only">La venta #{done.id} quedó registrada.</DialogDescription>
-    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300 animate-in zoom-in-50 duration-300">
-      <CheckCircle2 className="h-12 w-12" /></div>
-    <p className="mt-4 text-2xl font-bold">¡Listo! Venta #{done.id}</p>
-    <p className="mt-1 text-sm text-muted-foreground">{done.methodName}{done.pending ? " · pago pendiente de verificar" : ""}</p>
-    {done.change > 0 && <div className="mt-6 rounded-2xl bg-emerald-50 px-8 py-4 dark:bg-emerald-950/40">
-      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Entregar vuelto</p>
-      <p className="text-4xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{money(done.change)}</p></div>}
-    {done.creditBalance !== null && <div className="mt-6 rounded-2xl bg-rose-50 px-8 py-4 dark:bg-rose-950/40">
-      <p className="text-xs font-semibold uppercase tracking-wide text-rose-800 dark:text-rose-200">Cargado a la cuenta de {done.customer}</p>
-      <p className="text-sm text-rose-900 dark:text-rose-100">Saldo pendiente: <span className="text-xl font-bold tabular-nums">{money(done.creditBalance)}</span></p></div>}
-    <div className="mt-8 grid w-full max-w-sm grid-cols-2 gap-2">
-      <Button variant="outline" size="lg" onClick={onPrint}><Printer className="mr-2 h-4 w-4" /> Ticket</Button>
-      <Button size="lg" onClick={onClose} autoFocus className="bg-indigo-600 text-white hover:bg-indigo-700">Nueva venta</Button>
-    </div>
-  </div>
 }
 
 /** Cliente para venta a crédito: buscar, ver saldo y límite, habilitar crédito o registrar uno nuevo ahí mismo. */
