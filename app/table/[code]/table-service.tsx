@@ -82,10 +82,22 @@ export function OrderProgress({ tickets }: { tickets: TableTicket[] }) {
 const QUICK = ["Servilletas", "Hielo", "Cubiertos", "Sal", "Limón", "Agua", "Sorbete", "Un plato más"]
 
 /** Pedir algo puntual al mozo (servilletas, hielo…) sin pasar por la carta. */
-export function QuickRequest({ code, calls, onSent, notify }: { code: string; calls: TableCall[]; onSent: () => void; notify: (text: string) => void }) {
+type QuickProduct = { id: number; name: string; category: string; image: string; price: number }
+const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+
+/** Pedir algo al mozo: comidas y bebidas de la carta (se suman al pedido de la mesa) o algo puntual (servilletas, hielo…). */
+export function QuickRequest<P extends QuickProduct>({ code, calls, onSent, notify, products = [], onPick }: { code: string; calls: TableCall[]; onSent: () => void; notify: (text: string) => void
+  products?: P[]; onPick?: (product: P) => void }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState<"food" | "other">("food")
+  const [query, setQuery] = useState("")
+  const term = normalize(query.trim())
+  // Sin búsqueda: primero bebidas (lo que más se repite en la mesa), después el resto de la carta.
+  const shown = (term ? products.filter((p) => normalize(`${p.name} ${p.category}`).includes(term))
+    : [...products].sort((a, b) => Number(/bebida|gaseosa|jugo|agua|cerveza|vino/i.test(b.category)) - Number(/bebida|gaseosa|jugo|agua|cerveza|vino/i.test(a.category)))).slice(0, 8)
+  const money = (value: number) => `Gs ${value.toLocaleString("es-PY")}`
   const pending = calls.filter((call) => call.kind === "request")
   const send = async (value: string) => {
     const note = value.trim()
@@ -102,9 +114,22 @@ export function QuickRequest({ code, calls, onSent, notify }: { code: string; ca
   }
   return <section className="mt-3 rounded-2xl border border-indigo-100 bg-white p-3 shadow-sm">
     <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between text-left">
-      <span className="font-bold">Pedir algo al mozo</span><span className="text-xs font-semibold text-indigo-600">{open ? "Cerrar" : "Servilletas, hielo…"}</span></button>
+      <span className="font-bold">Pedir algo al mozo</span><span className="text-xs font-semibold text-indigo-600">{open ? "Cerrar" : "Más comida, bebidas, servilletas…"}</span></button>
     {pending.length > 0 && <p className="mt-1 text-xs text-amber-700">Pedido: {pending.map((call) => call.note).filter(Boolean).join(" · ")} · enseguida te lo traen</p>}
-    {open && <div className="mt-3 space-y-2">
+    {open && products.length > 0 && onPick && <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
+      <button type="button" onClick={() => setTab("food")} className={`rounded-lg py-2 ${tab === "food" ? "bg-white shadow" : "text-slate-500"}`}>🍽️ Comida y bebida</button>
+      <button type="button" onClick={() => setTab("other")} className={`rounded-lg py-2 ${tab === "other" ? "bg-white shadow" : "text-slate-500"}`}>🧻 Otra cosa</button></div>}
+    {open && tab === "food" && products.length > 0 && onPick && <div className="mt-3 space-y-2">
+      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar: gaseosa, pizza, empanada…" className="h-10 w-full rounded-xl border px-3 text-sm" />
+      <ul className="divide-y rounded-xl border">{shown.map((product) => <li key={product.id}>
+        <button type="button" onClick={() => onPick(product)} className="flex w-full items-center gap-3 px-2 py-2 text-left active:bg-indigo-50">
+          <span className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-slate-100">{product.image ? <img src={product.image} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}</span>
+          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{product.name}</span><span className="text-xs text-slate-500">{money(product.price)}</span></span>
+          <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">+ Pedir</span></button></li>)}
+        {shown.length === 0 && <li className="p-3 text-center text-sm text-slate-500">No encontramos «{query}».</li>}</ul>
+      <p className="text-xs text-slate-500">Se suma a tu pedido de la mesa: tocá «Ver pedido» para enviarlo.</p>
+    </div>}
+    {open && (tab === "other" || !products.length || !onPick) && <div className="mt-3 space-y-2">
       <div className="flex flex-wrap gap-1.5">{QUICK.map((item) => <button key={item} type="button" disabled={busy} onClick={() => void send(item)}
         className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-800 active:scale-95">{item}</button>)}</div>
       <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); void send(text) }}>
