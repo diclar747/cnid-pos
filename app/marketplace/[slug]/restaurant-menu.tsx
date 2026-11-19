@@ -8,6 +8,7 @@ import { ArrowLeft, Bike, Clock3, ExternalLink, Globe, Loader2, LocateFixed, Map
 import type { MarketplaceProduct, MarketplaceRestaurant, MarketplaceZone } from "@/lib/marketplace"
 import { Logo, OpenBadge, whatsappLink } from "../marketplace-list"
 import { CustomerAuthForm, customerApi, useCustomer } from "../../cuenta/customer-auth"
+import RestaurantQr from "./restaurant-qr"
 
 type Choice = { groupId: number; optionId: number }
 type Line = { key: string; id: number; quantity: number; options: Choice[] }
@@ -142,6 +143,7 @@ export default function RestaurantMenu({ restaurant, products, zones }: { restau
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <RestaurantQr slug={restaurant.slug} name={restaurant.name} />
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <h2 className="font-bold">Información</h2>
             <ul className="mt-3 space-y-3 text-sm">
@@ -296,7 +298,7 @@ function CheckoutSheet({ restaurant, zones, lines, total, onChange, onClose, onP
       <span className="w-24 text-right font-semibold tabular-nums">{money(line.quantity * line.unit)}</span></li>)}</ul>
     {lines.length === 0 ? <p className="py-6 text-center text-sm text-slate-500">Tu pedido está vacío.</p>
       : loading ? <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>
-      : !account ? <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/50"><p className="mb-3 text-sm font-semibold">Ingresá o creá tu cuenta para pedir y seguir tu pedido</p><CustomerAuthForm onDone={setAccount} compact /></div>
+      : !account?.phone ? <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/50"><p className="mb-3 text-sm font-semibold">{account?.isGuest ? "Dejá tu nombre y teléfono para que el restaurante te avise de tu pedido" : "Ingresá o creá tu cuenta para pedir y seguir tu pedido"}</p><CustomerAuthForm onDone={setAccount} compact claim={Boolean(account?.isGuest)} /></div>
       : <div className="mt-4 space-y-4">
         {modes.length > 1 && <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
           {modes.map((mode) => <button key={mode} type="button" onClick={() => setType(mode)} className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold ${type === mode ? "bg-white shadow dark:bg-slate-900" : "text-slate-500"}`}>

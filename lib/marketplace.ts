@@ -145,6 +145,16 @@ export async function getRestaurant(slug: string) {
   return { restaurant: profile(row, data.config, data.session, products), products, zones }
 }
 
+/** Salones y mesas activas (para que el cliente elija su mesa al escanear el QR del restaurante). */
+export async function restaurantTables(slug: string) {
+  if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null
+  const row = (await restaurantRows(slug))[0]
+  if (!row) return null
+  const tables = await authDb.query(`SELECT t.label, t.code, t.seats, r.name AS room FROM "${row.schema_name}".dining_tables t
+    JOIN "${row.schema_name}".dining_rooms r ON r.id = t.room_id WHERE t.is_active AND r.is_active ORDER BY r.id, t.label`).catch(() => ({ rows: [] as any[] }))
+  return tables.rows.map((table) => ({ label: String(table.label), code: String(table.code), seats: Number(table.seats), room: String(table.room) }))
+}
+
 /** Logo o foto subida en base64: se sirve como archivo para no inflar el listado. */
 export async function storedImage(slug: string, productId: number | "cover" | null) {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null

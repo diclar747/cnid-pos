@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Iniciá sesión." }, { status: 401 })
   if (!hasPermission(user, "access_pos") && !hasPermission(user, "manage_company")) return NextResponse.json({ error: "Sin permiso." }, { status: 403 })
   const compact = request.nextUrl.searchParams.get("compact") === "1"
+  // Dirección del QR del restaurante (/r/<slug>).
+  const slug = user.restaurantId ? (await db.query("SELECT slug FROM public.restaurants WHERE id = $1", [user.restaurantId])).rows[0]?.slug ?? null : null
   const [rooms, tables] = await Promise.all([
     db.query(compact ? "SELECT id,name,description,''::text AS image_data,is_active FROM dining_rooms ORDER BY id" : "SELECT * FROM dining_rooms ORDER BY id"),
     db.query(`SELECT t.*, r.name AS room_name, r.is_active AS room_active, o.id AS open_order_id FROM dining_tables t
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN service_orders o ON o.table_id = t.id AND o.status = 'open'
       ORDER BY r.id, t.label`),
   ])
-  return NextResponse.json({ rooms: rooms.rows.map(roomRow), tables: tables.rows.map(tableRow) })
+  return NextResponse.json({ rooms: rooms.rows.map(roomRow), tables: tables.rows.map(tableRow), restaurantSlug: slug })
 }
 
 export async function POST(request: NextRequest) {

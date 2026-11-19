@@ -52,6 +52,11 @@ export default function TableMenuPage() {
     finally { setLoading(false) }
   }, [code])
   useEffect(() => { void load() }, [load])
+  // Sesión del cliente sin registrarse: sus pedidos de la mesa quedan en «Mis pedidos» y recibe los avisos.
+  useEffect(() => {
+    void fetch("/api/customer/session", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode: "guest" }), cache: "no-store" })
+      .then((response) => response.json()).then((result) => { if (result?.account && !result.account.isGuest) setCustomerName((name) => name || result.account.name) }).catch(() => undefined)
+  }, [])
   // Estado en vivo: se consulta cada 8 s mientras la página está visible y al volver a ella.
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === "visible") void load(true) }

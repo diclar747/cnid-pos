@@ -56,6 +56,7 @@ export async function placeOrder(account: CustomerAccount, input: PlaceInput) {
   const location = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0) ? { lat, lng } : null
   const notes = typeof input.notes === "string" ? input.notes.trim().slice(0, 500) : ""
   if (!Array.isArray(input.items) || !input.items.length) throw new ServiceOrderError("Tu pedido está vacío.")
+  if (!account.phone) throw new ServiceOrderError("Para retiro o delivery guardá tu cuenta con tu teléfono (en Mi cuenta).")
 
   const order = await inSchema(place.schema_name, async (client) => {
     const config = (await client.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}

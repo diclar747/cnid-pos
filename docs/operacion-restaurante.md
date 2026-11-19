@@ -195,3 +195,12 @@ En **Mesas** está la opción **Aceptar los pedidos que llegan por el QR** (acti
 ## Chat de WhatsApp
 
 La lista de chats se **minimiza** a los avatares para ampliar la conversación. Las imágenes se **amplían** en el mismo chat (con anterior/siguiente y descarga); los videos se ven ahí y los documentos se descargan. Se responde con **emojis**, **imágenes, videos y documentos** (botón del clip o pegando) y **notas de voz** (botón del micrófono: graba, se ve el tiempo y se envía o descarta). Las notas de voz se envían como audio de WhatsApp.
+
+## QR del restaurante: entrar sin registrarse
+
+- Cada restaurante tiene su propio QR (Mesas → «QR del restaurante», también visible en su ficha del marketplace). Apunta a `/r/<restaurante>`.
+- Al escanearlo, el teléfono queda con una sesión de cliente invitado (un ID único, sin nombre ni contraseña). La sesión queda abierta 400 días y se renueva cada vez que vuelve; solo se cierra si el cliente toca «Cerrar sesión».
+- El cliente elige su mesa («¿En qué mesa estás?», con buscador por número) y pide desde ahí. El pedido llega como «por aceptar» al mozo (o directo a cocina si se desactivó la aprobación) y queda en «Mis pedidos». La próxima vez aparece «Seguir en Mesa 6».
+- El QR de cada mesa también deja la sesión abierta.
+- Para retiro o delivery hace falta teléfono: el invitado «guarda su cuenta» (nombre, teléfono y contraseña) y conserva todos sus pedidos; con eso puede entrar desde otro teléfono.
+- Como cualquiera puede elegir una mesa desde el QR general, conviene dejar activada la aprobación de pedidos de mesa.
