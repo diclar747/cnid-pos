@@ -211,3 +211,12 @@ La lista de chats se **minimiza** a los avatares para ampliar la conversación. 
 - Foto del producto: «Subir desde la computadora» (PNG, JPG, WEBP o GIF), arrastrar la imagen, pegarla con Ctrl+V, pegar una imagen en base64 (`data:image/…`) o la dirección de una imagen (también enlaces largos de Google Imágenes). La imagen se achica a 1000 px y se guarda aparte (`product_images`), así el POS carga rápido. Si un sitio no deja descargar su imagen, se puede usar el enlace igual.
 - Opciones: cada grupo es «Elige 1» (tamaño, punto) o «Elige varias» (guarniciones, agregados: se marcan varias y se suman sus precios). Los grupos nuevos empiezan en «Elige varias».
 - Productos → «Opciones»: lista los grupos repetidos (Guarniciones, Agregados…) para cambiarlos en todos los productos de una vez o quitarlos (por ejemplo el grupo viejo «DELIVERY»).
+
+## Configuración del dueño: ubicación, delivery, contraseña y avisos
+
+- Empresa → «Ficha y mapa»: ubicación del local en Google Maps con «Estoy en el local: usar mi ubicación», pegando el enlace de Google Maps (también los cortos `maps.app.goo.gl`) o las coordenadas. Se ve el mapa para revisar. Dirección y teléfono están en «General».
+- Empresa → «Delivery»: cómo se cobra el envío.
+  - Por zonas (como antes, en Delivery → Zonas).
+  - Por kilómetro: precio por km (ej.: Gs 1.000), salida fija, mínimo, distancia máxima, redondeo y envío gratis desde un monto. Se calcula con la distancia en línea recta entre el local y la ubicación que comparte el cliente (web, QR o WhatsApp 📍). Sin ubicación usa la zona elegida o queda «a confirmar»; más lejos que el máximo no se acepta delivery.
+  - Precio fijo: el mismo envío para todos (con envío gratis desde un monto, opcional).
+- Empresa → «Cuenta y avisos»: cambiar la contraseña y activar o desactivar las notificaciones push en ese teléfono o computadora.

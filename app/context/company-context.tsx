@@ -49,6 +49,8 @@ export interface CompanyConfig {
   kitchenBoard?: { columns: import("@/lib/kitchen-board").BoardColumn[] }
   /** Pedidos del QR de la mesa: si esperan que el personal los acepte (por defecto sí). */
   tableOrders?: { requireApproval: boolean }
+  /** Cómo se cobra el delivery: por zonas, por kilómetro o precio fijo (lib/delivery-pricing). */
+  deliveryPricing?: Partial<import("@/lib/delivery-pricing").DeliveryPricing>
 }
 
 export interface OpeningDay {

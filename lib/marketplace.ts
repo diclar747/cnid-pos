@@ -3,6 +3,7 @@ import "server-only"
 import { authDb } from "./db"
 import { basePrice, effectivePrice } from "./product-price"
 import { normalizePhone } from "./service-order-server"
+import { deliveryPricing, type DeliveryPricing } from "./delivery-pricing"
 
 // Marketplace público: restaurantes activos con su ficha (dirección, teléfono, WhatsApp, horarios) y su menú.
 // Solo expone datos que el restaurante cargó en su ficha pública y el catálogo activo. Nada de clientes ni ventas.
@@ -16,6 +17,8 @@ export type MarketplaceRestaurant = {
   slug: string; name: string; slogan: string; description: string; businessType: string
   address: string; city: string; phone: string; whatsapp: string; website: string; mapsUrl: string
   latitude: number | null; longitude: number | null; logo: string; cover: string; color: string
+  /** Cómo cobra el delivery (por zona, por km o fijo): la ficha calcula el envío con la ubicación del cliente. */
+  deliveryPricing: DeliveryPricing
   serviceModes: { dineIn: boolean; delivery: boolean; pickup: boolean }
   openingHours: Hours[]; openNow: boolean | null; todayHours: string
   productCount: number; categories: string[]; promoCount: number
@@ -96,6 +99,7 @@ function profile(row: any, config: any, session: any, products: MarketplaceProdu
     cover: brandUrl(config.coverImage, row.slug, "cover") || products.find((p) => p.image)?.image || "",
     color: /^#[0-9a-f]{6}$/i.test(config.colors?.primary ?? "") ? config.colors.primary : "#4f46e5",
     serviceModes: { dineIn: modes.dineIn !== false, delivery: modes.delivery !== false, pickup: modes.pickup !== false },
+    deliveryPricing: deliveryPricing(config),
     openingHours: hours, ...openState(hours), productCount: products.length, categories, promoCount: products.filter((p) => p.price < p.regularPrice).length,
   }
 }

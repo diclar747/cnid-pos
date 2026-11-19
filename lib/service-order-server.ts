@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto"
 import type { PoolClient } from "pg"
 import type { KitchenTicket, OrderLine, OrderModifier, ServiceOrder, ServiceOrderType } from "./service-order-types"
 import { effectivePrice } from "./product-price"
+import { deliveryPricing, DeliveryRangeError, quoteDelivery, restaurantLocation, type LatLng } from "./delivery-pricing"
 
 export class ServiceOrderError extends Error {
   status: number
@@ -95,14 +96,33 @@ export async function deliveryFeeFor(client: PoolClient, zoneId: number | null, 
   return { id: Number(zone.id), name: String(zone.name), fee }
 }
 
-/** Recalcula el envío de la orden según su zona y el subtotal actual. */
+/**
+ * Envío según cómo cobra el restaurante (Empresa → Delivery): por kilómetro (con la ubicación del cliente), precio fijo o por zona.
+ * Por km sin ubicación usa la zona elegida (si hay). Fuera de la distancia máxima lanza DeliveryRangeError.
+ */
+export async function deliveryQuoteFor(client: PoolClient, zoneId: number | null, location: LatLng | null, subtotal: number): Promise<{ id: number | null; name: string; fee: number; km: number | null } | null> {
+  const config = (await client.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}
+  const pricing = deliveryPricing(config)
+  if (pricing.mode !== "zones") {
+    const quote = quoteDelivery(pricing, restaurantLocation(config), location, subtotal)
+    if (quote) return { id: zoneId, name: pricing.mode === "km" ? quote.label : "Envío", fee: quote.fee, km: quote.km }
+  }
+  const zone = await deliveryFeeFor(client, zoneId, subtotal)
+  return zone ? { ...zone, km: null } : null
+}
+
+/** Recalcula el envío de la orden según su zona o ubicación y el subtotal actual. */
 export async function refreshDeliveryFee(client: PoolClient, orderId: number) {
-  const row = (await client.query("SELECT order_type, delivery_zone_id, total FROM service_orders WHERE id = $1", [orderId])).rows[0]
+  const row = (await client.query("SELECT order_type, delivery_zone_id, total, delivery_lat, delivery_lng FROM service_orders WHERE id = $1", [orderId])).rows[0]
   if (!row) return
-  const zone = row.order_type === "delivery" && row.delivery_zone_id
-    ? await deliveryFeeFor(client, Number(row.delivery_zone_id), Number(row.total)).catch(() => null)
+  const location = row.delivery_lat != null && row.delivery_lng != null ? { lat: Number(row.delivery_lat), lng: Number(row.delivery_lng) } : null
+  const zoneId = row.delivery_zone_id ? Number(row.delivery_zone_id) : null
+  const quote = row.order_type === "delivery"
+    ? await deliveryQuoteFor(client, zoneId, location, Number(row.total)).catch((error) => error instanceof DeliveryRangeError ? deliveryFeeFor(client, zoneId, Number(row.total)).catch(() => null) : null)
     : null
-  await client.query("UPDATE service_orders SET delivery_fee = $1 WHERE id = $2", [zone?.fee ?? 0, orderId])
+  // Por km sin zona: el nombre muestra la distancia («3,2 km»).
+  await client.query(`UPDATE service_orders SET delivery_fee = $1, delivery_zone_name = CASE WHEN delivery_zone_id IS NULL AND $3::text <> '' THEN $3 ELSE delivery_zone_name END WHERE id = $2`,
+    [quote?.fee ?? 0, orderId, quote && !zoneId ? quote.name : ""])
 }
 
 export type OrderActor = { id: string | number; name: string } | null

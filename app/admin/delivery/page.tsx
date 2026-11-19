@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { apiRequest } from "@/lib/api-client"
 import type { Courier, DeliveryZone } from "@/lib/service-order-types"
+import Link from "next/link"
+import { useCompany } from "@/app/context/company-context"
+import { deliveryPricing } from "@/lib/delivery-pricing"
 
 const money = (value: number) => `Gs ${Math.round(value).toLocaleString("es-PY")}`
 const emptyZone = { name: "", areas: "", fee: "", freeOver: "", etaMinutes: "", maxKm: "", isActive: true, sortOrder: "0" }
@@ -74,6 +77,7 @@ export default function DeliveryPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Delivery</h1>
         <p className="text-muted-foreground">Zonas con su tarifa y los repartidores del restaurante. El costo de envío se suma solo al pedido según la zona.</p>
+        <PricingNote />
       </div>
 
       <section>
@@ -155,4 +159,13 @@ export default function DeliveryPage() {
       </Dialog>
     </div>
   )
+}
+
+/** Aviso de cómo se cobra el envío (por zonas, por km o fijo) con enlace a la configuración. */
+function PricingNote() {
+  const { companyConfig } = useCompany()
+  const pricing = deliveryPricing(companyConfig)
+  const text = pricing.mode === "km" ? `El envío se cobra por kilómetro: Gs ${pricing.perKm.toLocaleString("es-PY")} por km${pricing.maxKm ? `, hasta ${pricing.maxKm} km` : ""}. Las zonas se usan solo si el cliente no comparte su ubicación.`
+    : pricing.mode === "fixed" ? `El envío tiene precio fijo: Gs ${pricing.fixedFee.toLocaleString("es-PY")}. Las zonas no cambian el precio.` : "El envío se cobra por zonas."
+  return <p className="mt-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2 text-sm text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-100">{text} <Link href="/admin/company" className="font-semibold underline">Cambiar cómo se cobra</Link></p>
 }
