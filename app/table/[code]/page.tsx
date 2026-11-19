@@ -120,7 +120,8 @@ export default function TableMenuPage() {
       {error && <div role="alert" className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       {data.order && <OrderProgress tickets={data.order.tickets} />}
       <ServiceActions code={code} calls={data.calls} hasOrder={Boolean(data.order)} billed={Boolean(data.order?.billedAt)} onCalled={() => void load(true)} notify={toast.show} />
-      <QuickRequest code={code} calls={data.calls} onSent={() => void load(true)} notify={toast.show} />
+      <QuickRequest code={code} calls={data.calls} onSent={() => void load(true)} notify={toast.show} products={data.products}
+        onPick={(product) => { choose(product); if (!product.modifierGroups?.length) toast.show(`Agregado: ${product.name}. Tocá «Ver pedido» para enviarlo.`) }} />
       <AppExtras code={code} orderId={data.order?.id ?? null} notify={toast.show} />
       {data.order && data.order.items.length > 0 && <section className="mt-4 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm" aria-label="Lo que pediste">
         <div className="flex items-center justify-between gap-3"><h3 className="font-bold">Lo que pediste</h3><span className="text-sm font-bold text-indigo-700">{money(data.order.total)}</span></div>
