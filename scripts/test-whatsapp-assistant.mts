@@ -69,8 +69,11 @@ try {
   const incoming = async (text: string) => {
     counter += 1
     const msg = { key: { remoteJid: jid, id: `IN-${suffix}-${counter}`, fromMe: false }, pushName: "Cliente Prueba", messageTimestamp: Math.floor(Date.now() / 1000), message: { conversation: text } }
+    const before = sent.length
     await handleUpsert("public", fakeSock, { type: "notify", messages: [msg] })
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    // Espera la respuesta real (con la máquina ocupada puede tardar más); si no hay respuesta, sigue a los 6 s.
+    for (let waited = 0; waited < 6000 && sent.length === before; waited += 100) await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 200))
     return msg
   }
 
@@ -83,7 +86,7 @@ try {
   check(conversation.phone && conversation.name === "Cliente Prueba", "Teléfono y nombre del contacto")
   check(seen.at(-1)?.auth === "Bearer niro_prueba_local", "La API key se envía como Bearer")
   check(seen.at(-1)?.system.includes(`[${productId}] Hamburguesa prueba ${suffix} — Gs 30000`) && seen.at(-1)?.system.includes(`[${zoneId}] Zona WA ${suffix}`), "El prompt lleva la carta y las zonas reales")
-  check(sent.at(-1)?.text === "¡Hola! ¿Qué te gustaría pedir?", "Respuesta enviada por WhatsApp")
+  check(sent.at(-1)?.text === "¡Hola! ¿Qué te gustaría pedir?", `Respuesta enviada por WhatsApp: ${JSON.stringify(sent.slice(-2))} llamadas IA ${seen.length}`)
   // Mensaje repetido: no se procesa dos veces.
   const calls = seen.length
   await handleUpsert("public", fakeSock, { type: "notify", messages: [first] })
