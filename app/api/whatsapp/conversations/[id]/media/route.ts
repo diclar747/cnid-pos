@@ -10,7 +10,7 @@ type Context = { params: Promise<{ id: string }> }
 const LIMITS = { image: 5 * 1024 * 1024, video: 16 * 1024 * 1024, audio: 16 * 1024 * 1024, document: 16 * 1024 * 1024 }
 
 // Responder con un adjunto desde el chat: imagen, video, documento o nota de voz grabada en el navegador.
-// Pausa el asistente en la conversación (igual que responder con texto).
+// Si sale, pausa el asistente en la conversación (igual que responder con texto).
 export async function POST(request: NextRequest, { params }: Context) {
   const user = await getSessionUser(request)
   if (!user) return NextResponse.json({ error: "Iniciá sesión." }, { status: 401 })
@@ -28,8 +28,6 @@ export async function POST(request: NextRequest, { params }: Context) {
   if (file.size > LIMITS[kind]) return NextResponse.json({ error: kind === "image" ? "La imagen supera 5 MB." : "El archivo supera 16 MB." }, { status: 413 })
   const seconds = Number(form?.get("seconds"))
   const caption = typeof form?.get("caption") === "string" ? String(form?.get("caption")).trim().slice(0, 1000) : ""
-  await db.query("UPDATE wa_conversations SET bot_enabled = FALSE, handoff_requested = FALSE, assigned_user_id = $2, assigned_name = $3, unread = 0, updated_at = NOW() WHERE id = $1",
-    [id, Number(user.id), user.name])
   let buffer = Buffer.from(await file.arrayBuffer())
   let sendMime = mime
   let duration = Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds) : null
@@ -43,5 +41,8 @@ export async function POST(request: NextRequest, { params }: Context) {
   const sent = await sendMedia(await currentSchema(), id, {
     kind, buffer, mime: sendMime, fileName: file.name?.slice(0, 160) || undefined, caption, seconds: duration, voice: asVoice,
   }, { author: "staff", authorName: user.name })
+  // Un envío fallido no pausa el asistente: el cliente no queda sin respuesta.
+  if (sent) await db.query("UPDATE wa_conversations SET bot_enabled = FALSE, handoff_requested = FALSE, assigned_user_id = $2, assigned_name = $3, unread = 0, updated_at = NOW() WHERE id = $1",
+    [id, Number(user.id), user.name])
   return sent ? NextResponse.json({ ok: true }, { status: 201 }) : NextResponse.json({ error: "WhatsApp no está conectado: el archivo quedó guardado sin enviar." }, { status: 409 })
 }

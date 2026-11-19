@@ -169,8 +169,22 @@ export async function handleUpsert(schema: string, sock: any, event: { messages:
 
 async function respond(schema: string, conversationId: number, sock: any, key: any, name: string, content: Incoming) {
   const query = await schemaQuery(schema)
-  const conversation = (await query("SELECT bot_enabled FROM wa_conversations WHERE id = $1", [conversationId])).rows[0]
-  const settings = (await query("SELECT enabled FROM ai_settings WHERE id = 1")).rows[0]
+  const conversation = (await query("SELECT bot_enabled, handoff_requested, assigned_name FROM wa_conversations WHERE id = $1", [conversationId])).rows[0]
+  const settings = (await query("SELECT enabled, resume_after_minutes FROM ai_settings WHERE id = 1")).rows[0]
+  // Chat tomado por el personal: si nadie del local respondió en el tiempo configurado, vuelve al asistente
+  // (no cuando el cliente pidió hablar con una persona).
+  const resumeAfter = Number(settings?.resume_after_minutes ?? 30)
+  if (conversation && !conversation.bot_enabled && !conversation.handoff_requested && settings?.enabled && niroConfigured() && resumeAfter > 0) {
+    const staff = (await query(`SELECT MAX(created_at) AS at FROM wa_messages WHERE conversation_id = $1 AND direction = 'out' AND author IN ('staff', 'system')
+      AND NOT (author = 'system' AND body LIKE 'La conversación volvió al asistente%')`, [conversationId])).rows[0]?.at
+    const idle = !staff || Date.now() - new Date(staff).getTime() > resumeAfter * 60_000
+    if (idle) {
+      await query("UPDATE wa_conversations SET bot_enabled = TRUE, assigned_user_id = NULL, assigned_name = '', updated_at = NOW() WHERE id = $1", [conversationId])
+      await query(`INSERT INTO wa_messages (conversation_id, direction, author, author_name, body, status) VALUES ($1, 'out', 'system', 'Asistente', $2, 'simulated')`,
+        [conversationId, `La conversación volvió al asistente (nadie del local respondió en ${resumeAfter >= 60 ? `${resumeAfter / 60} h` : `${resumeAfter} min`}).`])
+      conversation.bot_enabled = true
+    }
+  }
   if (!conversation?.bot_enabled || !settings?.enabled || !niroConfigured()) {
     void notifyStaff(query, { title: `WhatsApp · ${name || "Cliente"}`, body: content.body.slice(0, 140), url: `/admin/whatsapp?c=${conversationId}`, tag: `wa-${conversationId}` })
     return

@@ -41,6 +41,7 @@ export default function CustomersPage() {
   const [items, setItems] = useState<Customer[]>([])
   const [stats, setStats] = useState({ total: 0, returning: 0, debtors: 0, receivable: 0 })
   const [query, setQuery] = useState("")
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("q"); if (q) setQuery(q.slice(0, 60)) }, [])
   const [onlyDebt, setOnlyDebt] = useState(false)
   const [loading, setLoading] = useState(true)
   const [detail, setDetail] = useState<Detail | null>(null)

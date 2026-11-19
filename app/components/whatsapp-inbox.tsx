@@ -2,21 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Bot, CheckCheck, ChevronLeft, ChevronRight, Clock3, Download, FileText, Hand, ImagePlus, KanbanSquare, Loader2, Mic, PanelLeftClose, PanelLeftOpen, Paperclip,
+import { ArrowLeft, Bot, CheckCheck, ChevronLeft, ChevronRight, Clock3, Download, FileText, Hand, ImagePlus, KanbanSquare, Loader2, Mic, PanelLeftClose, PanelLeftOpen, PanelRightOpen, Paperclip,
   Pause, Play, Search, Send, Smile, Square, Trash2, UserRound, X } from "lucide-react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { apiRequest } from "@/lib/api-client"
 import { useLiveTables } from "@/lib/use-live"
-import { sourceLabel, typeLabel } from "@/lib/order-labels"
+import { typeLabel } from "@/lib/order-labels"
+import { STAGE_TONE, type CrmStage } from "@/lib/order-stage"
 import type { ServiceOrder } from "@/lib/service-order-types"
+import { ContactPanel, type ContactProfile } from "./whatsapp-contact-panel"
 
 // Bandeja de WhatsApp tipo WhatsApp Web: contactos con foto (lista minimizable), mensajes con audio, imágenes (visor),
 // videos y documentos; responder con texto, emojis, archivos o notas de voz grabadas en el navegador.
 
 export type Conversation = { id: number; phone: string; name: string; botEnabled: boolean; handoffRequested: boolean; assignedName: string; unread: number; lastMessage: string
-  lastMessageAt: string | null; cartItems: number; openOrders: number; avatar: number | null }
+  lastMessageAt: string | null; cartItems: number; openOrders: number; avatar: number | null
+  /** Pedido en curso (o el último de las 12 h) del contacto, con su etapa del tablero. */
+  order?: { orderId: number; stage: CrmStage; label: string; orderType: string; tableLabel: string; active: number } | null }
 type Media = { id: number; mime: string; seconds: number | null; fileName?: string; size?: number | null }
 type Message = { id: number; direction: "in" | "out"; author: string; authorName: string; kind: string; body: string; status: string; orderId: number | null; createdAt: string; media: Media | null }
 
@@ -148,7 +152,8 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
   const [items, setItems] = useState<Conversation[]>([])
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<number | null>(initialConversation ?? null)
-  const [detail, setDetail] = useState<{ conversation: Conversation & { cart: any }; messages: Message[]; orders: ServiceOrder[] } | null>(null)
+  const [detail, setDetail] = useState<{ conversation: Conversation & { cart: any }; messages: Message[]; orders: ServiceOrder[]; profile?: ContactProfile } | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [draft, setDraft] = useState("")
   const [sending, setSending] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -162,6 +167,13 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => { if (initialConversation) setSelected(initialConversation) }, [initialConversation])
   useEffect(() => { try { setCollapsed(localStorage.getItem("restopos:wa-list-collapsed") === "1") } catch { /* opcional */ } }, [])
+  // Ficha del cliente: abierta por defecto en pantallas anchas; se recuerda la última elección.
+  useEffect(() => {
+    let stored: string | null = null
+    try { stored = localStorage.getItem("restopos:wa-profile") } catch { /* opcional */ }
+    setProfileOpen(stored ? stored === "1" : !compact && window.innerWidth >= 1536)
+  }, [compact])
+  const toggleProfile = (open: boolean) => { setProfileOpen(open); try { localStorage.setItem("restopos:wa-profile", open ? "1" : "0") } catch { /* opcional */ } }
   const toggleList = () => setCollapsed((value) => { try { localStorage.setItem("restopos:wa-list-collapsed", value ? "0" : "1") } catch { /* opcional */ } return !value })
   const loadList = useCallback(async () => {
     try {
@@ -181,7 +193,7 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
   }, [selected])
   useEffect(() => { const timer = window.setTimeout(() => void loadList(), search ? 300 : 0); return () => window.clearTimeout(timer) }, [loadList, search])
   useEffect(() => { void loadDetail() }, [loadDetail])
-  useLiveTables(["wa_conversations", "wa_messages"], () => { void loadList(); void loadDetail() }, 8000)
+  useLiveTables(["wa_conversations", "wa_messages", "service_orders", "kitchen_tickets"], () => { void loadList(); void loadDetail() }, 8000)
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }) }, [detail?.messages.length])
   useEffect(() => { setEmojiOpen(false); setAttachment(null) }, [selected])
   useEffect(() => {
@@ -254,7 +266,7 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
   }
 
   const current = detail?.conversation
-  const openOrders = useMemo(() => detail?.orders.filter((order) => order.status === "open") ?? [], [detail?.orders])
+  const activeOrders = useMemo(() => (detail?.profile?.orders ?? []).filter((order) => order.status === "open" ? order.stage !== "cancelled" : order.stage !== "done" && order.stage !== "cancelled"), [detail?.profile?.orders])
   const imageIds = useMemo(() => (detail?.messages ?? []).filter((m) => m.media && (m.media.mime.startsWith("image/") || m.kind === "sticker")).map((m) => m.media!.id), [detail?.messages])
   const listWidth = collapsed ? "md:grid-cols-[4.75rem_1fr]" : compact ? "md:grid-cols-[18rem_1fr]" : "md:grid-cols-[22rem_1fr]"
 
@@ -267,7 +279,8 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
             className={`relative rounded-full p-1 transition ${selected === item.id ? "bg-emerald-100 ring-2 ring-emerald-500 dark:bg-emerald-950" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}>
             <ContactAvatar conversation={item} size={44} />
             {item.unread > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">{item.unread}</span>}
-            {item.handoffRequested && <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />}
+            {item.handoffRequested ? <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
+              : item.order && <span title={item.order.label} className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white dark:ring-slate-900 ${STAGE_TONE[item.order.stage].split(" ")[0]}`} />}
           </button></li>)}</ul>
       </> : <>
         <div className="border-b p-3"><div className="flex items-center gap-2"><div className="relative flex-1"><Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -285,14 +298,17 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
                 {item.unread > 0 && <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-[11px] font-bold text-white">{item.unread}</span>}</div>
               <div className="mt-0.5 flex flex-wrap gap-1">{item.handoffRequested && <span className="rounded bg-red-100 px-1.5 text-[10px] font-semibold text-red-700">Pide persona</span>}
                 {!item.botEnabled && !item.handoffRequested && <span className="rounded bg-slate-100 px-1.5 text-[10px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">{item.assignedName ? `Atiende ${item.assignedName}` : "Asistente pausado"}</span>}
-                {item.openOrders > 0 && <span className="rounded bg-indigo-100 px-1.5 text-[10px] text-indigo-700">{item.openOrders} pedido(s)</span>}
+                {item.order ? <span title={`Pedido #${item.order.orderId}`} className={`rounded px-1.5 text-[10px] font-semibold ${STAGE_TONE[item.order.stage]}`}>#{item.order.orderId} · {item.order.label}{item.order.active > 1 ? ` · +${item.order.active - 1}` : ""}</span>
+                  : item.openOrders > 0 && <span className="rounded bg-indigo-100 px-1.5 text-[10px] text-indigo-700">{item.openOrders} pedido(s)</span>}
+                {item.order?.tableLabel && <span className="rounded bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{item.order.tableLabel}</span>}
                 {item.cartItems > 0 && <span className="rounded bg-amber-100 px-1.5 text-[10px] text-amber-800">armando pedido</span>}</div>
             </div>
           </button></li>)}
           {!items.length && <li className="p-6 text-center text-sm text-muted-foreground">Sin conversaciones todavía.</li>}</ul>
       </>}
     </aside>
-    <section className={`min-h-0 flex-col ${selected ? "flex" : "hidden md:flex"}`}>
+    <section className={`relative min-h-0 ${selected ? "flex" : "hidden md:flex"}`}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {!current ? <div className="flex flex-1 flex-col items-center justify-center gap-2 bg-[#f0f2f5] p-6 text-center text-sm text-muted-foreground dark:bg-slate-950">
         <p className="text-base font-semibold text-slate-700 dark:text-slate-200">WhatsApp de RestoPOS</p><p>Elegí una conversación para ver los mensajes, escuchar audios y responder.</p></div> : <>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-[#f0f2f5] px-3 py-2 dark:bg-slate-800">
@@ -300,11 +316,14 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
             <ContactAvatar conversation={current} size={40} />
             <div className="min-w-0"><p className="truncate font-bold">{current.name || formatPhone(current.phone) || "Contacto"}</p>
               <p className="truncate text-xs text-muted-foreground">{current.phone ? formatPhone(current.phone) : "número oculto"} · {current.botEnabled ? "responde el asistente" : current.assignedName ? `atiende ${current.assignedName}` : "asistente pausado"}</p></div></div>
-          <div className="flex gap-2">{current.botEnabled ? <Button size="sm" variant="outline" disabled={sending} onClick={() => void act("take")}><Hand className="mr-1 h-4 w-4" />Tomar conversación</Button>
+          <div className="flex gap-2">
+            {!profileOpen && <Button size="sm" variant="outline" onClick={() => toggleProfile(true)} title="Ver la ficha del cliente"><PanelRightOpen className="mr-1 h-4 w-4" />Ficha</Button>}
+            {current.botEnabled ? <Button size="sm" variant="outline" disabled={sending} onClick={() => void act("take")}><Hand className="mr-1 h-4 w-4" />Tomar conversación</Button>
             : <Button size="sm" variant="outline" disabled={sending} onClick={() => void act("release")}><Bot className="mr-1 h-4 w-4" />Devolver al asistente</Button>}</div>
         </div>
-        {openOrders.length > 0 && <div className="flex flex-wrap gap-2 border-b bg-indigo-50/60 px-3 py-2 text-xs dark:bg-indigo-950/20">{openOrders.map((order) => <Link key={order.id} href={`/crm?q=${order.id}`}
-          className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 font-semibold text-indigo-700 shadow-sm dark:bg-slate-800"><KanbanSquare className="h-3.5 w-3.5" />#{order.id} · {typeLabel[order.orderType]} · {order.confirmation === "pending" ? "por confirmar" : sourceLabel[order.source]}</Link>)}</div>}
+        {activeOrders.length > 0 && <div className="flex flex-wrap gap-2 border-b bg-indigo-50/60 px-3 py-2 text-xs dark:bg-indigo-950/20">{activeOrders.map((order) => <Link key={order.id} href={`/crm?q=${order.id}`}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 font-semibold text-indigo-700 shadow-sm dark:bg-slate-800 dark:text-indigo-300"><KanbanSquare className="h-3.5 w-3.5" />#{order.id} · {typeLabel[order.orderType]}{order.orderType === "dineIn" && order.tableLabel ? ` · ${order.tableLabel}` : ""}
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${STAGE_TONE[order.stage]}`}>{order.stageLabel}</span></Link>)}</div>}
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#efeae2] p-4 dark:bg-slate-950">
           {detail.messages.map((message) => message.author === "system" && message.status === "simulated"
             ? <p key={message.id} className="mx-auto w-fit rounded-lg bg-white/80 px-3 py-1 text-center text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message.body} · {stamp(message.createdAt)}</p>
@@ -354,6 +373,11 @@ export function WhatsAppInbox({ connected, initialConversation, compact = false 
           <Button type="button" variant="ghost" size="icon" onClick={() => fileInput.current?.click()} className="hidden text-slate-500 sm:inline-flex" aria-label="Enviar imagen" title="Enviar imagen"><ImagePlus className="h-5 w-5" /></Button>
         </form>}
       </>}
+      </div>
+      {current && profileOpen && <div className="absolute inset-0 z-20 sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[22rem] sm:shadow-2xl 2xl:static 2xl:z-auto 2xl:shrink-0 2xl:shadow-none">
+        <ContactPanel name={current.name} phone={current.phone} phoneLabel={formatPhone(current.phone)} botEnabled={current.botEnabled} handoffRequested={current.handoffRequested} assignedName={current.assignedName}
+          avatar={<ContactAvatar conversation={current} size={72} />} profile={detail?.profile ?? null} onClose={() => toggleProfile(false)} />
+      </div>}
     </section>
     {viewer !== null && <Lightbox ids={imageIds.includes(viewer) ? imageIds : [viewer]} current={viewer} onChange={setViewer} onClose={() => setViewer(null)} />}
   </div>

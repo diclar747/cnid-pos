@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSessionUser, hasPermission } from "@/lib/auth"
-import { db } from "@/lib/db"
+import { db, schemaQuery } from "@/lib/db"
 import { cleanText } from "@/lib/service-order-server"
 import { CONVERSATION_COLUMNS, conversationRow } from "@/lib/whatsapp/rows"
+import { contactBadges } from "@/lib/whatsapp/contact-profile"
 
 export const runtime = "nodejs"
 
@@ -20,5 +21,8 @@ export async function GET(request: NextRequest) {
   if (phone) { values.push(`%${phone.slice(-8)}`); where += ` AND c.phone LIKE $${values.length}` }
   const result = await db.query(`SELECT ${CONVERSATION_COLUMNS}, (SELECT COUNT(*) FROM service_orders o WHERE o.wa_conversation_id = c.id AND o.status = 'open') AS open_orders
     FROM wa_conversations c WHERE ${where} ORDER BY c.handoff_requested DESC, c.last_message_at DESC NULLS LAST LIMIT 200`, values)
-  return NextResponse.json({ items: result.rows.map(conversationRow) })
+  const items = result.rows.map(conversationRow)
+  // Etiqueta del pedido en curso de cada contacto (nuevo, en cocina, listo…), por conversación o por teléfono.
+  const badges = await contactBadges(await schemaQuery(), items.map((item) => ({ id: item.id, phone: item.phone })))
+  return NextResponse.json({ items: items.map((item) => ({ ...item, order: badges.get(item.id) ?? null })) })
 }
