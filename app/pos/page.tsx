@@ -383,7 +383,7 @@ export default function POSPage() {
           </div>
 
           {/* Cart Sidebar - Desktop */}
-          <div className={`hidden shrink-0 border-l bg-card/30 transition-[width] duration-200 lg:block ${cartCollapsed ? "w-[68px]" : "w-80"}`}>
+          <div className={`hidden shrink-0 border-l bg-card/30 transition-[width] duration-200 lg:block ${cartCollapsed ? "w-[68px]" : "w-[22rem] xl:w-[26rem] 2xl:w-[30rem]"}`}>
             {cartCollapsed ? <div className="flex h-full flex-col items-center gap-3 bg-background px-2 py-3">
               <Button variant="ghost" size="icon" onClick={toggleCartCollapse} aria-label="Expandir carrito" title="Expandir carrito">
                 <PanelRightOpen className="h-5 w-5" />
@@ -405,7 +405,7 @@ export default function POSPage() {
           {showCart && (
             <div className="fixed inset-0 z-50 lg:hidden">
               <div className="absolute inset-0 bg-black/50" onClick={() => setShowCart(false)} />
-              <div className="absolute right-0 top-0 h-full w-80 max-w-full border-l bg-background">
+              <div className="absolute right-0 top-0 h-full w-[26rem] max-w-full border-l bg-background">
                 <CartSidebar onClose={() => setShowCart(false)} activeOrder={activeOrder} onSaveOrder={saveOrder} onClearActive={clearActiveOrder} orderSaving={orderSaving}
                   pendingTable={pendingTable} onOpenTables={() => setTablesOpen(true)} onClearPendingTable={() => setPendingTable(null)} />
               </div>

@@ -138,7 +138,8 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
         {searchTerm && <Badge variant="outline" className="mt-2 border-blue-200 bg-blue-50 text-blue-700">Búsqueda: {searchTerm}</Badge>}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4 xl:gap-5">
+      {/* Columnas de al menos 180 px y como máximo 5 por fila. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(max(min(100%,180px),calc((100%-5rem)/5)),1fr))] gap-4">
         {filteredProducts.map((product) => {
           const cartQuantity = getCartQuantity(product.id)
           const inputQuantity = quantities[product.id] || 1
@@ -179,16 +180,16 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
                 </div>
               </div>
 
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="space-y-3">
                   <div>
-                    <h3 className="font-semibold text-lg leading-tight">{product.name}</h3>
+                    <h3 className="font-semibold text-base leading-tight">{product.name}</h3>
                     {product.menuName && <p className="text-xs font-medium text-blue-600">{product.menuName}</p>}
                     <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
                     <p className="text-xs text-muted-foreground mt-1 font-mono">Código: {product.barcode}</p>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs">
                     <span className="text-muted-foreground">{product.trackStock === false ? "Preparación disponible" : `Stock: ${product.stock}`}</span>
                     <Badge variant="outline" className="text-xs">
                       {product.category}
@@ -198,7 +199,7 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
                   {cartQuantity > 0 && !product.modifierGroups?.length ? (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/20 p-2 rounded-lg">
-                        <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
                           En carrito: {cartQuantity}
                         </span>
                         <div className="flex items-center gap-1">
@@ -232,14 +233,14 @@ export default function ProductGrid({ searchTerm, selectedCategory, selectedMenu
                           max={product.trackStock === false ? undefined : product.stock}
                           value={inputQuantity}
                           onChange={(e) => handleQuantityChange(product.id, e.target.value)}
-                          className="w-20 h-9 text-center"
+                          className="h-9 w-14 shrink-0 px-1 text-center"
                         />
                         <Button
                           onClick={() => handleAddToCart(product)}
                           disabled={product.trackStock !== false && (product.stock === 0 || inputQuantity > product.stock)}
-                          className="flex-1 h-9 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-200 hover:from-indigo-700 hover:to-violet-700"
+                          className="h-9 min-w-0 flex-1 rounded-xl px-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-200 hover:from-indigo-700 hover:to-violet-700"
                         >
-                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          <ShoppingCart className="mr-1 h-4 w-4 shrink-0" />
                           Agregar
                         </Button>
                       </div>

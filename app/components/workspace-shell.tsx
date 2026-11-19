@@ -51,11 +51,12 @@ function Shell({ children }: { children: ReactNode }) {
   const [headerEnd, setHeaderEnd] = useState<HTMLElement | null>(null)
   const [sidebar, setSidebar] = useState<HTMLElement | null>(null)
   const [mobile, setMobile] = useState<HTMLElement | null>(null)
-  const [collapsed, setCollapsed] = useState(false)
+  // Menú «Opciones» minimizado por defecto; se recuerda si el usuario lo abre.
+  const [collapsed, setCollapsed] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
   const closeMobile = useCallback(() => setMobileOpen(false), [])
 
-  useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1") } catch { /* preferencia opcional */ } }, [])
+  useEffect(() => { try { setCollapsed(localStorage.getItem(COLLAPSE_KEY) !== "0") } catch { /* preferencia opcional */ } }, [])
   useEffect(() => { setMobileOpen(false) }, [pathname])
   // Los botones «Abrir chat» de cualquier sección llevan a WhatsApp dentro del marco.
   useEffect(() => {

@@ -1,4 +1,4 @@
-// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\build-1795104709\app\admin\expenses\page.tsx
+// File: C:\Users\claud\AppData\Local\Temp\claude\cb6f619cd29f46e4\9b52bc15-76d3-4f9f-a04f-f675a8e7b590\scratchpad\build-1795105483\app\admin\expenses\page.tsx
 import * as entry from '../../../../../app/admin/expenses/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
