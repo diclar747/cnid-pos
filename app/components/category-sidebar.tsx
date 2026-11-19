@@ -132,15 +132,15 @@ export default function CategorySidebar({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-lg mb-2">Categorías</h2>
-        <div className="text-sm text-muted-foreground">{products.length} productos disponibles</div>
+      <div className="border-b px-4 py-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Categorías</h2>
+        <div className="text-xs text-muted-foreground">{products.length} productos disponibles</div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="space-y-4 p-3">
           {/* Categories */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             {categories.map((category) => {
               const Icon = category.icon
               const count = getCategoryCount(category.id)
@@ -150,17 +150,17 @@ export default function CategorySidebar({
                 <Button
                   key={category.id}
                   variant={isSelected ? "default" : "ghost"}
-                  className={`w-full justify-start h-auto p-3 ${isSelected ? "" : "hover:bg-muted/50"}`}
+                  className={`w-full justify-start h-auto px-2 py-1.5 ${isSelected ? "" : "hover:bg-muted/50"}`}
                   onClick={() => onCategoryChange(category.id)}
                   aria-pressed={isSelected}
                 >
-                  <div className="flex w-full min-w-0 items-center gap-3">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${category.color} text-white shadow-sm`}>
-                      <Icon className="h-5 w-5" aria-hidden="true" strokeWidth={2.1} />
+                  <div className="flex w-full min-w-0 items-center gap-2.5">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${category.color} text-white shadow-sm`}>
+                      <Icon className="h-4 w-4" aria-hidden="true" strokeWidth={2.1} />
                     </div>
                     <div className="min-w-0 flex-1 text-left">
-                      <div className="truncate font-semibold">{category.name}</div>
-                      <div className={`text-xs ${isSelected ? "text-blue-100" : "text-muted-foreground"}`}>{count} productos</div>
+                      <div className="truncate text-sm font-semibold">{category.name}</div>
+
                     </div>
                     <Badge variant="secondary" className={`ml-auto shrink-0 ${isSelected ? "bg-white/20 text-white hover:bg-white/25" : ""}`}>
                       {count}
@@ -174,7 +174,7 @@ export default function CategorySidebar({
           <Separator />
 
           {/* Filters */}
-          <div className="space-y-2">
+          <div className="space-y-1">
             <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Filtros</h3>
             {filters.map((filter) => {
               const Icon = filter.icon
@@ -200,7 +200,7 @@ export default function CategorySidebar({
           <div className="space-y-3">
             <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Estado del Stock</h3>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <div className="flex items-center justify-between p-2 rounded-lg bg-green-50 dark:bg-green-950/20">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-600" />
