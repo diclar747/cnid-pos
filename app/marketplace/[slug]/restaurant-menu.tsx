@@ -8,6 +8,8 @@ import { ArrowLeft, Bike, Clock3, ExternalLink, Globe, Loader2, LocateFixed, Map
 import type { MarketplaceProduct, MarketplaceRestaurant, MarketplaceZone } from "@/lib/marketplace"
 import { Logo, OpenBadge, whatsappLink } from "../marketplace-list"
 import { CustomerAuthForm, customerApi, useCustomer } from "../../cuenta/customer-auth"
+import RestaurantQr from "./restaurant-qr"
+import { DeliveryRangeError, quoteDelivery } from "@/lib/delivery-pricing"
 
 type Choice = { groupId: number; optionId: number }
 type Line = { key: string; id: number; quantity: number; options: Choice[] }
@@ -142,6 +144,7 @@ export default function RestaurantMenu({ restaurant, products, zones }: { restau
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <RestaurantQr slug={restaurant.slug} name={restaurant.name} />
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <h2 className="font-bold">Información</h2>
             <ul className="mt-3 space-y-3 text-sm">
@@ -273,8 +276,20 @@ function CheckoutSheet({ restaurant, zones, lines, total, onChange, onClose, onP
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   useEffect(() => { if (account?.address && !address) setAddress(account.address) }, [account]) // eslint-disable-line react-hooks/exhaustive-deps
-  const zone = zones.find((entry) => entry.id === zoneId) ?? null
-  const fee = type === "delivery" && zone ? (zone.freeOver != null && total >= zone.freeOver ? 0 : zone.fee) : 0
+  const pricing = restaurant.deliveryPricing
+  const byKm = pricing.mode !== "zones"
+  const zone = byKm ? null : zones.find((entry) => entry.id === zoneId) ?? null
+  // Por km o fijo: el envío se calcula acá con la ubicación (el servidor vuelve a calcularlo al registrar el pedido).
+  const quote = (() => {
+    if (type !== "delivery" || !byKm) return null
+    const origin = restaurant.latitude != null && restaurant.longitude != null ? { lat: restaurant.latitude, lng: restaurant.longitude } : null
+    try { return quoteDelivery(pricing, origin, location, total) } catch (problem) { return problem instanceof DeliveryRangeError ? problem : null }
+  })()
+  const outOfRange = quote instanceof DeliveryRangeError ? quote : null
+  const kmQuote = quote && !(quote instanceof DeliveryRangeError) ? quote : null
+  const fee = type !== "delivery" ? 0 : byKm ? kmQuote?.fee ?? 0 : zone ? (zone.freeOver != null && total >= zone.freeOver ? 0 : zone.fee) : 0
+  const feeText = byKm ? (kmQuote ? (kmQuote.fee ? `${money(kmQuote.fee)}${kmQuote.km != null && pricing.mode === "km" ? ` · ${kmQuote.label}` : ""}` : "Gratis") : pricing.mode === "km" ? "Compartí tu ubicación" : "A confirmar")
+    : zone ? (fee ? money(fee) : "Gratis") : "Según la zona"
   const locate = () => {
     if (!navigator.geolocation) { setError("Tu navegador no comparte la ubicación."); return }
     setLocating(true)
@@ -296,14 +311,16 @@ function CheckoutSheet({ restaurant, zones, lines, total, onChange, onClose, onP
       <span className="w-24 text-right font-semibold tabular-nums">{money(line.quantity * line.unit)}</span></li>)}</ul>
     {lines.length === 0 ? <p className="py-6 text-center text-sm text-slate-500">Tu pedido está vacío.</p>
       : loading ? <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-indigo-600" /></div>
-      : !account ? <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/50"><p className="mb-3 text-sm font-semibold">Ingresá o creá tu cuenta para pedir y seguir tu pedido</p><CustomerAuthForm onDone={setAccount} compact /></div>
+      : !account?.phone ? <div className="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/50"><p className="mb-3 text-sm font-semibold">{account?.isGuest ? "Dejá tu nombre y teléfono para que el restaurante te avise de tu pedido" : "Ingresá o creá tu cuenta para pedir y seguir tu pedido"}</p><CustomerAuthForm onDone={setAccount} compact claim={Boolean(account?.isGuest)} /></div>
       : <div className="mt-4 space-y-4">
         {modes.length > 1 && <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
           {modes.map((mode) => <button key={mode} type="button" onClick={() => setType(mode)} className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold ${type === mode ? "bg-white shadow dark:bg-slate-900" : "text-slate-500"}`}>
             {mode === "delivery" ? <Bike className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}{mode === "delivery" ? "Delivery" : "Retiro en el local"}</button>)}</div>}
         {modes.length === 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Este restaurante no recibe pedidos para retirar ni delivery por la web.</p>}
         {type === "delivery" && <div className="space-y-2">
-          {zones.length > 0 && <select value={zoneId ?? ""} onChange={(event) => setZoneId(event.target.value ? Number(event.target.value) : null)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
+          {pricing.mode === "km" && <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-100">Envío por distancia: {money(pricing.perKm)} por km{pricing.minFee ? ` (mínimo ${money(pricing.minFee)})` : ""}{pricing.maxKm ? `, hasta ${pricing.maxKm} km` : ""}. Tocá «Usar mi ubicación» para calcularlo.</p>}
+          {outOfRange && <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">{outOfRange.message} Podés elegir retiro en el local.</p>}
+          {!byKm && zones.length > 0 && <select value={zoneId ?? ""} onChange={(event) => setZoneId(event.target.value ? Number(event.target.value) : null)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-900">
             <option value="">Elegí tu zona…</option>{zones.map((entry) => <option key={entry.id} value={entry.id}>{entry.name} · {entry.fee ? money(entry.fee) : "envío gratis"}{entry.etaMinutes ? ` · ~${entry.etaMinutes} min` : ""}</option>)}</select>}
           <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Dirección, número de casa y referencia" className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900" />
           <button type="button" onClick={locate} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${location ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
@@ -312,12 +329,12 @@ function CheckoutSheet({ restaurant, zones, lines, total, onChange, onClose, onP
         <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} maxLength={500} placeholder="Notas para el restaurante (sin cebolla, timbre roto…)" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900" />
         <div className="space-y-1 rounded-2xl bg-slate-50 p-3 text-sm dark:bg-slate-800/50">
           <p className="flex justify-between"><span>Productos</span><span className="tabular-nums">{money(total)}</span></p>
-          {type === "delivery" && <p className="flex justify-between text-slate-500"><span>Envío</span><span>{zone ? (fee ? money(fee) : "Gratis") : "Según la zona"}</span></p>}
+          {type === "delivery" && <p className="flex justify-between text-slate-500"><span>Envío</span><span>{feeText}</span></p>}
           <p className="flex justify-between text-base font-black"><span>Total</span><span className="tabular-nums">{money(total + fee)}</span></p>
           <p className="text-xs text-slate-500">Pedís como {account.name} (+{account.phone}). Pagás al recibir o retirar.</p>
         </div>
         {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
-        <button type="button" disabled={busy || modes.length === 0} onClick={() => void place()} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 font-bold text-white shadow-lg disabled:opacity-60">
+        <button type="button" disabled={busy || modes.length === 0 || Boolean(outOfRange && type === "delivery")} onClick={() => void place()} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 font-bold text-white shadow-lg disabled:opacity-60">
           {busy && <Loader2 className="h-5 w-5 animate-spin" />}Confirmar pedido · {money(total + fee)}</button>
       </div>}
   </Sheet>

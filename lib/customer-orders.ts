@@ -2,6 +2,7 @@ import "server-only"
 
 import type { PoolClient } from "pg"
 import { authDb, schemaQuery } from "./db"
+import { deliveryPricing, DeliveryRangeError, quoteDelivery, restaurantLocation } from "./delivery-pricing"
 import { deliveryFeeFor, loadOrder, logOrderEvent, makeOrderLines, mapTicket, refreshDeliveryFee, saveOrderItems, ServiceOrderError, upsertCustomer } from "./service-order-server"
 import { stageOf, type CrmStage } from "./order-stage"
 import { notifyStaff } from "./web-push"
@@ -56,6 +57,7 @@ export async function placeOrder(account: CustomerAccount, input: PlaceInput) {
   const location = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0) ? { lat, lng } : null
   const notes = typeof input.notes === "string" ? input.notes.trim().slice(0, 500) : ""
   if (!Array.isArray(input.items) || !input.items.length) throw new ServiceOrderError("Tu pedido está vacío.")
+  if (!account.phone) throw new ServiceOrderError("Para retiro o delivery guardá tu cuenta con tu teléfono (en Mi cuenta).")
 
   const order = await inSchema(place.schema_name, async (client) => {
     const config = (await client.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}
@@ -64,7 +66,12 @@ export async function placeOrder(account: CustomerAccount, input: PlaceInput) {
     let zone: { id: number; name: string } | null = null
     if (orderType === "delivery") {
       if (!address && !location) throw new ServiceOrderError("Indicá la dirección o compartí tu ubicación para el delivery.")
-      const zones = (await client.query("SELECT id, name, max_km FROM delivery_zones WHERE is_active ORDER BY sort_order, id")).rows
+      const pricing = deliveryPricing(config)
+      if (pricing.mode === "km" && location) {
+        try { quoteDelivery(pricing, restaurantLocation(config), location, 0) }
+        catch (error) { if (error instanceof DeliveryRangeError) throw new ServiceOrderError(error.message); throw error }
+      }
+      const zones = pricing.mode !== "zones" ? [] : (await client.query("SELECT id, name, max_km FROM delivery_zones WHERE is_active ORDER BY sort_order, id")).rows
       const chosen = Number(input.zoneId)
       if (Number.isSafeInteger(chosen) && chosen > 0) zone = zones.find((entry) => Number(entry.id) === chosen) ?? null
       const originLat = Number(String(config.latitude ?? "").replace(",", ".")), originLng = Number(String(config.longitude ?? "").replace(",", "."))
@@ -88,7 +95,7 @@ export async function placeOrder(account: CustomerAccount, input: PlaceInput) {
     const lines = await makeOrderLines(client, (input.items as any[]).slice(0, 60).map((item) => ({ id: item?.id, quantity: item?.quantity,
       selectedModifiers: Array.isArray(item?.options) ? item.options : [] })), orderType)
     saved = await saveOrderItems(client, saved, lines)
-    if (zone) await refreshDeliveryFee(client, saved.id)
+    if (orderType === "delivery") await refreshDeliveryFee(client, saved.id)
     const actor = { id: 0, name: `Cliente web · ${name}` }
     await logOrderEvent(client, saved.id, "created", { status: orderType, note: "Pedido desde el marketplace", actor })
     await logOrderEvent(client, saved.id, "items_added", { note: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor })

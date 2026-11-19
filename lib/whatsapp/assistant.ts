@@ -4,7 +4,8 @@ import type { PoolClient } from "pg"
 import { authDb, schemaQuery, type SchemaQuery } from "../db"
 import { NiroError, niroChat, type ChatMessage } from "../niro"
 import { ticketLabel, typeLabel } from "../order-labels"
-import { deliveryFeeFor, loadOrder, logOrderEvent, makeOrderLines, saveOrderItems, ServiceOrderError, upsertCustomer } from "../service-order-server"
+import { deliveryFeeFor, deliveryQuoteFor, loadOrder, logOrderEvent, makeOrderLines, refreshDeliveryFee, saveOrderItems, ServiceOrderError, upsertCustomer } from "../service-order-server"
+import { deliveryPricing, DeliveryRangeError, quoteDelivery, restaurantLocation } from "../delivery-pricing"
 import type { OrderLine, ServiceOrderType } from "../service-order-types"
 import { notifyStaff } from "../web-push"
 import { basePrice, effectivePrice } from "../product-price"
@@ -27,8 +28,9 @@ const cleanAnswer = (text: string) => text.trim().toLowerCase().replace(/[!¡.,�
 export const CONFIRM_PROMPT = "Respondé *1* para confirmar ✅ · *2* para cancelar ❌\no escribime qué querés cambiar."
 
 /** ¿El pedido tiene todo para registrarse? (productos, modalidad y, para delivery, dirección o ubicación y zona). */
-export function readyToConfirm(cart: Cart, zones: any[]) {
+export function readyToConfirm(cart: Cart, zones: any[], company?: any) {
   if (!cart.items.length || !cart.orderType) return false
+  if (cart.orderType === "delivery" && deliveryPricing(company).mode !== "zones") return Boolean(cart.address || cart.location)
   if (cart.orderType === "delivery") return Boolean((cart.address || cart.location) && (cart.zoneId || !zones.length))
   return true
 }
@@ -89,7 +91,7 @@ export async function priceCart(schema: string, cart: Cart, products: Map<number
     const lines: OrderLine[] = cart.items.length ? await makeOrderLines(client, cart.items.map((item) => ({ id: item.productId, quantity: item.quantity,
       selectedModifiers: modifiersFor(products.get(item.productId), item.optionIds) })), orderType) : []
     const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0)
-    const zone = orderType === "delivery" && cart.zoneId ? await deliveryFeeFor(client, cart.zoneId, subtotal).catch(() => null) : null
+    const zone = orderType === "delivery" ? await deliveryQuoteFor(client, cart.zoneId ?? null, cart.location ?? null, subtotal).catch(() => null) : null
     return { lines, subtotal, zone, deliveryFee: zone?.fee ?? 0, total: subtotal + (zone?.fee ?? 0) }
   })
 }
@@ -103,7 +105,7 @@ export function cartSummary(priced: Awaited<ReturnType<typeof priceCart>>, cart:
   })
   const place = cart.orderType === "delivery" ? [cart.address, cart.location ? "📍 ubicación compartida" : ""].filter(Boolean).join(" · ") : ""
   const parts = ["*Tu pedido:*", ...rows, `Subtotal: ${money(priced.subtotal)}`]
-  if (cart.orderType === "delivery") parts.push(priced.zone ? `Envío (${priced.zone.name}): ${priced.deliveryFee ? money(priced.deliveryFee) : "gratis"}` : "Envío: a confirmar según la zona")
+  if (cart.orderType === "delivery") parts.push(priced.zone ? `Envío (${priced.zone.name}): ${priced.deliveryFee ? money(priced.deliveryFee) : "gratis"}` : "Envío: a confirmar (compartí tu ubicación 📍)")
   parts.push(`*Total: ${money(priced.total)}*`)
   if (cart.orderType) parts.push(`Modalidad: ${typeLabel[cart.orderType]}${place ? ` · ${place}` : ""}`)
   return parts.join("\n")
@@ -196,6 +198,9 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
   const zones = ctx.zones.map((zone: any) => `[${zone.id}] ${zone.name}${zone.areas ? ` (${zone.areas})` : ""}: envío Gs ${zone.fee}${zone.free_over != null ? `, gratis desde Gs ${zone.free_over}` : ""}${zone.eta_minutes ? `, ~${zone.eta_minutes} min` : ""}${zone.max_km != null ? `, hasta ${zone.max_km} km del local` : ""}`).join("\n")
   const cart: Cart = { items: [], ...(ctx.conversation.cart ?? {}) }
   const byLocation = zoneByLocation(ctx.zones, company, cart.location)
+  const pricing = deliveryPricing(company)
+  const pricingText = pricing.mode === "km" ? `Por distancia: Gs ${pricing.perKm} por km${pricing.baseFee ? ` + salida Gs ${pricing.baseFee}` : ""}${pricing.minFee ? `, mínimo Gs ${pricing.minFee}` : ""}${pricing.maxKm ? `, hasta ${pricing.maxKm} km` : ""}${pricing.freeOver ? `, gratis desde Gs ${pricing.freeOver}` : ""}. El sistema calcula el envío con la ubicación del cliente: pedile que la comparta 📍 (no hace falta zona).`
+    : pricing.mode === "fixed" ? `Precio fijo de envío: Gs ${pricing.fixedFee}${pricing.freeOver ? `, gratis desde Gs ${pricing.freeOver}` : ""} (no hace falta zona).` : ""
   const locationText = !cart.location ? "no compartida todavía"
     : `compartida${cart.location.label ? ` (${cart.location.label})` : ""}${byLocation ? `, a ${byLocation.km} km del local${byLocation.zone ? `, corresponde a la zona [${byLocation.zone.id}] ${byLocation.zone.name}` : byLocation.covered === false ? ", FUERA de todas las zonas de delivery" : ""}` : ""}`
   const orders = ctx.orders.map((order: any) => `#${order.id} (${typeLabel[order.order_type] ?? order.order_type}, ${new Date(order.created_at).toLocaleString("es-PY", { timeZone: "America/Asuncion" })}): ${orderStatusText(order)} · total Gs ${Number(order.total) + Number(order.delivery_fee ?? 0)}`).join("\n")
@@ -236,7 +241,7 @@ function systemPrompt(ctx: Awaited<ReturnType<typeof loadContext>>, cartText: st
     company.mapsUrl ? `Ubicación: ${company.mapsUrl}` : "",
     "",
     "ZONAS DE DELIVERY",
-    zones || "(sin zonas configuradas: no ofrezcas delivery)",
+    pricingText || zones || "(sin zonas configuradas: no ofrezcas delivery)",
     "",
     "CARTA (precios en guaraníes)",
     menuText(ctx.products) || "(sin productos disponibles)",
@@ -311,9 +316,16 @@ function applyActions(cart: Cart, actions: Action[], ctx: Awaited<ReturnType<typ
 async function createOrder(schema: string, conversation: any, cart: Cart, products: Map<number, Product>) {
   if (!cart.items.length) throw new ServiceOrderError("Tu pedido está vacío.")
   if (!cart.orderType) throw new ServiceOrderError("Falta elegir si es delivery, retiro o en el local.")
-  if (cart.orderType === "delivery" && (!(cart.address || cart.location) || !cart.zoneId)) throw new ServiceOrderError("Para delivery necesito tu ubicación (o dirección) y la zona. Compartí tu ubicación de WhatsApp 📍")
+  if (cart.orderType === "delivery" && !(cart.address || cart.location)) throw new ServiceOrderError("Para delivery necesito tu ubicación (o dirección). Compartí tu ubicación de WhatsApp 📍")
   const name = (cart.name || conversation.name || "Cliente WhatsApp").slice(0, 120)
   return withSchema(schema, async (client) => {
+    const company = (await client.query("SELECT data FROM company_config WHERE id = 1")).rows[0]?.data ?? {}
+    if (cart.orderType === "delivery" && deliveryPricing(company).mode === "zones" && !cart.zoneId && (await client.query("SELECT 1 FROM delivery_zones WHERE is_active LIMIT 1")).rowCount)
+      throw new ServiceOrderError("Para delivery necesito tu ubicación (o dirección) y la zona. Compartí tu ubicación de WhatsApp 📍")
+    if (cart.orderType === "delivery" && cart.location && deliveryPricing(company).mode === "km") {
+      try { quoteDelivery(deliveryPricing(company), restaurantLocation(company), cart.location, 0) }
+      catch (error) { if (error instanceof DeliveryRangeError) throw new ServiceOrderError(error.message); throw error }
+    }
     const customerId = await upsertCustomer(client, { name, phone: conversation.phone, address: cart.orderType === "delivery" ? cart.address : undefined })
     const zone = cart.orderType === "delivery" ? await deliveryFeeFor(client, cart.zoneId ?? null, 0) : null
     const inserted = await client.query(`INSERT INTO service_orders (order_type, customer_name, customer_phone, notes, source, confirmation, customer_id,
@@ -326,6 +338,7 @@ async function createOrder(schema: string, conversation: any, cart: Cart, produc
     const lines = await makeOrderLines(client, cart.items.map((item) => ({ id: item.productId, quantity: item.quantity, selectedModifiers: modifiersFor(products.get(item.productId), item.optionIds) })), cart.orderType!)
     lines.forEach((line, index) => { const note = cart.items[index]?.note; if (note) line.productName = `${line.productName} (${note})` })
     order = await saveOrderItems(client, order, lines)
+    if (cart.orderType === "delivery") { await refreshDeliveryFee(client, order.id); order = await loadOrder(client, order.id, true) }
     const actor = { id: 0, name: "Asistente WhatsApp" }
     await logOrderEvent(client, order.id, "created", { status: cart.orderType, note: "Pedido por WhatsApp (asistente Niro)", actor })
     await logOrderEvent(client, order.id, "items_added", { note: lines.map((line) => `${line.quantity} × ${line.productName}`).join(", "), actor })
@@ -417,7 +430,13 @@ export async function runAssistant(schema: string, conversationId: number, optio
   if (!parsed) reply = "Disculpá, no te entendí bien. ¿Me lo podés escribir de otra forma? 🙏"
   const applied = applyActions(cart, actions, ctx)
   // Con ubicación compartida y zonas con radio, la zona sale de la distancia al local (no la decide la IA).
-  if (applied.cart.orderType === "delivery" && applied.cart.location) {
+  const deliveryMode = deliveryPricing(ctx.company).mode
+  // Por km: fuera de la distancia máxima no hay delivery.
+  if (applied.cart.orderType === "delivery" && applied.cart.location && deliveryMode === "km") {
+    try { quoteDelivery(deliveryPricing(ctx.company), restaurantLocation(ctx.company), applied.cart.location, 0) }
+    catch (error) { if (error instanceof DeliveryRangeError) applied.notes.push(`📍 ${error.message} Podés pasar a retirarlo 🙌`) }
+  }
+  if (applied.cart.orderType === "delivery" && applied.cart.location && deliveryMode === "zones") {
     const byLocation = zoneByLocation(ctx.zones, ctx.company, applied.cart.location)
     if (byLocation?.zone) { if (applied.cart.zoneId !== Number(byLocation.zone.id)) { applied.cart.zoneId = Number(byLocation.zone.id); applied.changed = true } }
     else if (byLocation?.covered === false) { applied.cart.zoneId = null; applied.notes.push(`📍 Tu ubicación queda a ${byLocation.km} km y está fuera de nuestras zonas de delivery. Podés pasar a retirarlo 🙌`) }
@@ -450,7 +469,7 @@ export async function runAssistant(schema: string, conversationId: number, optio
         extra.push(error instanceof ServiceOrderError ? error.message : "No pude registrar el pedido; te atiende una persona del local.")
       }
     }
-  } else if (priced && priced.lines.length && readyToConfirm(finalCart, ctx.zones) && (applied.changed || !cart.awaitingConfirm)) {
+  } else if (priced && priced.lines.length && readyToConfirm(finalCart, ctx.zones, ctx.company) && (applied.changed || !cart.awaitingConfirm)) {
     // Pedido completo: el sistema muestra el resumen una sola vez y pide 1 o 2 (sin el resumen que haya escrito la IA).
     if (/gs\s?[\d.]|subtotal|total|confirm/i.test(reply)) reply = reply.split("\n")[0].replace(/[:：]\s*$/, "").slice(0, 160)
     if (/gs\s?[\d.]|subtotal|total|confirm/i.test(reply)) reply = "¡Perfecto! 🙌"
@@ -460,7 +479,7 @@ export async function runAssistant(schema: string, conversationId: number, optio
     extra.push(cartSummary(priced, finalCart))
     finalCart = { ...finalCart, awaitingConfirm: false }
   }
-  if (applied.confirm === false && !readyToConfirm(finalCart, ctx.zones) && finalCart.awaitingConfirm) finalCart = { ...finalCart, awaitingConfirm: false }
+  if (applied.confirm === false && !readyToConfirm(finalCart, ctx.zones, ctx.company) && finalCart.awaitingConfirm) finalCart = { ...finalCart, awaitingConfirm: false }
 
   if (applied.handoff && options.mode === "live") {
     await query("UPDATE wa_conversations SET bot_enabled = FALSE, handoff_requested = TRUE, updated_at = NOW() WHERE id = $1", [conversationId])

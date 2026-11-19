@@ -118,7 +118,7 @@ export async function POST(request: NextRequest, { params }: Context) {
     if (account) {
       await linkTableOrder(client, Number(place.id), sent.order.id, account.id)
       await client.query("UPDATE service_orders SET customer_phone = CASE WHEN customer_phone = '' THEN $2 ELSE customer_phone END, customer_name = CASE WHEN customer_name = '' THEN $3 ELSE customer_name END WHERE id = $1",
-        [sent.order.id, account.phone, account.name])
+        [sent.order.id, account.phone, account.isGuest ? "" : account.name])
     }
     if (requestId) await client.query("UPDATE guest_order_requests SET order_id=$1, ticket_id=$2 WHERE request_id=$3",
       [sent.order.id, sent.ticket?.id ?? null, requestId])

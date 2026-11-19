@@ -23,7 +23,7 @@ try {
   await pool.query(diningMigration)
   // Migraciones por restaurante (mesero y precuenta; clientes, historial y delivery):
   // en public y en el esquema de cada restaurante creado.
-  const tenantMigrations = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql", "09-cash-payments.sql", "10-realtime.sql", "11-whatsapp-ai.sql", "12-whatsapp-media.sql", "13-customer-credit.sql", "14-brand-assets.sql", "15-customer-accounts.sql", "16-kitchen-board.sql", "17-whatsapp-attachments.sql", "18-table-requests.sql"]
+  const tenantMigrations = await Promise.all(["06-service-billing.sql", "07-customers-delivery.sql", "08-table-calls-push.sql", "09-cash-payments.sql", "10-realtime.sql", "11-whatsapp-ai.sql", "12-whatsapp-media.sql", "13-customer-credit.sql", "14-brand-assets.sql", "15-customer-accounts.sql", "16-kitchen-board.sql", "17-whatsapp-attachments.sql", "18-table-requests.sql", "19-customer-guests.sql", "20-product-images.sql"]
     .map((file) => readFile(resolve("scripts", file), "utf8")))
   for (const sql of tenantMigrations) await pool.query(sql)
   const tenantSchemas = await pool.query("SELECT schema_name FROM public.restaurants WHERE schema_name ~ '^restaurant_[0-9]+$'")

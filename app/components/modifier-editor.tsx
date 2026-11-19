@@ -21,9 +21,13 @@ export function ModifierEditor({ groups, onChange }: { groups: ModifierGroup[]; 
       <div className="flex flex-wrap items-center gap-2">
         <Input value={group.name} onChange={(event) => update(groupIndex, { name: event.target.value })} placeholder="Grupo (ej.: Tamaño, Punto, Extras)" className="h-9 min-w-0 flex-1" maxLength={60} />
         <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={group.required} onChange={(event) => update(groupIndex, { required: event.target.checked })} />Obligatorio</label>
-        <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={group.multiple} onChange={(event) => update(groupIndex, { multiple: event.target.checked })} />Varias</label>
+        <div className="grid grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5 text-xs font-semibold" role="group" aria-label="Cómo se elige">
+          <button type="button" onClick={() => update(groupIndex, { multiple: false })} className={`rounded-md px-2 py-1 ${!group.multiple ? "bg-background shadow" : "text-muted-foreground"}`}>Elige 1</button>
+          <button type="button" onClick={() => update(groupIndex, { multiple: true })} className={`rounded-md px-2 py-1 ${group.multiple ? "bg-indigo-600 text-white shadow" : "text-muted-foreground"}`}>Elige varias</button>
+        </div>
         <Button type="button" variant="ghost" size="icon" onClick={() => onChange(groups.filter((_, i) => i !== groupIndex))} aria-label={`Quitar grupo ${group.name}`}><Trash2 className="h-4 w-4" /></Button>
       </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">{group.multiple ? "El cliente puede marcar varias opciones y se suman sus precios (ej.: arroz + puré + ensalada)." : "El cliente elige una sola opción (ej.: tamaño o punto de cocción)."}</p>
       <div className="mt-2 space-y-1.5">
         {group.options.map((option, optionIndex) => <div key={option.legacyId} className="flex items-center gap-2">
           <Input value={option.name} onChange={(event) => updateOption(groupIndex, optionIndex, { name: event.target.value })} placeholder="Opción (ej.: Grande, Queso extra)" className="h-8 min-w-0 flex-1 text-sm" maxLength={60} />
@@ -34,7 +38,7 @@ export function ModifierEditor({ groups, onChange }: { groups: ModifierGroup[]; 
         <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => update(groupIndex, { options: [...group.options, { legacyId: newId(), name: "", price: 0 }] })}><Plus className="mr-1 h-3 w-3" />Opción</Button>
       </div>
     </fieldset>)}
-    <Button type="button" variant="outline" size="sm" onClick={() => onChange([...groups, { legacyId: newId(), name: "", required: false, multiple: false, options: [{ legacyId: newId(), name: "", price: 0 }] }])}>
+    <Button type="button" variant="outline" size="sm" onClick={() => onChange([...groups, { legacyId: newId(), name: "", required: false, multiple: true, options: [{ legacyId: newId(), name: "", price: 0 }] }])}>
       <Plus className="mr-1 h-4 w-4" />Agregar grupo de opciones</Button>
   </div>
 }

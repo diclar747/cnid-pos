@@ -3,6 +3,7 @@ import "server-only"
 import { authDb } from "./db"
 import { basePrice, effectivePrice } from "./product-price"
 import { normalizePhone } from "./service-order-server"
+import { deliveryPricing, type DeliveryPricing } from "./delivery-pricing"
 
 // Marketplace público: restaurantes activos con su ficha (dirección, teléfono, WhatsApp, horarios) y su menú.
 // Solo expone datos que el restaurante cargó en su ficha pública y el catálogo activo. Nada de clientes ni ventas.
@@ -16,6 +17,8 @@ export type MarketplaceRestaurant = {
   slug: string; name: string; slogan: string; description: string; businessType: string
   address: string; city: string; phone: string; whatsapp: string; website: string; mapsUrl: string
   latitude: number | null; longitude: number | null; logo: string; cover: string; color: string
+  /** Cómo cobra el delivery (por zona, por km o fijo): la ficha calcula el envío con la ubicación del cliente. */
+  deliveryPricing: DeliveryPricing
   serviceModes: { dineIn: boolean; delivery: boolean; pickup: boolean }
   openingHours: Hours[]; openNow: boolean | null; todayHours: string
   productCount: number; categories: string[]; promoCount: number
@@ -56,7 +59,7 @@ function imageUrl(value: unknown, fallback: string) {
   const image = typeof value === "string" ? value : ""
   if (!image || image.includes("placeholder")) return ""
   if (image.startsWith("data:image/")) return image.length <= MAX_INLINE_IMAGE ? image : fallback
-  if (image.startsWith("/") || /^https:\/\//.test(image)) return image.slice(0, 500)
+  if (image.startsWith("/") || /^https:\/\//.test(image)) return image.length <= 4000 ? image : ""
   return ""
 }
 
@@ -96,6 +99,7 @@ function profile(row: any, config: any, session: any, products: MarketplaceProdu
     cover: brandUrl(config.coverImage, row.slug, "cover") || products.find((p) => p.image)?.image || "",
     color: /^#[0-9a-f]{6}$/i.test(config.colors?.primary ?? "") ? config.colors.primary : "#4f46e5",
     serviceModes: { dineIn: modes.dineIn !== false, delivery: modes.delivery !== false, pickup: modes.pickup !== false },
+    deliveryPricing: deliveryPricing(config),
     openingHours: hours, ...openState(hours), productCount: products.length, categories, promoCount: products.filter((p) => p.price < p.regularPrice).length,
   }
 }
@@ -143,6 +147,16 @@ export async function getRestaurant(slug: string) {
     .catch(() => ({ rows: [] as any[] }))).rows.map((zone): MarketplaceZone => ({ id: Number(zone.id), name: zone.name, areas: zone.areas ?? "", fee: Number(zone.fee),
       freeOver: zone.free_over == null ? null : Number(zone.free_over), etaMinutes: zone.eta_minutes == null ? null : Number(zone.eta_minutes) }))
   return { restaurant: profile(row, data.config, data.session, products), products, zones }
+}
+
+/** Salones y mesas activas (para que el cliente elija su mesa al escanear el QR del restaurante). */
+export async function restaurantTables(slug: string) {
+  if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null
+  const row = (await restaurantRows(slug))[0]
+  if (!row) return null
+  const tables = await authDb.query(`SELECT t.label, t.code, t.seats, r.name AS room FROM "${row.schema_name}".dining_tables t
+    JOIN "${row.schema_name}".dining_rooms r ON r.id = t.room_id WHERE t.is_active AND r.is_active ORDER BY r.id, t.label`).catch(() => ({ rows: [] as any[] }))
+  return tables.rows.map((table) => ({ label: String(table.label), code: String(table.code), seats: Number(table.seats), room: String(table.room) }))
 }
 
 /** Logo o foto subida en base64: se sirve como archivo para no inflar el listado. */

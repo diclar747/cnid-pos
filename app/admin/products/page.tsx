@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Plus,
   Edit,
@@ -20,7 +20,12 @@ import {
   ShoppingCart,
   QrCode,
   Camera,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
 } from "lucide-react"
+import { ProductImagePicker } from "../../components/product-image-picker"
+import { OptionGroupsDialog } from "./option-groups-dialog"
 import { cleanGroups, ModifierEditor, type ModifierGroup } from "../../components/modifier-editor"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -49,7 +54,10 @@ import { useSuppliers } from "../../context/suppliers-context"
 import { parseScannedCode } from "@/lib/scan-code"
 
 export default function ProductsPage() {
-  const { products, addProduct, updateProduct, deleteProduct, addPurchase } = useCart()
+  const { products, addProduct, updateProduct, deleteProduct, addPurchase, refreshProducts } = useCart()
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [isGroupsOpen, setIsGroupsOpen] = useState(false)
   const { user } = useAuth()
   const { suppliers } = useSuppliers()
   const [showCodeCamera, setShowCodeCamera] = useState(false)
@@ -495,6 +503,33 @@ export default function ProductsPage() {
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
     return matchesSearch && matchesCategory
   })
+  // Paginación: 20 por página (se puede cambiar); vuelve a la primera al buscar o filtrar.
+  useEffect(() => { setPage(1) }, [searchQuery, categoryFilter, pageSize])
+  const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const pageItems = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const pager = filteredProducts.length > 0 && (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm">
+      <span className="text-muted-foreground">
+        {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredProducts.length)} de {filteredProducts.length} productos
+      </span>
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-muted-foreground">Por página
+          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="h-8 rounded-md border bg-background px-2 text-foreground">
+            {[15, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
+        <Button variant="outline" size="sm" onClick={() => setPage(currentPage - 1)} disabled={currentPage <= 1} aria-label="Página anterior"><ChevronLeft className="h-4 w-4" /></Button>
+        {Array.from({ length: pageCount }, (_, i) => i + 1).filter((n) => n === 1 || n === pageCount || Math.abs(n - currentPage) <= 1).map((n, index, list) => (
+          <span key={n} className="flex items-center gap-2">
+            {index > 0 && n - list[index - 1] > 1 && <span className="text-muted-foreground">…</span>}
+            <Button variant={n === currentPage ? "default" : "outline"} size="sm" className="min-w-8" onClick={() => setPage(n)} aria-current={n === currentPage ? "page" : undefined}>{n}</Button>
+          </span>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => setPage(currentPage + 1)} disabled={currentPage >= pageCount} aria-label="Página siguiente"><ChevronRight className="h-4 w-4" /></Button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
@@ -618,14 +653,9 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="image">URL de Imagen</Label>
-                  <Input
-                    id="image"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="/placeholder.svg"
-                  />
+                <div className="space-y-2">
+                  <Label>Foto del producto</Label>
+                  <ProductImagePicker value={formData.image} onChange={(image) => setFormData((current) => ({ ...current, image }))} />
                 </div>
 
                 <div className="flex justify-end space-x-2">
@@ -694,6 +724,10 @@ export default function ProductsPage() {
             </Button>
           </div>
 
+          <Button variant="outline" onClick={() => setIsGroupsOpen(true)} className="bg-transparent">
+            <Layers className="mr-2 h-4 w-4" />
+            Opciones
+          </Button>
           <Button variant="outline" onClick={() => setIsBulkQRDialogOpen(true)} className="bg-transparent">
             <QrCode className="mr-2 h-4 w-4" />
             QR Lote
@@ -713,9 +747,10 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      <OptionGroupsDialog open={isGroupsOpen} onClose={() => setIsGroupsOpen(false)} onChanged={() => void refreshProducts()} />
       {viewMode === "grid" ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProducts.map((product) => (
+          {pageItems.map((product) => (
             <Card key={product.id} className="card-dark">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
@@ -797,7 +832,7 @@ export default function ProductsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => (
+                {pageItems.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell className="capitalize">{product.category}</TableCell>
@@ -860,6 +895,8 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       )}
+
+      {pager}
 
       {filteredProducts.length === 0 && (
         <div className="text-center py-12">

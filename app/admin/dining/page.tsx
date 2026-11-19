@@ -12,7 +12,7 @@ import { apiRequest } from "@/lib/api-client"
 import type { DiningRoom, DiningTable } from "@/lib/dining-types"
 import { useAuth } from "@/app/context/auth-context"
 import { useCompany } from "@/app/context/company-context"
-import { TableQrDialog } from "./table-qr-dialog"
+import { RestaurantQrDialog, TableQrDialog } from "./table-qr-dialog"
 import { TableSheet } from "./table-sheet"
 import { useLiveTables } from "@/lib/use-live"
 
@@ -56,12 +56,14 @@ export default function DiningPage() {
   const [tableDraft, setTableDraft] = useState<TableDraft | null>(null)
   const [baseUrl, setBaseUrl] = useState("")
   const [qrTable, setQrTable] = useState<DiningTable | null>(null)
+  const [restaurantSlug, setRestaurantSlug] = useState("")
+  const [restaurantQr, setRestaurantQr] = useState(false)
   const [sheetId, setSheetId] = useState<number | null>(null)
   const { companyConfig, updateCompanyConfig } = useCompany()
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
-    try { const data = await apiRequest<{ rooms: DiningRoom[]; tables: DiningTable[] }>("/api/dining"); setRooms(data.rooms); setTables(data.tables) }
+    try { const data = await apiRequest<{ rooms: DiningRoom[]; tables: DiningTable[]; restaurantSlug?: string | null }>("/api/dining"); setRooms(data.rooms); setTables(data.tables); setRestaurantSlug(data.restaurantSlug ?? "") }
     catch (error) { toast.error(error instanceof Error ? error.message : "No se cargaron los salones") }
     finally { setLoading(false) }
   }, [])
@@ -102,7 +104,8 @@ export default function DiningPage() {
           <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-white">Salones y mesas</h1>
           <p className="mt-1 text-slate-600 dark:text-slate-300">Organizá sillas, cuentas y pedidos por QR en cada mesa.</p></div>
         <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => void load()} aria-label="Actualizar"><RefreshCw className="h-4 w-4" /></Button>
-          <Button variant="outline" onClick={() => window.print()} disabled={!activeTables.length}><Printer className="mr-2 h-4 w-4" /> Imprimir QR</Button>
+          <Button variant="outline" onClick={() => setRestaurantQr(true)} disabled={!restaurantSlug}><QrCode className="mr-2 h-4 w-4" /> QR del restaurante</Button>
+          <Button variant="outline" onClick={() => window.print()} disabled={!activeTables.length}><Printer className="mr-2 h-4 w-4" /> Imprimir QR de mesas</Button>
           <Button onClick={() => setRoomDraft({ ...emptyRoom })}><CirclePlus className="mr-2 h-4 w-4" /> Nuevo salón</Button></div>
       </div>
       <div className="screen-only mb-6 grid gap-3 sm:grid-cols-3">
@@ -134,6 +137,9 @@ export default function DiningPage() {
     <Dialog open={Boolean(roomDraft)} onOpenChange={(open) => { if (!open) setRoomDraft(null) }}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{roomDraft?.id ? "Editar salón" : "Nuevo salón"}</DialogTitle><DialogDescription>Podés subir una foto del espacio para reconocerlo rápidamente.</DialogDescription></DialogHeader>{roomDraft && <div className="space-y-3"><label className="block text-sm font-medium">Nombre<Input value={roomDraft.name} onChange={(event) => setRoomDraft({ ...roomDraft, name: event.target.value })} className="mt-1" placeholder="Salón principal, terraza…" /></label><label className="block text-sm font-medium">Descripción<Input value={roomDraft.description} onChange={(event) => setRoomDraft({ ...roomDraft, description: event.target.value })} className="mt-1" /></label><label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed p-4 text-sm"><Camera className="h-5 w-5" /> {roomDraft.imageData ? "Cambiar foto" : "Subir foto del salón"}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => uploadImage(event.target.files?.[0])} /></label>{roomDraft.imageData && <img src={roomDraft.imageData} alt="Vista del salón" className="h-36 w-full rounded-xl object-cover" />}{roomDraft.id && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={roomDraft.isActive} onChange={(event) => setRoomDraft({ ...roomDraft, isActive: event.target.checked })} /> Salón activo</label>}<Button className="w-full" disabled={busy} onClick={() => void saveRoom()}>{busy ? "Guardando…" : "Guardar salón"}</Button></div>}</DialogContent></Dialog>
     <Dialog open={Boolean(tableDraft)} onOpenChange={(open) => { if (!open) setTableDraft(null) }}><DialogContent className="max-w-md"><DialogHeader><DialogTitle>{tableDraft?.id ? "Editar mesa" : "Nueva mesa"}</DialogTitle><DialogDescription>El QR permitirá abrir esta mesa y pedir desde el teléfono.</DialogDescription></DialogHeader>{tableDraft && <div className="space-y-3"><label className="block text-sm font-medium">Salón<select value={tableDraft.roomId} onChange={(event) => setTableDraft({ ...tableDraft, roomId: Number(event.target.value) })} className="mt-1 h-10 w-full rounded-md border bg-background px-3"><option value={0}>Seleccionar…</option>{activeRooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}</select></label><label className="block text-sm font-medium">Nombre de la mesa<Input value={tableDraft.label} onChange={(event) => setTableDraft({ ...tableDraft, label: event.target.value })} className="mt-1" placeholder="Mesa 1" /></label><div className="grid grid-cols-2 gap-3"><label className="block text-sm font-medium">Sillas<Input type="number" min={1} max={30} value={tableDraft.seats} onChange={(event) => setTableDraft({ ...tableDraft, seats: Number(event.target.value) })} className="mt-1" /></label><label className="block text-sm font-medium">Forma<select value={tableDraft.shape} onChange={(event) => setTableDraft({ ...tableDraft, shape: event.target.value as DiningTable["shape"] })} className="mt-1 h-10 w-full rounded-md border bg-background px-3"><option value="round">Redonda</option><option value="square">Cuadrada</option><option value="rectangular">Rectangular</option></select></label></div>{tableDraft.id && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tableDraft.isActive} onChange={(event) => setTableDraft({ ...tableDraft, isActive: event.target.checked })} /> Mesa activa</label>}<Button className="w-full" disabled={busy} onClick={() => void saveTable()}>{busy ? "Guardando…" : "Guardar mesa"}</Button></div>}</DialogContent></Dialog>
     <TableSheet table={tables.find((table) => table.id === sheetId) ?? null} onClose={() => setSheetId(null)} onChanged={() => void load()} />
+    <RestaurantQrDialog open={restaurantQr} url={restaurantSlug ? `${(baseUrl || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "")}/r/${restaurantSlug}` : ""}
+      restaurant={companyConfig?.name || user?.restaurantName || "Restaurante"} color={/^#[0-9a-f]{6}$/i.test(companyConfig?.colors?.primary ?? "") ? companyConfig.colors.primary : "#4f46e5"}
+      logo={companyConfig?.logo && !companyConfig.logo.includes("placeholder") ? companyConfig.logo : ""} onClose={() => setRestaurantQr(false)} />
     <TableQrDialog table={qrTable} baseUrl={baseUrl} restaurant={companyConfig?.name || user?.restaurantName || "Restaurante"} color={/^#[0-9a-f]{6}$/i.test(companyConfig?.colors?.primary ?? "") ? companyConfig.colors.primary : "#4f46e5"} logo={companyConfig?.logo && !companyConfig.logo.includes("placeholder") ? companyConfig.logo : ""} onClose={() => setQrTable(null)} />
     <style jsx global>{`@media screen { .qr-print-grid { display: none !important; } } @media print { body { background: white !important; } .screen-only, .admin-sidebar, .admin-topbar { display: none !important; } .qr-print-grid { display: grid !important; grid-template-columns: repeat(3,1fr) !important; gap: 8mm !important; } .print-table { box-shadow: none !important; } @page { size: A4; margin: 10mm; } }`}</style>
   </main>

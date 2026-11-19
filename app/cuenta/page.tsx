@@ -51,8 +51,15 @@ export default function AccountPage() {
   }
   const onScan = (value: string) => {
     const code = tableCode(value)
-    if (code) { setScanning(false); router.push(`/table/${code}`) }
-    else setScanError("Ese código no es el QR de una mesa de RestoPOS.")
+    if (code) { setScanning(false); router.push(`/table/${code}`); return }
+    // QR del restaurante: /r/<restaurante>
+    const slug = value.match(/\/r\/([a-z0-9-]{1,80})(?:[/?#]|$)/)?.[1]
+    if (slug) { setScanning(false); router.push(`/r/${slug}`) }
+    else setScanError("Ese código no es un QR de RestoPOS.")
+  }
+  const signOut = () => {
+    if (account?.isGuest && !window.confirm("Entraste como invitado: si cerrás la sesión, este teléfono ya no verá estos pedidos. ¿Cerrar igual?")) return
+    void logout()
   }
 
   const active = (orders ?? []).filter(isActive)
@@ -79,8 +86,8 @@ export default function AccountPage() {
             <div className="flex items-center gap-4">
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-2xl font-black">{account.name.slice(0, 1).toUpperCase()}</span>
               <div className="min-w-0 flex-1"><p className="text-sm text-white/80">Hola,</p><h1 className="truncate text-2xl font-black">{account.name}</h1>
-                <p className="text-sm text-white/80">{account.phone.startsWith("595") ? `+595 ${account.phone.slice(3, 6)} ${account.phone.slice(6)}` : `+${account.phone}`}</p></div>
-              <button type="button" onClick={() => setEditing((value) => !value)} className="rounded-xl bg-white/15 p-2.5 hover:bg-white/25" aria-label="Editar mis datos"><Pencil className="h-4 w-4" /></button>
+                <p className="text-sm text-white/80">{!account.phone ? "Invitado en este teléfono" : account.phone.startsWith("595") ? `+595 ${account.phone.slice(3, 6)} ${account.phone.slice(6)}` : `+${account.phone}`}</p></div>
+              {!account.isGuest && <button type="button" onClick={() => setEditing((value) => !value)} className="rounded-xl bg-white/15 p-2.5 hover:bg-white/25" aria-label="Editar mis datos"><Pencil className="h-4 w-4" /></button>}
             </div>
             <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
               <button type="button" onClick={() => { setScanError(""); setScanning(true) }} className="rounded-2xl bg-white/15 px-2 py-3 hover:bg-white/25"><QrCode className="mx-auto mb-1 h-5 w-5" />Escanear mesa</button>
@@ -92,7 +99,11 @@ export default function AccountPage() {
             {push === "blocked" && <p className="mt-3 rounded-xl bg-white/15 px-3 py-2 text-xs">Las notificaciones están bloqueadas en este navegador. Habilitalas en la configuración del sitio.</p>}
           </section>
 
-          {editing && <ProfileForm account={account} onSaved={(next) => { setAccount(next); setEditing(false) }} />}
+          {account.isGuest && <section className="mt-4 rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm dark:border-indigo-900 dark:bg-slate-900">
+            <h2 className="font-bold">Guardá tu cuenta</h2>
+            <p className="mb-3 mt-0.5 text-sm text-slate-500">Entraste con el QR y tu sesión queda abierta en este teléfono. Si dejás tu teléfono, guardás tus pedidos y podés entrar desde otro equipo.</p>
+            <CustomerAuthForm onDone={setAccount} compact claim /></section>}
+          {editing && !account.isGuest && <ProfileForm account={account} onSaved={(next) => { setAccount(next); setEditing(false) }} />}
 
           <section className="mt-6">
             <h2 className="mb-3 text-lg font-bold">Pedidos en curso</h2>
@@ -108,7 +119,7 @@ export default function AccountPage() {
             <div className="space-y-2">{past.map((order) => <OrderCard key={order.ref} order={order} />)}</div>
           </section>}
 
-          <button type="button" onClick={() => void logout()} className="mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900"><LogOut className="h-4 w-4" /> Cerrar sesión</button>
+          <button type="button" onClick={signOut} className="mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900"><LogOut className="h-4 w-4" /> Cerrar sesión</button>
         </>}
     </main>
 

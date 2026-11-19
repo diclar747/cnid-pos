@@ -11,6 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { useCompany } from "../../context/company-context"
 import BrandingPanel from "./branding-panel"
+import { LocationPicker } from "./location-picker"
+import { DeliveryPricingPanel } from "./delivery-pricing-panel"
+import { AccountPanel } from "./account-panel"
 import { Building2, Save, Upload } from "lucide-react"
 import { toast } from "react-hot-toast"
 
@@ -77,9 +80,11 @@ export default function CompanyConfigPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+        <TabsList className="grid h-auto w-full grid-cols-4 sm:grid-cols-8">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="ficha">Ficha</TabsTrigger>
+          <TabsTrigger value="ficha">Ficha y mapa</TabsTrigger>
+          <TabsTrigger value="delivery">Delivery</TabsTrigger>
+          <TabsTrigger value="cuenta">Cuenta y avisos</TabsTrigger>
           <TabsTrigger value="fiscal">Fiscal</TabsTrigger>
           <TabsTrigger value="branding">Apariencia</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
@@ -245,7 +250,11 @@ export default function CompanyConfigPage() {
                   ))}
                 </div>
               </fieldset>
-              <div className="grid gap-4 md:grid-cols-3">
+              <LocationPicker latitude={formData.latitude} longitude={formData.longitude} mapsUrl={formData.mapsUrl}
+                onChange={(next) => setFormData((prev) => ({ ...prev, ...next }))} />
+              <details className="rounded-xl border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">Cargar a mano (enlace y coordenadas)</summary>
+              <div className="mt-3 grid gap-4 md:grid-cols-3">
                 <div className="space-y-2 md:col-span-3">
                   <Label htmlFor="mapsUrl">Enlace de Google Maps</Label>
                   <Input id="mapsUrl" value={formData.mapsUrl} onChange={(e) => handleInputChange("mapsUrl", e.target.value)} placeholder="https://maps.app.goo.gl/…" />
@@ -259,6 +268,7 @@ export default function CompanyConfigPage() {
                   <Input id="longitude" inputMode="decimal" value={formData.longitude} onChange={(e) => handleInputChange("longitude", e.target.value.replace(/[^\d.,-]/g, ""))} placeholder="-56.4469" />
                 </div>
               </div>
+              </details>
               <div>
                 <p className="mb-2 text-sm font-medium">Horarios</p>
                 <div className="space-y-2">
@@ -278,6 +288,15 @@ export default function CompanyConfigPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="delivery" className="space-y-6">
+          <DeliveryPricingPanel value={formData.deliveryPricing} hasLocation={Boolean(String(formData.latitude ?? "").trim() && String(formData.longitude ?? "").trim())}
+            onChange={(deliveryPricing) => setFormData((prev) => ({ ...prev, deliveryPricing }))} />
+        </TabsContent>
+
+        <TabsContent value="cuenta" className="space-y-6">
+          <AccountPanel />
         </TabsContent>
 
         <TabsContent value="fiscal" className="space-y-6">

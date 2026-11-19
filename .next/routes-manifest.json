@@ -161,6 +161,15 @@
       "namedRegex": "^/api/payments/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/product-images/[restaurant]/[id]",
+      "regex": "^/api/product\\-images/([^/]+?)/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPrestaurant": "nxtPrestaurant",
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/product\\-images/(?<nxtPrestaurant>[^/]+?)/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/purchase-orders/[id]",
       "regex": "^/api/purchase\\-orders/([^/]+?)(?:/)?$",
       "routeKeys": {
@@ -319,6 +328,14 @@
         "nxtPslug": "nxtPslug"
       },
       "namedRegex": "^/marketplace/(?<nxtPslug>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/r/[slug]",
+      "regex": "^/r/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPslug": "nxtPslug"
+      },
+      "namedRegex": "^/r/(?<nxtPslug>[^/]+?)(?:/)?$"
     },
     {
       "page": "/receipt/[kind]/[id]",
