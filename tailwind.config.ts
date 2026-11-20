@@ -13,6 +13,10 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
+  			// Temas de color: indigo/violet/purple siguen la paleta elegida por el usuario (variables en globals.css).
+  			indigo: { 50: 'rgb(var(--c-indigo-50) / <alpha-value>)', 100: 'rgb(var(--c-indigo-100) / <alpha-value>)', 200: 'rgb(var(--c-indigo-200) / <alpha-value>)', 300: 'rgb(var(--c-indigo-300) / <alpha-value>)', 400: 'rgb(var(--c-indigo-400) / <alpha-value>)', 500: 'rgb(var(--c-indigo-500) / <alpha-value>)', 600: 'rgb(var(--c-indigo-600) / <alpha-value>)', 700: 'rgb(var(--c-indigo-700) / <alpha-value>)', 800: 'rgb(var(--c-indigo-800) / <alpha-value>)', 900: 'rgb(var(--c-indigo-900) / <alpha-value>)', 950: 'rgb(var(--c-indigo-950) / <alpha-value>)' },
+  			violet: { 50: 'rgb(var(--c-violet-50) / <alpha-value>)', 100: 'rgb(var(--c-violet-100) / <alpha-value>)', 200: 'rgb(var(--c-violet-200) / <alpha-value>)', 300: 'rgb(var(--c-violet-300) / <alpha-value>)', 400: 'rgb(var(--c-violet-400) / <alpha-value>)', 500: 'rgb(var(--c-violet-500) / <alpha-value>)', 600: 'rgb(var(--c-violet-600) / <alpha-value>)', 700: 'rgb(var(--c-violet-700) / <alpha-value>)', 800: 'rgb(var(--c-violet-800) / <alpha-value>)', 900: 'rgb(var(--c-violet-900) / <alpha-value>)', 950: 'rgb(var(--c-violet-950) / <alpha-value>)' },
+  			purple: { 50: 'rgb(var(--c-purple-50) / <alpha-value>)', 100: 'rgb(var(--c-purple-100) / <alpha-value>)', 200: 'rgb(var(--c-purple-200) / <alpha-value>)', 300: 'rgb(var(--c-purple-300) / <alpha-value>)', 400: 'rgb(var(--c-purple-400) / <alpha-value>)', 500: 'rgb(var(--c-purple-500) / <alpha-value>)', 600: 'rgb(var(--c-purple-600) / <alpha-value>)', 700: 'rgb(var(--c-purple-700) / <alpha-value>)', 800: 'rgb(var(--c-purple-800) / <alpha-value>)', 900: 'rgb(var(--c-purple-900) / <alpha-value>)', 950: 'rgb(var(--c-purple-950) / <alpha-value>)' },
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -24,7 +28,7 @@ const config: Config = {
   				foreground: 'hsl(var(--popover-foreground))'
   			},
   			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
+  				DEFAULT: 'rgb(var(--primary-rgb) / <alpha-value>)',
   				foreground: 'hsl(var(--primary-foreground))'
   			},
   			secondary: {
@@ -45,7 +49,7 @@ const config: Config = {
   			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
+  			ring: 'rgb(var(--ring-rgb) / <alpha-value>)',
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',

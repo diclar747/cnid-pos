@@ -157,6 +157,8 @@ El cliente arma su pedido en la página y lo envía por **WhatsApp** al restaura
 
 ## Pantalla única y apariencia
 
+**Apariencia y colores**: el botón redondo de color del encabezado (también en la página de inicio y en el ingreso) abre la apariencia: modo **Claro**, **Oscuro** o **Sistema** y seis temas de color: **Índigo**, **Océano**, **Esmeralda**, **Atardecer**, **Rosa** y **Grafito**. Cambia botones, acentos, gráficos y resaltados de todo el sistema al instante. La elección se guarda en cada dispositivo, así cada usuario trabaja con el suyo.
+
 El POS, WhatsApp, Pedidos, Órdenes, Cocina, Tarjetas QR, Mesas y Caja se abren dentro de la misma pantalla: el encabezado y la columna **Opciones** quedan fijos (se puede minimizar) y cada sección se carga adentro, sin cambiar de página. En el celular, **Opciones** se abre con el botón de menú.
 
 En **Empresa → Apariencia** el dueño sube su **logo** y una **foto de portada**, elige el **color** de la marca y el **estilo del encabezado** (claro, con su color u oscuro), con vista previa. Se aplica al encabezado del sistema, al marketplace y a la página pública del restaurante.
