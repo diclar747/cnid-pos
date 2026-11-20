@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
+import { Plus, Sparkles } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -216,10 +218,14 @@ export default function PurchasesDashboard() {
           </h1>
           <p className="text-muted-foreground">Análisis visual de compras y proveedores</p>
         </div>
-        <Button onClick={handleExport} className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/purchases?scan=1" className="inline-flex h-10 items-center rounded-md bg-violet-600 px-4 text-sm font-medium text-white hover:bg-violet-700"><Sparkles className="mr-2 h-4 w-4" /> Escanear factura</Link>
+          <Link href="/admin/purchases?new=1" className="inline-flex h-10 items-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"><Plus className="mr-2 h-4 w-4" /> Registrar compra</Link>
+        <Button onClick={handleExport} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Exportar Datos
         </Button>
+        </div>
       </div>
 
       {/* Filtros */}

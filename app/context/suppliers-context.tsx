@@ -46,7 +46,7 @@ export interface AutoOrder {
 interface SuppliersContextType {
   suppliers: Supplier[]
   autoOrders: AutoOrder[]
-  addSupplier: (supplier: Omit<Supplier, "id">) => Promise<void>
+  addSupplier: (supplier: Omit<Supplier, "id">) => Promise<Supplier>
   updateSupplier: (id: number, changes: Partial<Supplier>) => Promise<void>
   deleteSupplier: (id: number) => Promise<void>
   getSupplierById: (id: number) => Supplier | undefined
@@ -86,6 +86,7 @@ export function SuppliersProvider({ children }: { children: ReactNode }) {
       method: "POST", body: JSON.stringify(supplier),
     })
     setSuppliers((current) => [result.item, ...current])
+    return result.item
   }
 
   const updateSupplier = async (id: number, changes: Partial<Supplier>) => {

@@ -88,6 +88,21 @@ En **Administración → Productos**, cada producto admite además:
 - **Disponible para vender**: un producto desactivado no se puede cobrar ni pedir.
 - **Opciones y adicionales**: grupos como Tamaño, Punto o Extras, cada uno obligatorio o no, con una o varias opciones y precio extra. El sistema exige las opciones obligatorias en todos los canales.
 
+## Compras a proveedores
+
+En **Administración → Compras** se registran las facturas de los proveedores: insumos (harina, fideos, azúcar…), mercadería y otros gastos de compra.
+
+- **Escanear factura**: subí o arrastrá una foto (JPG, PNG) o un PDF con texto. Niro IA lee el proveedor (razón social, RUC, timbrado), el número, la fecha, la condición, los ítems y el IVA, y completa el formulario. Si el proveedor no está en la lista, se ofrece crearlo con el nombre y el RUC leídos. Revisá los avisos (por ejemplo, si el total no coincide con la suma de los ítems) y guardá. Un PDF escaneado como imagen no se puede leer: subí una foto o captura.
+- **Registrar compra**: lo mismo, cargado a mano. Cada ítem lleva descripción, categoría (Insumos, Carnes, Verduras…), cantidad, unidad, precio con IVA y tasa (10 %, 5 % o exenta). Si el ítem es un producto del menú (por ejemplo, gaseosas), se puede vincular para **sumar al stock**.
+- **Pagado con la caja abierta** (compras al contado): registra el egreso en efectivo en la caja del día.
+- La misma factura (mismo RUC y número) no se puede cargar dos veces. **Anular** pide un motivo, descuenta el stock sumado y quita el egreso si la caja sigue abierta.
+- Filtros por fecha, proveedor, categoría, condición, estado y texto; totales por proveedor y por categoría; IVA crédito fiscal; exportar a **Excel**, **PDF** o **Imprimir**.
+- **Dashboard Compras** y **Transacciones** (ranking por proveedor) usan estas facturas.
+
+## Reporte de ventas
+
+**Reportes de Ventas** filtra por período (Hoy, Ayer, 7 días, 30 días, este mes, mes pasado o fechas), categoría, producto, medio de pago, cajero, tipo de pedido y texto (ticket, cliente, mesa). Muestra ventas, tickets, ticket promedio, unidades, ventas por día y rankings por producto, categoría, medio de pago y cajero. El detalle tiene paginación y orden; cada venta se despliega con sus productos y el enlace al ticket. **Excel** descarga una planilla con hojas de ventas, detalle por producto, productos, categorías, medios de pago y días; **PDF** e **Imprimir** abren el reporte listo para imprimir o guardar como PDF.
+
 ## Caja y pagos
 
 **Caja** (desde el POS o la administración, con permiso de ventas):
