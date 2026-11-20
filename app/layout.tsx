@@ -13,6 +13,7 @@ import { PwaRegistration } from "./components/pwa-registration"
 import { InstallBanner } from "./components/install-banner"
 import { TableCallsListener } from "./components/table-calls-listener"
 import { WorkspaceFrame } from "./components/workspace-shell"
+import { THEME_BOOT_SCRIPT } from "@/lib/themes"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://restopos.cd.com.py"),
@@ -37,6 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} /></head>
       <body className="font-sans" suppressHydrationWarning>
         <PwaRegistration />
         <InstallBanner />

@@ -10,7 +10,6 @@ import { useCompany } from "../context/company-context"
 import RestaurantNavigation from "./restaurant-navigation"
 import CategorySidebar from "./category-sidebar"
 import { BrandIcon } from "./brand-logo"
-import { ThemeToggle } from "./theme-toggle"
 import { HeaderActions } from "./header-actions"
 import { headerTheme } from "@/lib/brand-theme"
 
@@ -103,7 +102,6 @@ function Shell({ children }: { children: ReactNode }) {
             <div ref={setHeader} className="order-last flex min-w-0 basis-full items-center md:order-none md:mx-4 md:max-w-xl md:flex-1 md:basis-auto" />
             <div className="ml-auto flex items-center gap-2">
               <div ref={setHeaderEnd} className="flex items-center gap-2" />
-              <div className="hidden md:block"><ThemeToggle /></div>
               <HeaderActions />
             </div>
           </div>

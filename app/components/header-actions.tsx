@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/context/auth-context"
 import { NotificationsPanel } from "./notifications-panel"
+import { ThemePicker } from "./theme-picker"
 import { apiRequest } from "@/lib/api-client"
 import toast from "react-hot-toast"
 
@@ -52,6 +53,7 @@ export function HeaderActions() {
     catch { toast.error("No se pudo cerrar sesión.") }
   }
   return <div className="flex items-center gap-1.5 sm:gap-2">
+    <ThemePicker />
     <span role="status" title={connected === false ? "Sin conexión con el sistema" : "Conectado al sistema"} className="hidden h-9 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 lg:inline-flex dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"><span className={`h-2 w-2 rounded-full ${connected === false ? "bg-rose-500" : connected === null ? "bg-amber-400" : "bg-emerald-500"}`} />{connected === false ? "Sin conexión" : connected === null ? "Verificando" : "En línea"}</span>
     <DropdownMenu onOpenChange={(open) => { if (open) loadAnnouncements() }}>
       <DropdownMenuTrigger asChild><Button type="button" variant="outline" size="icon" className="relative rounded-xl" aria-label="Campañas y avisos" title="Campañas y avisos"><Megaphone className="h-4 w-4" /></Button></DropdownMenuTrigger>

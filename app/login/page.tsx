@@ -15,6 +15,7 @@ import { InstallAppButton } from "../components/install-app"
 import { LaptopFrame, PhoneFrame, Screen } from "../components/landing/device-frame"
 import { useAuth } from "../context/auth-context"
 import toast from "react-hot-toast"
+import { ThemePicker } from "../components/theme-picker"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -64,7 +65,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950">
+      <div className="absolute right-4 top-4 z-10"><ThemePicker /></div>
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 items-center">
         {/* Left Side - Login Form */}
         <Card className="w-full max-w-md mx-auto shadow-xl border-0 bg-white/80 backdrop-blur-sm">
