@@ -62,3 +62,24 @@ export async function niroModels(): Promise<{ name: string; category: string }[]
   const { body } = await call("/models?category=CHAT", { method: "GET", timeoutMs: 15_000 })
   return Array.isArray(body?.models) ? body.models.map((model: any) => ({ name: String(model.name ?? ""), category: String(model.category ?? "") })) : []
 }
+
+/**
+ * OCR / visión: POST /vision/extract (multipart "file", "mode", "question").
+ * mode="invoice" devuelve la factura paraguaya como JSON (emisor, comprobante, ítems y totales) en `data`.
+ * Acepta PNG, JPG, WEBP, GIF (máx. 12 MB) o PDF con texto seleccionable.
+ */
+export async function niroVisionExtract(file: Buffer, filename: string, mimeType: string, mode: "text" | "invoice" = "invoice", question?: string):
+  Promise<{ text: string; data: any; model: string; latencyMs: number }> {
+  const form = new FormData()
+  form.append("file", new Blob([new Uint8Array(file)], { type: mimeType }), filename)
+  form.append("mode", mode)
+  if (question) form.append("question", question)
+  const { body, latencyMs } = await call("/vision/extract", { method: "POST", body: form, timeoutMs: 90_000 })
+  let data = body?.data ?? null
+  if (!data && typeof body?.text === "string") {
+    // Algunos modelos devuelven el JSON dentro del texto (a veces entre ```json … ```).
+    const raw = body.text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "")
+    try { data = JSON.parse(raw) } catch { data = null }
+  }
+  return { text: String(body?.text ?? ""), data, model: String(body?.model ?? ""), latencyMs }
+}

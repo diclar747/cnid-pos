@@ -16,6 +16,13 @@ export interface Purchase {
   date: string
   notes?: string
   createdBy?: string
+  /** Ítems de facturas de compra (insumos y mercadería). */
+  invoiceId?: number
+  invoiceNumber?: string
+  supplierId?: number | null
+  category?: string
+  unit?: string
+  condition?: "cash" | "credit"
 }
 
 interface PurchasesContextType {
@@ -33,8 +40,13 @@ export function PurchasesProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (!user?.permissions.includes("manage_purchases")) { setPurchases([]); return }
-    const result = await apiRequest<{ items: Purchase[] }>("/api/data/purchases")
-    setPurchases(result.items)
+    // Ítems de las facturas de compra + compras sueltas de productos (registro anterior).
+    const [invoices, legacy] = await Promise.all([
+      apiRequest<{ items: Purchase[] }>("/api/purchase-invoices?lines=1").catch(() => ({ items: [] as Purchase[] })),
+      apiRequest<{ items: Purchase[] }>("/api/data/purchases"),
+    ])
+    setPurchases([...invoices.items.map((item) => ({ ...item, id: -item.id })), ...legacy.items]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()))
   }, [user])
 
   useEffect(() => {

@@ -54,6 +54,12 @@ export default function POSPage() {
 
   useEffect(() => { searchRef.current?.focus() }, [])
   useEffect(() => {
+    const search = new URLSearchParams(window.location.search)
+    const category = search.get("category"); const filter = search.get("filter")
+    if (category) setSelectedCategory(category.slice(0, 80))
+    if (filter) setSelectedFilter(filter.slice(0, 40))
+  }, [])
+  useEffect(() => {
     try {
       setCartCollapsed(window.localStorage.getItem("pos:cart-collapsed") === "1")
     } catch { /* Los paneles siguen funcionando aunque el navegador no guarde preferencias. */ }

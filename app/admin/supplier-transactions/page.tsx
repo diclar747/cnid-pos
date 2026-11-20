@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
+import { Plus, Sparkles } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,22 +50,35 @@ export default function SupplierTransactionsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null)
 
-  const transactions = useMemo(() => purchases.map((purchase) => {
-    const supplier = suppliers.find((item) => item.name === purchase.supplier)
-    return {
-      id: `COMP-${purchase.id}`,
-      date: purchase.date,
-      supplierId: purchase.supplier || "Sin proveedor",
-      supplierName: purchase.supplier || "Sin proveedor",
-      amount: purchase.total,
-      type: "purchase",
-      status: "completed",
-      items: purchase.quantity,
-      category: supplier?.category || "Sin categoría",
-      paymentMethod: "No registrado",
-      rating: supplier?.rating || 0,
+  // Una transacción por factura de compra (sus ítems agrupados) y una por cada compra suelta del registro anterior.
+  const transactions = useMemo(() => {
+    const groups = new Map<string, typeof purchases>()
+    for (const purchase of purchases) {
+      const key = purchase.invoiceId ? `F${purchase.invoiceId}` : `C${purchase.id}`
+      groups.set(key, [...(groups.get(key) ?? []), purchase])
     }
-  }), [purchases, suppliers])
+    return [...groups.entries()].map(([key, lines]) => {
+      const first = lines[0]
+      const supplier = suppliers.find((item) => (first.supplierId && item.id === first.supplierId) || item.name === first.supplier)
+      const categories = new Map<string, number>()
+      for (const line of lines) if (line.category) categories.set(line.category, (categories.get(line.category) ?? 0) + line.total)
+      const mainCategory = [...categories.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+      return {
+        id: first.invoiceId ? `FC-${first.invoiceNumber || first.invoiceId}` : `COMP-${first.id}`,
+        key,
+        date: first.date,
+        supplierId: first.supplier || "Sin proveedor",
+        supplierName: first.supplier || "Sin proveedor",
+        amount: lines.reduce((sum, line) => sum + line.total, 0),
+        type: "purchase",
+        status: "completed",
+        items: first.invoiceId ? lines.length : first.quantity,
+        category: mainCategory || supplier?.category || "Sin categoría",
+        paymentMethod: first.condition === "credit" ? "Crédito" : first.invoiceId ? "Contado" : "No registrado",
+        rating: supplier?.rating || 0,
+      }
+    })
+  }, [purchases, suppliers])
 
   // Filtrar transacciones
   const filteredTransactions = useMemo(() => {
@@ -101,15 +116,15 @@ export default function SupplierTransactionsPage() {
     // Datos por fecha
     const byDate = filteredTransactions.reduce(
       (acc, t) => {
-        const date = t.date
+        const date = t.date.slice(0, 10)
         acc[date] = (acc[date] || 0) + t.amount
         return acc
       },
       {} as Record<string, number>,
     )
 
-    const areaData = Object.entries(byDate).map(([date, amount]) => ({
-      date: new Date(date).toLocaleDateString("es-ES", { month: "short", day: "numeric" }),
+    const areaData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, amount]) => ({
+      date: new Date(`${date}T12:00:00`).toLocaleDateString("es-PY", { month: "short", day: "numeric" }),
       amount: amount / 1000000,
     }))
 
@@ -184,10 +199,14 @@ export default function SupplierTransactionsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Análisis de Transacciones</h1>
           <p className="text-muted-foreground">Seguimiento completo de transacciones por proveedor</p>
         </div>
-        <Button onClick={exportData} className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/purchases?scan=1" className="inline-flex h-10 items-center rounded-md bg-violet-600 px-4 text-sm font-medium text-white hover:bg-violet-700"><Sparkles className="mr-2 h-4 w-4" /> Escanear factura</Link>
+          <Link href="/admin/purchases?new=1" className="inline-flex h-10 items-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"><Plus className="mr-2 h-4 w-4" /> Registrar compra</Link>
+        <Button onClick={exportData} variant="outline" className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Exportar Datos
         </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -404,7 +423,7 @@ export default function SupplierTransactionsPage() {
             </TableHeader>
             <TableBody>
               {filteredTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
+                <TableRow key={transaction.key}>
                   <TableCell className="font-medium">{transaction.id}</TableCell>
                   <TableCell>{new Date(transaction.date).toLocaleDateString("es-ES")}</TableCell>
                   <TableCell>{transaction.supplierName}</TableCell>

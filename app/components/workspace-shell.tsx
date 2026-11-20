@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "../context/auth-context"
 import { useCompany } from "../context/company-context"
 import RestaurantNavigation from "./restaurant-navigation"
+import CategorySidebar from "./category-sidebar"
 import { BrandIcon } from "./brand-logo"
 import { ThemeToggle } from "./theme-toggle"
 import { HeaderActions } from "./header-actions"
@@ -69,6 +70,11 @@ function Shell({ children }: { children: ReactNode }) {
   const [listOpen, setListOpen] = useState(true)
   useEffect(() => { try { setListOpen(localStorage.getItem(LIST_KEY) !== "0") } catch { /* opcional */ } }, [])
   const toggleList = () => setListOpen((value) => { try { localStorage.setItem(LIST_KEY, value ? "0" : "1") } catch { /* opcional */ } return !value })
+  // Fuera del POS las categorías siguen a la vista: al elegir una se abre el POS con ese filtro.
+  const onPos = pathname === "/pos"
+  const goCategory = (category: string) => { setMobileOpen(false); router.push(category === "all" ? "/pos" : `/pos?category=${encodeURIComponent(category)}`) }
+  const goFilter = (filter: string) => { setMobileOpen(false); router.push(filter ? `/pos?filter=${encodeURIComponent(filter)}` : "/pos") }
+  const shellCategories = (rail: boolean) => <CategorySidebar selectedCategory="" onCategoryChange={goCategory} selectedFilter="" onFilterChange={goFilter} collapsed={rail} />
   const toggle = () => setCollapsed((value) => { try { localStorage.setItem(COLLAPSE_KEY, value ? "0" : "1") } catch { /* opcional */ } return !value })
 
   const brand = companyConfig?.name || user?.restaurantName || "RestoPOS"
@@ -116,7 +122,8 @@ function Shell({ children }: { children: ReactNode }) {
                 </div>}
               {(collapsed || listOpen) && <RestaurantNavigation variant={collapsed ? "rail" : "sidebar"} />}
             </div>
-            <div ref={setSidebar} className="flex min-h-0 flex-1 flex-col" />
+            <div ref={setSidebar} className={onPos ? "flex min-h-0 flex-1 flex-col" : "hidden"} />
+            {!onPos && <div className="flex min-h-0 flex-1 flex-col">{shellCategories(collapsed)}</div>}
           </aside>
 
           <main className="relative min-w-0 flex-1 overflow-y-auto">{children}</main>
@@ -130,7 +137,8 @@ function Shell({ children }: { children: ReactNode }) {
               <Button variant="ghost" size="sm" onClick={() => setMobileOpen(false)} aria-label="Cerrar opciones"><X className="h-4 w-4" /></Button>
             </div>
             <div className="border-b p-3"><RestaurantNavigation variant="sidebar" /></div>
-            <div ref={setMobile} className="flex min-h-0 flex-1 flex-col" />
+            <div ref={setMobile} className={onPos ? "flex min-h-0 flex-1 flex-col" : "hidden"} />
+            {!onPos && <div className="flex min-h-0 flex-1 flex-col">{shellCategories(false)}</div>}
           </div>
         </div>}
       </div>

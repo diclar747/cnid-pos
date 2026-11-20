@@ -170,6 +170,14 @@
       "namedRegex": "^/api/product\\-images/(?<nxtPrestaurant>[^/]+?)/(?<nxtPid>[^/]+?)(?:/)?$"
     },
     {
+      "page": "/api/purchase-invoices/[id]",
+      "regex": "^/api/purchase\\-invoices/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/api/purchase\\-invoices/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
       "page": "/api/purchase-orders/[id]",
       "regex": "^/api/purchase\\-orders/([^/]+?)(?:/)?$",
       "routeKeys": {
